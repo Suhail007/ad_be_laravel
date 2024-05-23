@@ -10,3 +10,10 @@ Route::get('/user', function (Request $request) {
 
 
 Route::post('/register',[LoginController::class,'register']);
+Route::post('/login',[LoginController::class,'login']);
+Route::post('/logout',[LoginController::class,'logout']);
+Route::post('/refreshToken',[LoginController::class,'refreshToken']);
+
+Route::group(['middleware' => ['auth:api']], function () {
+    
+});
