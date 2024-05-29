@@ -3,154 +3,50 @@
 // app/Http/Controllers/Auth/LoginController.php
 
 namespace App\Http\Controllers\Auth;
-
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
+use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Http\Controllers\Controller;
-use Tymon\JWTAuth\Exceptions\TokenInvalidException;
-use Illuminate\Auth\Events\Verified;
-use Illuminate\Foundation\Auth\EmailVerificationRequest;
-use App\Mail\VerifyEmail;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
-
-
+use MikeMcLin\WpPassword\Facades\WpPassword;
 class LoginController extends Controller
 {
-    public function register(Request $request)
-    {
-        //$for = $request->register_as_student;
-       
-        
-            $validator = Validator::make($request->all(), [
-                'name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'string', 'email', 'max:255'],
-                'password' => ['required', 'string', 'min:6', 'confirmed'],
-            ]);
-            if ($validator->fails()) {
-                return response()->json(['error' => $validator->errors()], 422);
-            }
-
-            $requestData = $request->all();
-            $user =User::create($requestData);
-            $token = JWTAuth::fromUser($user);
-            $vtoken = Str::random(60);
-            if($user->email_verified_at !=null){
-                return response()->json(['status'=>'success','message'=>'Mail is already Verified.']);
-            }
-            $user->remember_token = $vtoken;
-            $user->save();
-            //Mail::to($user->email)->send(new VerifyEmail($user));
-            return response()->json(['status'=>'success','user' => $user, 'token' => $token,'message'=>'Verification link Send successfully']);
-    }
-
     public function login(Request $request)
     {
-        $credentials = $request->only('email', 'password');
-
-        try {
-            if (!Auth::attempt($credentials)) {
-                throw ValidationException::withMessages([
-                    'email' => ['Invalid credentials'],
+        $email = $request->input('user_email');
+        $hashedPassword = $request->input('password');
+        $user = User::where('user_email', $email)->first();
+        $check = WpPassword::check($hashedPassword, $user->user_pass);
+        if ( $check==true ) {
+            // $data= [];
+            // $data['name']= $user->user_login;
+            // $data['email']=$user->user_email;
+            // $data['password']=$user->user_pass;
+            // //return print_r($data);
+           
+            if ($token = JWTAuth::fromUser($user)) {
+                return response()->json([
+                    'status' => 'success',
+                    'token' => $token,
                 ]);
             }
-
-            $user = Auth::user();
-            $token = JWTAuth::fromUser($user);
-
-            return response()->json(['status'=>'success','user' => $user, 'token' => $token]);
-        } catch (\Exception $e) {
-            return response()->json(['status'=>'failure','error' => $e->getMessage()], 401);
+        } else {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invalid credentials',
+            ], 401);
         }
     }
-    
+
     public function logout(Request $request)
     {
         try {
-            JWTAuth::parseToken()->invalidate(); 
-            return response()->json(['status'=>'success','message' => 'Logged out successfully']);
-        } catch (TokenInvalidException $e) {
-            return response()->json(['status'=>'failure','error' => 'Invalid token'], 401);
-        } catch (\Exception $e) {
-            return response()->json(['status'=>'failure','error' => 'Failed to log out'], 500);
+            JWTAuth::invalidate($request->token);
+            return response()->json(['status' => 'success', 'message' => 'User logged out successfully']);
+        } catch (JWTException $exception) {
+            return response()->json(['status' => 'error', 'message' => 'Could not log out the user'], 500);
         }
     }
 
-    public function refreshToken()
-    {
-        try {
-            $token = JWTAuth::parseToken()->refresh();
-            return response()->json(['status' => 'success', 'token' => $token]);
-        } catch (\Exception $e) {
-            return response()->json(['status' => 'failure', 'error' => 'Failed to refresh token'], 401);
-        }
-    }
-    public function verifyEmail(Request $request)
-{
-    try {
-        $user = JWTAuth::parseToken()->authenticate();
-        $token = Str::random(60);
-        if($user->email_verified_at !=null){
-            return response()->json(['status'=>'success','message'=>'Mail is already Verified.']);
-        }
-        
-        $user->remember_token = $token;
-        $user->save();
-        
-        //Mail::to($user->email)->send(new VerifyEmail($user));
-        
-        return response()->json(['status'=>'success','message' => 'Verification link Send successfully']);
-    } catch (\Exception $e) {
-       return response()->json(['status' => 'failure', 'message' => 'Unauthorized'], 401);
-    }
-}
-
-public function verifyEmailToken(Request $request, $email ,$token)
-{
-    try {
-        $user = User::where('email','=',$email)->first();
-        // echo $user->remember_token;
-        if ($user->remember_token === $token) {
-            $user->email_verified_at = now();
-            $user->remember_token = null;
-            $user->save();
-            echo 'Successfully verified';
-            return response()->json(['status'=>'success', 'redirect-url'=>'/']);
-        } else {
-            return response()->json(['status'=>'failure','message' => 'Invalid token'], 400);
-        }
-    } catch (\Exception $e) {
-        return response()->json(['status'=>'failure','message' => 'Unauthorized Mail Verification'], 401);
-    }
-}
-    public function changePassword(Request $request)
-    {
-        $user = Auth::user();
-        $userid = $user->id;
-        $user = User::where('id',$userid)->firstOrFail();
-        if (!$user) {
-            return response()->json(['message' => 'User not found.'], 404);
-        }
-        
-        $request->validate([
-            'old_password' => 'required|string',
-            'new_password' => 'required|string|min:8',
-        ]);
-        
-        if (!Hash::check($request->old_password, $user->password)) {
-            return response()->json(['message' => 'The old password is incorrect.'], 400);
-        }
-        $user->update([
-            'password'=>$request->new_password
-        ]);
-
-        
-        return response()->json(['message' => 'Password updated successfully.'], 200);
-    }
 }
 
