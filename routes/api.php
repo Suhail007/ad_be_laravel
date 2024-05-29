@@ -19,10 +19,12 @@ Route::post('/logout',[LoginController::class,'logout']);
 
 Route::get('/search',[ProductController::class,'searchProducts']); 
 
-Route::get('/categoryProducts',[ProductController::class,'categoryProduct']); //in product title 
-Route::get('/categoryProductsBySKU',[ProductController::class,'searchProductsBySKU']); //in product sku
-Route::get('/categoryProductsByCAT',[ProductController::class,'searchProductsByCAT']); //in cat 
-Route::get('/categoryProductsALL',[ProductController::class,'searchProductsAll']); //in pro sku cat
+Route::get('/categoryProduct',[ProductController::class,'categoryProducts']);
+
+Route::get('/searchProducts',[ProductController::class,'categoryProduct']); //in product title 
+Route::get('/searchProductsBySKU',[ProductController::class,'searchProductsBySKU']); //in product sku
+Route::get('/searchProductsByCAT',[ProductController::class,'searchProductsByCAT']); //in cat 
+Route::get('/searchProductsALL',[ProductController::class,'searchProductsAll']); //in pro sku cat
 
 Route::get('/sidebar',[ProductController::class,'sidebar']);
 
