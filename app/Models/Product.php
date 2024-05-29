@@ -16,4 +16,12 @@ class Product extends Model
     public function categories(){
         return $this->belongsToMany(Category::class, 'wp_term_relationships', 'object_id', 'term_taxonomy_id');
     }
+    public function getThumbnailUrlAttribute()
+    {
+        $thumbnailId = $this->meta()->where('meta_key', '_thumbnail_id')->value('meta_value');
+        if ($thumbnailId) {
+            return ProductMeta::where('post_id', $thumbnailId)->where('meta_key', '_wp_attached_file')->value('meta_value');
+        }
+        return null;
+    }
 }
