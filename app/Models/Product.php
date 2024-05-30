@@ -13,8 +13,10 @@ class Product extends Model
     public function meta(){
         return $this->hasMany(ProductMeta::class,'post_id','ID');
     }
-    public function categories(){
-        return $this->belongsToMany(Category::class, 'wp_term_relationships', 'object_id', 'term_taxonomy_id');
+    public function categories()
+    {
+        return $this->belongsToMany(Category::class, 'wp_term_relationships', 'object_id', 'term_taxonomy_id')
+            ->with('taxonomies');
     }
     public function getThumbnailUrlAttribute()
     {

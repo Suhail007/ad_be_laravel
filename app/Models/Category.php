@@ -19,7 +19,7 @@ class Category extends Model
     }
 
     public function taxonomies(){
-        return $this->belongsTo(CategoryTaxonomy::class,'term_id','term_id');
+        return $this->hasOne(CategoryTaxonomy::class,'term_id','term_id');
     }
     public function taxonomy()
     {

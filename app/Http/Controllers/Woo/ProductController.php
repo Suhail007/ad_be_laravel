@@ -44,67 +44,127 @@ class ProductController extends Controller
     return response()->json(['category'=>$category,'brands'=>$brand]);
     }
     
-    public function categoryProduct(string $slug){
-        $searchTerm = $slug;
-        $perPage = 20;
+    public function categoryProduct(string $slug)
+{
+    $perPage = 20;
 
-        $products = Product::with([
-            'meta' => function($query) {
-                $query->select('post_id', 'meta_key', 'meta_value')
-                      ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id']);
-            },
-            'categories' => function($query) {
-                $query->select('wp_terms.term_id', 'wp_terms.name')
-                      ->with([
-                          'categorymeta' => function($query) {
-                              $query->select('term_id', 'meta_key', 'meta_value')
-                                    ->where('meta_key', 'visibility');
-                          }
-                      ]);
-            }
-        ])
-        ->select('ID', 'post_title', 'post_modified', 'post_name')
-        ->where('post_type', 'product')
-        ->where(function($query) use ($searchTerm) {
-            $query //->where('post_title', 'LIKE', '%' . $searchTerm . '%')
-                //   ->orWhereHas('meta', function($query) use ($searchTerm) {
-                //       $query->where('meta_key', '_sku')
-                //             ->where('meta_value', 'LIKE', '%' . $searchTerm . '%');
-                //   })
-                  ->orWhereHas('categories', function($query) use ($searchTerm) {
-                      $query->where('slug', '=',$searchTerm);
-                  })
-                  ;
-        })
-        ->orderBy('post_modified', 'desc')
-        ->paginate($perPage);
-        
-        $products->getCollection()->transform(function($product) {
-            return [
-                'ID' => $product->ID,
-                'title' => $product->post_title,
-                'slug' => $product->post_name,
-                'thumbnail_url' => $product->thumbnail_url,
-                'categories' => $product->categories->map(function($category) {
-                    $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
-                    return [
-                        'term_id' => $category->term_id,
-                        'name' => $category->name,
-                        'visibility' => $visibility ? $visibility : 'N/A',
-                    ];
-                }),
-                'meta' => $product->meta->map(function($meta) {
-                    return [
-                        'meta_key' => $meta->meta_key,
-                        'meta_value' => $meta->meta_value
-                    ];
-                }),
-                'post_modified' => $product->post_modified
-            ];
-        });
+    $products = Product::with([
+        'meta' => function($query) {
+            $query->select('post_id', 'meta_key', 'meta_value')
+                  ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id']);
+        },
+        'categories' => function($query) {
+            $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                  ->with([
+                      'categorymeta' => function($query) {
+                          $query->select('term_id', 'meta_key', 'meta_value')
+                                ->where('meta_key', 'visibility');
+                      },
+                      'taxonomies' => function($query) {
+                          $query->select('term_id', 'taxonomy');
+                      }
+                  ]);
+        }
+    ])
+    ->select('ID', 'post_title', 'post_modified', 'post_name')
+    ->where('post_type', 'product')
+    ->whereHas('categories.taxonomies', function($query) use ($slug) {
+        $query->where('slug', $slug)
+              ->where('taxonomy', 'product_cat');
+    })
+    ->orderBy('post_modified', 'desc')
+    ->paginate($perPage);
 
-        return response()->json($products);
-    }
+    $products->getCollection()->transform(function($product) {
+        return [
+            'ID' => $product->ID,
+            'title' => $product->post_title,
+            'slug' => $product->post_name,
+            'thumbnail_url' => $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first(), // Assuming you need the URL
+            'categories' => $product->categories->map(function($category) {
+                $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                $taxonomy = $category->taxonomies->taxonomy;
+                return [
+                    'term_id' => $category->term_id,
+                    'name' => $category->name,
+                    'slug' => $category->slug,
+                    'visibility' => $visibility ? $visibility : 'N/A',
+                    'taxonomy' => $taxonomy ? $taxonomy : 'N/A',
+                ];
+            }),
+            'meta' => $product->meta->map(function($meta) {
+                return [
+                    'meta_key' => $meta->meta_key,
+                    'meta_value' => $meta->meta_value
+                ];
+            }),
+            'post_modified' => $product->post_modified
+        ];
+    });
+
+    return response()->json($products);
+}
+
+public function brandProducts(string $slug)
+{
+    $perPage = 20;
+
+    $products = Product::with([
+        'meta' => function($query) {
+            $query->select('post_id', 'meta_key', 'meta_value')
+                  ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id']);
+        },
+        'categories' => function($query) {
+            $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                  ->with([
+                      'categorymeta' => function($query) {
+                          $query->select('term_id', 'meta_key', 'meta_value')
+                                ->where('meta_key', 'visibility');
+                      },
+                      'taxonomies' => function($query) {
+                          $query->select('term_id', 'taxonomy');
+                      }
+                  ]);
+        }
+    ])
+    ->select('ID', 'post_title', 'post_modified', 'post_name')
+    ->where('post_type', 'product')
+    ->whereHas('categories.taxonomies', function($query) use ($slug) {
+        $query->where('slug', $slug)
+              ->where('taxonomy', 'berocket_brand');
+    })
+    ->orderBy('post_modified', 'desc')
+    ->paginate($perPage);
+
+    $products->getCollection()->transform(function($product) {
+        return [
+            'ID' => $product->ID,
+            'title' => $product->post_title,
+            'slug' => $product->post_name,
+            'thumbnail_url' => $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first(), // Assuming you need the URL
+            'categories' => $product->categories->map(function($category) {
+                $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                $taxonomy = $category->taxonomies->taxonomy;
+                return [
+                    'term_id' => $category->term_id,
+                    'name' => $category->name,
+                    'slug' => $category->slug,
+                    'visibility' => $visibility ? $visibility : 'N/A',
+                    'taxonomy' => $taxonomy ? $taxonomy : 'N/A',
+                ];
+            }),
+            'meta' => $product->meta->map(function($meta) {
+                return [
+                    'meta_key' => $meta->meta_key,
+                    'meta_value' => $meta->meta_value
+                ];
+            }),
+            'post_modified' => $product->post_modified
+        ];
+    });
+
+    return response()->json($products);
+}
 
     public function searchProducts(Request $request)
     {

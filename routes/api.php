@@ -14,7 +14,7 @@ Route::post('/logout',[LoginController::class,'logout']);
 
 
 Route::get('/categoryProduct/{slug}',[ProductController::class,'categoryProduct']); 
-
+Route::get('/brandProduct/{slug}',[ProductController::class,'brandProducts']);
 Route::get('/searchProducts',[ProductController::class,'searchProducts']); //search in product title 
 Route::get('/searchProductsBySKU',[ProductController::class,'searchProductsBySKU']); //in product sku
 Route::get('/searchProductsByCAT',[ProductController::class,'searchProductsByCAT']); //in cat 
