@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Woo\CartController;
 use App\Http\Controllers\Woo\ProductController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +23,9 @@ Route::get('/searchProductsALL',[ProductController::class,'searchProductsAll']);
 
 
 Route::get('/sidebar',[ProductController::class,'sidebar']);
+
+Route::get('/cart',[CartController::class,'index']);
+Route::get('/cart-products',[CartController::class,'show']);
 
 Route::get('/log', function(){return response()->json(['status'=>'error','redirect_url'=>'/login']);})->name('login');
 
