@@ -5,10 +5,56 @@ namespace App\Http\Controllers\Woo;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Automattic\WooCommerce\Client;
 use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
+    protected $woocommerce;
+    public function __construct(Client $woocommerce)
+    {
+        $this->woocommerce = $woocommerce;
+    }
+    public function addToCart(Request $request){
+        $userId =1;// $request->user()->ID;
+        $productId = $request->input('product_id');
+        $quantity = $request->input('quantity');
+        $variationId = $request->input('variation_id', 0);
+        $cartKey = "_woocommerce_persistent_cart_{$userId}";
+        $userMeta = DB::table('wp_usermeta')->where('user_id', $userId)->where('meta_key', $cartKey)->first();
+        $cartData = $userMeta ? unserialize($userMeta->meta_value) : ['cart' => []];
+        $cartItemKey = md5($userId . $productId . $variationId);
+        if (isset($cartData['cart'][$cartItemKey])) {
+            $cartData['cart'][$cartItemKey]['quantity'] += $quantity;
+        } else {
+            $cartData['cart'][$cartItemKey] = [
+                'key' => $cartItemKey,
+                'product_id' => $productId,
+                'variation_id' => $variationId,
+                'variation' => $request->input('variation', []),
+                'quantity' => $quantity,
+                'data_hash' => md5($productId . $variationId . time()),
+                'line_tax_data' => ['subtotal' => [], 'total' => []],
+                'line_subtotal' => $request->input('line_subtotal'),
+                'line_subtotal_tax' => 0,
+                'line_total' => $request->input('line_total'),
+                'line_tax' => 0,
+            ];
+        }
+        $cartMetaValue = serialize($cartData);
+        if ($userMeta) {
+            DB::table('wp_usermeta')->where('umeta_id', $userMeta->umeta_id)->update(['meta_value' => $cartMetaValue]);
+        } else {
+            DB::table('wp_usermeta')->insert([
+                'user_id' => $userId,
+                'meta_key' => $cartKey,
+                'meta_value' => $cartMetaValue,
+            ]);
+        }
+
+        return response()->json(['message' => 'Product added to cart']);
+    }
+
     public function index(Request $request){
         $userId = 1;
         $userMeta = DB::table('wp_usermeta')
@@ -97,4 +143,51 @@ class CartController extends Controller
         }
         return null;
     }
+    public function addToCar(Request $request)
+    {
+        $userId =1; //$request->user()->ID; 
+        $productId = $request->input('product_id');
+        $quantity = $request->input('quantity');
+        $variationId = $request->input('variation_id', 0); 
+        $userMeta = DB::table('wp_usermeta')
+            ->where('user_id', $userId)
+            ->where('meta_key', 'like', '%_woocommerce_persistent_cart_%')
+            ->first();
+        $cartData = $userMeta ? unserialize($userMeta->meta_value) : ['cart' => []];
+        $cartItemKey = md5($userId . $productId . $variationId);
+        if (isset($cartData['cart'][$cartItemKey])) {
+            $cartData['cart'][$cartItemKey]['quantity'] += $quantity;
+        } else {
+            $cartData['cart'][$cartItemKey] = [
+                'key' => $cartItemKey,
+                'product_id' => $productId,
+                'variation_id' => $variationId,
+                'variation' => $request->input('variation', []),
+                'quantity' => $quantity,
+                'data_hash' => md5($productId . $variationId . time()),
+                'line_tax_data' => ['subtotal' => [], 'total' => []],
+                'line_subtotal' => $request->input('line_subtotal'),
+                'line_subtotal_tax' => 0,
+                'line_total' => $request->input('line_total'),
+                'line_tax' => 0,
+            ];
+        }
+        $cartMetaValue = serialize($cartData);
+        if ($userMeta) {
+            DB::table('wp_usermeta')
+                ->where('umeta_id', $userMeta->umeta_id)
+                ->update(['meta_value' => $cartMetaValue]);
+        } else {
+            DB::table('wp_usermeta')
+                ->insert([
+                    'user_id' => $userId,
+                    'meta_key' => 'wp_woocommerce_persistent_cart_' . $userId,
+                    'meta_value' => $cartMetaValue,
+                ]);
+        }
+
+        return response()->json(['message' => 'Product added to cart']);
+    }
+
+
 }

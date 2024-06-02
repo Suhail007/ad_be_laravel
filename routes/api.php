@@ -26,9 +26,20 @@ Route::get('/sidebar',[ProductController::class,'sidebar']);
 
 Route::get('/cart',[CartController::class,'index']);
 Route::get('/cart-products',[CartController::class,'show']);
+// Route::post('/cart/add', [CartController::class, 'addToCart']);
 
 Route::get('/log', function(){return response()->json(['status'=>'error','redirect_url'=>'/login']);})->name('login');
 
 
 Route::group(['middleware' => ['auth:api']], function () {
 });
+
+use App\Http\Controllers\WooCommerceController;
+
+Route::post('/add-to-cart', [WooCommerceController::class, 'addToCart']);
+
+Route::get('/cart/get',[WooCommerceController::class,'getCart']);
+Route::get('/product/{id}',[WooCommerceController::class,'show']);
+// Route::get('product/{id}', [ProductController::class, 'showProduct']);
+Route::post('cart/add', [CartController::class, 'addToCart']);
+    // Route::get('product/{id}', [ProductController::class, 'shos']);

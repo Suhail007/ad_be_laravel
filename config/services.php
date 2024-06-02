@@ -30,5 +30,14 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+// config/services.php
+
+    // Other services...
+    'woocommerce' => [
+        'url' => env('WOOCOMMERCE_URL'),
+        'consumer_key' => env('WOOCOMMERCE_CONSUMER_KEY'),
+        'consumer_secret' => env('WOOCOMMERCE_CONSUMER_SECRET'),
+    ],
+
 
 ];

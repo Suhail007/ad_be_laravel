@@ -9,9 +9,63 @@ use App\Models\CustomCategory;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Automattic\WooCommerce\Client;
 
 class ProductController extends Controller
 {
+    protected $woocommerce;
+
+    public function __construct(Client $woocommerce)
+    {
+        $this->woocommerce = $woocommerce;
+    }
+
+    public function shos($id)
+    {
+        try {
+            $product = $this->woocommerce->get("products/{$id}");
+            return response()->json($product);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Product not found'], 404);
+        }
+    }
+    public function showProduct($id)
+    {
+        $product = Product::with([
+            'meta' => function ($query) {
+                $query->select('post_id', 'meta_key', 'meta_value')
+                    ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id']);
+            },
+            'categories' => function ($query) {
+                $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                    ->with([
+                        'categorymeta' => function ($query) {
+                            $query->select('term_id', 'meta_key', 'meta_value')
+                                ->where('meta_key', 'visibility');
+                        },
+                        'taxonomies' => function ($query) {
+                            $query->select('term_id', 'taxonomy');
+                        }
+                    ]);
+            }
+        ])->find($id);
+
+        if (!$product) {
+            return response()->json(['message' => 'Product not found'], 404);
+        }
+
+        $productData = [
+            'ID' => $product->ID,
+            'title' => $product->post_title,
+            'slug' => $product->post_name,
+            'thumbnail_url' => $this->getThumbnailUrl($product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first()),
+            'sku' => $product->meta->where('meta_key', '_sku')->pluck('meta_value')->first(),
+            'price' => $product->meta->where('meta_key', '_price')->pluck('meta_value')->first(),
+            'description' => $product->post_content,
+        ];
+
+        return response()->json($productData);
+    }
     private function getThumbnailUrl($thumbnailId)
     {
         if (!$thumbnailId) {
@@ -19,7 +73,7 @@ class ProductController extends Controller
         }
         $attachment = DB::table('wp_posts')->where('ID', $thumbnailId)->first();
         if ($attachment) {
-            return $attachment->guid; // Assuming the guid contains the URL
+            return $attachment->guid;
         }
         return null;
     }
