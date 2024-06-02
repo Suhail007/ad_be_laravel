@@ -38,4 +38,26 @@ class User extends Authenticatable implements JWTSubject
     {
         return [];
     }
+    public function meta()
+    {
+        return $this->hasMany(UserMeta::class, 'user_id', 'ID');
+    }
+    public function getPriceTierAttribute()
+    {
+        $capabilities = $this->meta()->where('meta_key', 'wp_capabilities')->value('meta_value');
+
+        if ($capabilities) {
+            $capabilitiesArray = unserialize($capabilities);
+            if (isset($capabilitiesArray['wholesale_customer'])) {
+                return 'wholesale_customer_wholesale_price';
+            } elseif (isset($capabilitiesArray['mm_price_2'])) {
+                return 'mm_price_2_wholesale_price';
+            } elseif (isset($capabilitiesArray['mm_price_3'])) {
+                return 'mm_price_3_wholesale_price';
+            } elseif (isset($capabilitiesArray['mm_price_4'])) {
+                return 'mm_price_4_wholesale_price';
+            }
+        }
+        return null;
+    }
 }
