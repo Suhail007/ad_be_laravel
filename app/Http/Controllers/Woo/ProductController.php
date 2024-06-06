@@ -108,7 +108,9 @@ class ProductController extends Controller
         // }
         $category = CustomCategory::get();
         $brand = CustomBrand::where('category', '!=', '')->get();
-        return response()->json(['category' => $category, 'brands' => $brand]);
+        $response= response()->json(['category' => $category, 'brands' => $brand]);
+            $response->header('Cache-Control', 'public, max-age=3600');
+            return $response;
     }
     public function categoryProduct(string $slug)
     {
