@@ -15,6 +15,7 @@ Route::post('/login',[LoginController::class,'login']);
 
 Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('/logout', [LoginController::class, 'logout']);
+    Route::get('/profile',[LoginController::class,'me']);
 });
 
 

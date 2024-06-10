@@ -12,8 +12,8 @@ class WooCommerceController extends Controller
 {
     public function show(Request $request, $id)
 {
-    // $user = JWTAuth::parseToken()->authenticate();
-    $userId = 1;//$user->ID;
+     $user = JWTAuth::parseToken()->authenticate();
+    $userId =$user->ID;
     $user = User::find($userId);
     $product = Product::with([
         'meta', 

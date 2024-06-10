@@ -54,5 +54,16 @@ class LoginController extends Controller
         }
     }
 
+    public function me(Request $request){
+        $user = JWTAuth::parseToken()->authenticate();
+        $data =[
+            'ID'=>$user->ID,
+            'name' => $user->user_login,
+            'email' => $user->user_email,
+            'capabilities' => $user->capabilities, 
+        ];
+        return response()->json(['status'=>'success','data'=>$data]);
+    }
+
 }
 
