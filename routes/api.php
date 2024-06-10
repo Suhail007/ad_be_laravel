@@ -11,7 +11,10 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::post('/login',[LoginController::class,'login']);
-Route::post('/logout',[LoginController::class,'logout']);
+
+Route::group(['middleware' => ['jwt.auth']], function () {
+    Route::post('/logout', [LoginController::class, 'logout']);
+});
 
 
 Route::get('/categoryProduct/{slug}',[ProductController::class,'categoryProduct']); 
@@ -31,8 +34,7 @@ Route::get('/cart-products',[CartController::class,'show']);
 Route::get('/log', function(){return response()->json(['status'=>'error','redirect_url'=>'/login']);})->name('login');
 
 
-Route::group(['middleware' => ['auth:api']], function () {
-});
+
 
 use App\Http\Controllers\WooCommerceController;
 

@@ -23,7 +23,7 @@ class LoginController extends Controller
              $data['name']= $user->user_login;
              $data['email']=$user->user_email;
              
-           
+ 
             if ($token = JWTAuth::fromUser($user)) {
                 return response()->json([
                     'status' => 'success',
@@ -42,7 +42,10 @@ class LoginController extends Controller
     public function logout(Request $request)
     {
         try {
-            JWTAuth::invalidate($request->token);
+            $token = $request->header('Authorization');
+            $token = str_replace('Bearer ', '', $token);
+            JWTAuth::invalidate($token);
+            // JWTAuth::invalidate($request->token);
             return response()->json(['status' => 'success', 'message' => 'User logged out successfully']);
         } catch (JWTException $exception) {
             return response()->json(['status' => 'error', 'message' => 'Could not log out the user'], 500);
