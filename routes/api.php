@@ -5,6 +5,7 @@ use App\Http\Controllers\Woo\CartController;
 use App\Http\Controllers\Woo\ProductController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\WooCommerceController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -36,7 +37,6 @@ Route::get('/log', function(){return response()->json(['status'=>'error','redire
 
 
 
-use App\Http\Controllers\WooCommerceController;
 
 Route::post('/add-to-cart', [WooCommerceController::class, 'addToCart']);
 

@@ -18,11 +18,13 @@ class LoginController extends Controller
         $user = User::where('user_email', $email)->orWhere('user_login',$email)->first();
         $check = WpPassword::check($hashedPassword, $user->user_pass);
         if ( $check==true ) {
-             $data= [];
-             $data['ID']=$user->ID;
-             $data['name']= $user->user_login;
-             $data['email']=$user->user_email;
-             
+            $data = [
+                'ID' => $user->ID,
+                'name' => $user->user_login,
+                'email' => $user->user_email,
+                'capabilities' => $user->capabilities, // Fetch the capabilities attribute
+            ];
+
  
             if ($token = JWTAuth::fromUser($user)) {
                 return response()->json([

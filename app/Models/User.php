@@ -60,4 +60,9 @@ class User extends Authenticatable implements JWTSubject
         }
         return null;
     }
+    public function getCapabilitiesAttribute()
+    {
+        $capabilities = $this->meta()->where('meta_key', 'wp_capabilities')->value('meta_value');
+        return $capabilities ? unserialize($capabilities) : [];
+    }
 }
