@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\LayoutController;
 use App\Http\Controllers\Woo\CartController;
 use App\Http\Controllers\Woo\ProductController;
 use Illuminate\Http\Request;
@@ -16,6 +17,13 @@ Route::post('/login',[LoginController::class,'login']);
 Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('/logout', [LoginController::class, 'logout']);
     Route::get('/profile',[LoginController::class,'me']);
+
+    Route::get('/layout',[LayoutController::class,'layouts']);
+    Route::get('/position/{layout}',[LayoutController::class,'position']);
+    Route::get('/positionLayout/{layout}/{position}',[LayoutController::class,'positionLayout']);
+    Route::post('/layout',[LayoutController::class,'store']);
+    Route::put('/layout/{id}',[LayoutController::class,'update']);
+    Route::delete('/layout/{id}',[LayoutController::class,'destroy']);
 });
 
 
