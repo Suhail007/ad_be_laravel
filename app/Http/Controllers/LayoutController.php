@@ -25,7 +25,7 @@ class LayoutController extends Controller
 
     public function position($layout)
     {
-        $data = Layout::where('page', $layout)->select('position')->get();
+        $data = Layout::where('page', $layout)->select('position')->distinct()->get();
         return response()->json(['data' => $data]);
     }
 
