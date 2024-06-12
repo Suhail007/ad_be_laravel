@@ -55,6 +55,7 @@ class LayoutController extends Controller
             'serial' => ['required', 'numeric'],
             'link' => ['string'],
             'url' => ['image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
+            'visibility'=>['required','string'],
         ]);
 
         if ($validator->fails()) {
@@ -101,11 +102,12 @@ class LayoutController extends Controller
     public function update(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'page' => ['sometimes', 'required', 'string'],
-            'position' => ['sometimes', 'required', 'string'],
-            'serial' => ['sometimes', 'required', 'numeric'],
+            'page' => ['required', 'string'],
+            'position' => ['required', 'string'],
+            'serial' => ['required', 'numeric'],
             'link' => ['string'],
             'url' => ['image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
+            'visibility'=>['string'],
         ]);
 
         if ($validator->fails()) {

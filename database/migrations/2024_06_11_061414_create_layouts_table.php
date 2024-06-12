@@ -19,6 +19,7 @@ return new class extends Migration
             $table->boolean('status')->default(false);
             $table->string('link')->default('/');
             $table->string('url');
+            $table->string('visibility');
             $table->timestamps();
         });
     }
