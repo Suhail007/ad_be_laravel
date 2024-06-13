@@ -21,6 +21,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('/layout',[LayoutController::class,'store']);
     Route::put('/layout/{id}',[LayoutController::class,'update']);
     Route::delete('/layout/{id}',[LayoutController::class,'destroy']);
+    Route::post('/mediafile',[LayoutController::class,'uploadFile']);
 });
 
 Route::get('/layout',[LayoutController::class,'layouts']);

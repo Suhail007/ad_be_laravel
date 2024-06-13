@@ -15,7 +15,6 @@ class LayoutController extends Controller
      */
     public function index()
     {
-       
     }
     public function layouts()
     {
@@ -55,7 +54,7 @@ class LayoutController extends Controller
             'serial' => ['required', 'numeric'],
             'link' => ['string'],
             'url' => ['image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
-            'visibility'=>['required','string'],
+            'visibility' => ['required', 'string'],
         ]);
 
         if ($validator->fails()) {
@@ -96,6 +95,37 @@ class LayoutController extends Controller
         //
     }
 
+
+    public function uploadFile(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'thumbnail' => ['required', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
+            'old_url' => ['nullable', 'string'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()], 422);
+        }
+
+        if ($request->hasFile('thumbnail')) {
+            try {
+                // Delete the old file if the old_url is provided
+                if ($request->filled('old_url')) {
+                    Storage::disk('public')->delete($request->input('old_url'));
+                }
+
+                $thumbnail = $request->file('thumbnail');
+                $thumbnailPath = $thumbnail->store('layouts', 'public');
+
+                return response()->json(['status' => 'success', 'url' => $thumbnailPath], 201);
+            } catch (\Exception $e) {
+                return response()->json(['error' => 'File upload failed'], 500);
+            }
+        }
+
+        return response()->json(['error' => 'No file uploaded'], 400);
+    }
+
     /**
      * Update the specified resource in storage.
      */
@@ -106,8 +136,8 @@ class LayoutController extends Controller
             'position' => ['required', 'string'],
             'serial' => ['required', 'numeric'],
             'link' => ['string'],
-            'url' => ['image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
-            'visibility'=>['string'],
+            'url' => ['string'],
+            'visibility' => ['string'],
         ]);
 
         if ($validator->fails()) {
@@ -121,20 +151,20 @@ class LayoutController extends Controller
             return response()->json(['error' => 'Layout not found'], 404);
         }
 
-        if ($request->hasFile('url')) {
-            try {
-                // Delete old file if exists
-                if ($post->url) {
-                    Storage::disk('public')->delete($post->url);
-                }
+        // if ($request->hasFile('url')) {
+        //     try {
+        //         // Delete old file if exists
+        //         if ($post->url) {
+        //             Storage::disk('public')->delete($post->url);
+        //         }
 
-                $thumbnail = $request->file('url');
-                $thumbnailPath = $thumbnail->store('layouts', 'public');
-                $validatedData['url'] = $thumbnailPath;
-            } catch (\Exception $e) {
-                return response()->json(['error' => 'File upload failed'], 500);
-            }
-        }
+        //         $thumbnail = $request->file('url');
+        //         $thumbnailPath = $thumbnail->store('layouts', 'public');
+        //         $validatedData['url'] = $thumbnailPath;
+        //     } catch (\Exception $e) {
+        //         return response()->json(['error' => 'File upload failed'], 500);
+        //     }
+        // }
 
         $post->update($validatedData);
 
