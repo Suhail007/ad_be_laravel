@@ -54,7 +54,7 @@ class LayoutController extends Controller
             'serial' => ['required', 'numeric'],
             'status'=>['required'],
             'link' => ['string'],
-            'url' => ['image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
+            'url' => ['image', 'mimes:jpeg,png,jpg,gif,webp,avif,mp4', 'max:2048'],
             'visibility' => ['required', 'string'],
         ]);
 
@@ -100,7 +100,7 @@ class LayoutController extends Controller
     public function uploadFile(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'thumbnail' => ['required', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
+            'thumbnail' => ['required', 'image', 'mimes:jpeg,png,jpg,gif,webp,avif,mp4', 'max:2048'],
             'old_url' => ['nullable', 'string'],
         ]);
 
