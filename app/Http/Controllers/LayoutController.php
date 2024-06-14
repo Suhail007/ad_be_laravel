@@ -54,7 +54,7 @@ class LayoutController extends Controller
             'serial' => ['required', 'numeric'],
             'status'=>['required'],
             'link' => ['string'],
-            'url' => ['image', 'mimes:jpeg,png,jpg,gif,webp,avif,mp4', 'max:2048'],
+            'url' => ['mimes:jpeg,png,jpg,gif,webp,avif,mp4', 'max:2048'],
             'visibility' => ['required', 'string'],
         ]);
 

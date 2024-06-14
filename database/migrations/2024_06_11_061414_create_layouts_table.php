@@ -18,7 +18,7 @@ return new class extends Migration
             $table->integer('serial')->default(1);
             $table->boolean('status')->default(false);
             $table->string('link')->default('/');
-            $table->string('url');
+            $table->string('url')->nullable();
             $table->string('visibility');
             $table->timestamps();
         });
