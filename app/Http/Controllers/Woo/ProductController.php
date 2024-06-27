@@ -200,7 +200,7 @@ class ProductController extends Controller
             ->where('post_type', 'product')
             ->whereHas('categories.taxonomies', function ($query) use ($slug) {
                 $query->where('slug', $slug)
-                    ->where('taxonomy', 'berocket_brand');
+                    ->where('taxonomy', 'product_brand');
             })
             ->orderBy('post_modified', 'desc')
             ->paginate($perPage);

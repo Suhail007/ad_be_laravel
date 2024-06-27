@@ -7,7 +7,7 @@ use App\Models\ProductMeta;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Tymon\JWTAuth\Facades\JWTAuth;
-
+use Automattic\WooCommerce\Client;
 class WooCommerceController extends Controller
 {
     public function show(Request $request, $id)
@@ -189,4 +189,103 @@ class WooCommerceController extends Controller
         return [];
     }
     
+
+private function woocommerce(){
+    $woocommerce = new Client(
+        config('services.woocommerce.url'),
+        config('services.woocommerce.consumer_key'),
+        config('services.woocommerce.consumer_secret'),
+        [
+          'version' => 'wc/v3',
+        ]
+      );
+      return $woocommerce;
+}
+
+    public function getAllOrders(){
+        $woocommerce=$this->woocommerce();
+
+        return $woocommerce->get('customers/3');
+    }
+
+    public function createNewOrder(){
+        $data = [
+            'payment_method' => 'bacs',
+            'payment_method_title' => 'Direct Bank Transfer',
+            'set_paid' => true,
+            'billing' => [
+                'first_name' => 'John',
+                'last_name' => 'Doe',
+                'address_1' => '969 Market',
+                'address_2' => '',
+                'city' => 'San Francisco',
+                'state' => 'CA',
+                'postcode' => '94103',
+                'country' => 'US',
+                'email' => 'john.doe@example.com',
+                'phone' => '(555) 555-5555'
+            ],
+            'shipping' => [
+                'first_name' => 'John',
+                'last_name' => 'Doe',
+                'address_1' => '969 Market',
+                'address_2' => '',
+                'city' => 'San Francisco',
+                'state' => 'CA',
+                'postcode' => '94103',
+                'country' => 'US'
+            ],
+            'line_items' => [
+                [
+                    'product_id' => 22,
+                    'variation_id' => 23,
+                    'quantity' => 1
+                ]
+            ],
+            'shipping_lines' => [
+                [
+                    'method_id' => 'flat_rate',
+                    'method_title' => 'Flat Rate',
+                    'total' => '10.00'
+                ]
+            ]
+        ];
+        $woocommerce=$this->woocommerce();
+       $order= $woocommerce->post('orders', $data);
+       return response()->json($order);
+
+    }
+
+
+
+    public function allPaymentGate(){
+        $woocommerce=$this->woocommerce();
+       $data= $woocommerce->get('payment_gateways'); 
+        return response()->json($data);
+        
+    }
+
+    public function getPaymentMethod($method){
+        $woocommerce=$this->woocommerce();
+        $data = $woocommerce->get('payment_gateways/'.$method);
+        return response()->json($data);
+    }
+    public function getShippingZone(){
+        $data = [
+            'name' => 'local'
+        ];
+        $woocommerce=$this->woocommerce();
+        $data =$woocommerce->get('shipping/zones/1/locations'); //$woocommerce->post('shipping/zones', $data); // $woocommerce->get('shipping/zones');
+        return response()->json($data);
+    }
+    public function getUAddresses(Request $request)
+    {
+        $user =JWTAuth::parseToken()->authenticate();
+        $userId= $user->ID;
+        
+        $woocommerce=$this->woocommerce();
+        $data = $woocommerce->get('customers/'.$userId);
+        return response()->json($data);
+    }
+
 }
