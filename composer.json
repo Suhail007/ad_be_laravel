@@ -13,6 +13,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
         "mikemclin/laravel-wp-password": "~2.0.1",
+        "paypal/rest-api-sdk-php": "^1.6",
         "tymon/jwt-auth": "^2.1"
     },
     "require-dev": {

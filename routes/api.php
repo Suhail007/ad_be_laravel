@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\LayoutController;
 use App\Http\Controllers\MediaController;
+use App\Http\Controllers\PayPalController;
 use App\Http\Controllers\Woo\CartController;
 use App\Http\Controllers\Woo\ProductController;
 use Illuminate\Http\Request;
@@ -78,3 +79,7 @@ Route::post('/create-new-order',[WooCommerceController::class,'createNewOrder'])
 Route::get('/get-all-payment-option',[WooCommerceController::class,'allPaymentGate']);
 Route::get('/get-all-payment-option/{method}',[WooCommerceController::class,'getPaymentMethod']);
 Route::get('/get-shipping-zone',[WooCommerceController::class,'getShippingZone']);
+
+
+Route::post('/create-payment', [PayPalController::class, 'createPayment']);
+Route::post('/execute-payment', [PayPalController::class, 'executePayment']);

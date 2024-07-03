@@ -39,5 +39,11 @@ return [
         'consumer_secret' => env('WOOCOMMERCE_CONSUMER_SECRET'),
     ],
 
+    'paypal' =>[
+        'clientID'=>env('PAYPAL_CLIENT_ID'),
+        'clientSecret'=>env('PAYPAL_CLIENT_SECRET'),
+        'paypalMode'=>env('PAYPAL_MODE')
+    ]
+
 
 ];

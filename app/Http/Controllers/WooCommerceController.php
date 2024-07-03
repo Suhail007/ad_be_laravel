@@ -145,7 +145,7 @@ class WooCommerceController extends Controller
     private function getVariations($productId)
     {
         // Example method to fetch variations for variable products
-        $variations = Product::where('post_parent', $productId)
+        $variations = Product::where('post_parent', $productId)->where('post_type','product_variation')
             ->with('meta')
             ->get()
             ->map(function ($variation) {
