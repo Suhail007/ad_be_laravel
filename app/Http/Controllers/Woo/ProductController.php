@@ -239,69 +239,67 @@ class ProductController extends Controller
     }
 
     public function searchProducts(Request $request)
-    {
-        $searchTerm = $request->input('searchTerm', '');
-        $perPage = 20;
-        $products = Product::with([
-            'meta' => function ($query) {
-                $query->select('post_id', 'meta_key', 'meta_value')
-                    ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id']);
-            },
-            'categories' => function ($query) {
-                $query->select('wp_terms.term_id', 'wp_terms.name')
-                    ->with([
-                        'categorymeta' => function ($query) {
-                            $query->select('term_id', 'meta_key', 'meta_value')
-                                ->where('meta_key', 'visibility');
-                        }
-                    ]);
-            }
-        ])
-            ->select('ID', 'post_title', 'post_modified', 'post_name')
-            ->where('post_type', 'product')
-            ->where(function ($query) use ($searchTerm) {
-                $query->where('post_title', 'LIKE', '%' . $searchTerm . '%')
-                    // ->orWhereHas('meta', function ($query) use ($searchTerm) {
-                    //     $query->where('meta_key', '_sku')
-                    //         ->where('meta_value', 'LIKE', '%' . $searchTerm . '%');
-                    // })
-                    // ->orWhereHas('categories', function ($query) use ($searchTerm) {
-                    //     $query->where('name', 'LIKE', '%' . $searchTerm . '%');
-                    // })
-                ;
-            })
-            ->orderBy('post_modified', 'desc')
-            ->paginate($perPage);
+{
+    $searchTerm = $request->input('searchTerm', '');
+    $perPage = 20;
 
-        $products->getCollection()->transform(function ($product) {
-            $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
-            $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
+    // Normalize the search term (convert to lowercase, remove special characters)
+    $normalizedSearchTerm = preg_replace('/[^a-z0-9]+/i', ' ', $searchTerm);
+    $normalizedSearchTerm = strtolower($normalizedSearchTerm);
 
-            return [
-                'ID' => $product->ID,
-                'title' => $product->post_title,
-                'slug' => $product->post_name,
-                'thumbnail_url' => $thumbnailUrl,
-                'categories' => $product->categories->map(function ($category) {
-                    $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
-                    return [
-                        'term_id' => $category->term_id,
-                        'name' => $category->name,
-                        'visibility' => $visibility ? $visibility : 'N/A',
-                    ];
-                }),
-                'meta' => $product->meta->map(function ($meta) {
-                    return [
-                        'meta_key' => $meta->meta_key,
-                        'meta_value' => $meta->meta_value
-                    ];
-                }),
-                'post_modified' => $product->post_modified
-            ];
-        });
+    $products = Product::with([
+        'meta' => function ($query) {
+            $query->select('post_id', 'meta_key', 'meta_value')
+                ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id']);
+        },
+        'categories' => function ($query) {
+            $query->select('wp_terms.term_id', 'wp_terms.name')
+                ->with([
+                    'categorymeta' => function ($query) {
+                        $query->select('term_id', 'meta_key', 'meta_value')
+                            ->where('meta_key', 'visibility');
+                    }
+                ]);
+        }
+    ])
+        ->select('ID', 'post_title', 'post_modified', 'post_name')
+        ->where('post_type', 'product')
+        ->where(function ($query) use ($normalizedSearchTerm) {
+            // Normalize the product titles in the query to match the normalized search term
+            $query->whereRaw('LOWER(REPLACE(REPLACE(post_title, "-", " "), "_", " ")) LIKE ?', ["%{$normalizedSearchTerm}%"]);
+        })
+        ->orderBy('post_modified', 'desc')
+        ->paginate($perPage);
 
-        return response()->json($products);
-    }
+    $products->getCollection()->transform(function ($product) {
+        $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
+        $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
+
+        return [
+            'ID' => $product->ID,
+            'title' => $product->post_title,
+            'slug' => $product->post_name,
+            'thumbnail_url' => $thumbnailUrl,
+            'categories' => $product->categories->map(function ($category) {
+                $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                return [
+                    'term_id' => $category->term_id,
+                    'name' => $category->name,
+                    'visibility' => $visibility ? $visibility : 'N/A',
+                ];
+            }),
+            'meta' => $product->meta->map(function ($meta) {
+                return [
+                    'meta_key' => $meta->meta_key,
+                    'meta_value' => $meta->meta_value
+                ];
+            }),
+            'post_modified' => $product->post_modified
+        ];
+    });
+
+    return response()->json($products);
+}
     public function searchProductsBySKU(Request $request)
     {
         $searchTerm = $request->input('searchTerm', '');
