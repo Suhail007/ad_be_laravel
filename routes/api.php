@@ -40,6 +40,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 Route::get('/layout', [LayoutController::class, 'layouts']);
 Route::get('/position/{layout}', [LayoutController::class, 'position']);
 Route::get('/positionLayout/{layout}/{position}', [LayoutController::class, 'positionLayout']);
+Route::get('/positionLayout/{page}', [LayoutController::class, 'pageLayout']);
 
 Route::get('/categoryProduct/{slug}', [ProductController::class, 'categoryProduct']);
 Route::get('/brandProduct/{slug}', [ProductController::class, 'brandProducts']);

@@ -28,6 +28,11 @@ class LayoutController extends Controller
         return response()->json(['data' => $data]);
     }
 
+    public function pageLayout($page){
+        $data = Layout::where('page',$page)->get();
+        return response()->json($data);
+    }
+
     public function positionLayout($layout, $position)
     {
         $data = Layout::where('page', $layout)->where('position', $position)->get();
