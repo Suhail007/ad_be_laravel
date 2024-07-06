@@ -160,8 +160,8 @@ class ProductController extends Controller
                         'term_id' => $category->term_id,
                         'name' => $category->name,
                         'slug' => $category->slug,
-                        'visibility' => $visibility ? $visibility : 'N/A',
-                        'taxonomy' => $taxonomy ? $taxonomy : 'N/A',
+                        'visibility' => $visibility ? $visibility : 'public',
+                        'taxonomy' => $taxonomy ? $taxonomy : 'public',
                     ];
                 }),
                 'meta' => $product->meta->map(function ($meta) {
@@ -222,8 +222,8 @@ class ProductController extends Controller
                         'term_id' => $category->term_id,
                         'name' => $category->name,
                         'slug' => $category->slug,
-                        'visibility' => $visibility ? $visibility : 'N/A',
-                        'taxonomy' => $taxonomy ? $taxonomy : 'N/A',
+                        'visibility' => $visibility ? $visibility : 'public',
+                        'taxonomy' => $taxonomy ? $taxonomy : 'public',
                     ];
                 }),
                 'meta' => $product->meta->map(function ($meta) {
@@ -290,7 +290,7 @@ class ProductController extends Controller
                     return [
                         'term_id' => $category->term_id,
                         'name' => $category->name,
-                        'visibility' => $visibility ? $visibility : 'N/A',
+                        'visibility' => $visibility ? $visibility : 'public',
                     ];
                 }),
                 'meta' => $product->meta->map(function ($meta) {
@@ -305,8 +305,6 @@ class ProductController extends Controller
     
         return response()->json($products);
     }
-    
-
     public function searchProductsBySKU(Request $request)
     {
         $searchTerm = $request->input('searchTerm', '');
@@ -356,7 +354,7 @@ class ProductController extends Controller
                     return [
                         'term_id' => $category->term_id,
                         'name' => $category->name,
-                        'visibility' => $visibility ? $visibility : 'N/A',
+                        'visibility' => $visibility ? $visibility : 'public',
                     ];
                 }),
                 'meta' => $product->meta->map(function ($meta) {
@@ -420,7 +418,7 @@ class ProductController extends Controller
                     return [
                         'term_id' => $category->term_id,
                         'name' => $category->name,
-                        'visibility' => $visibility ? $visibility : 'N/A',
+                        'visibility' => $visibility ? $visibility : 'public',
                     ];
                 }),
                 'meta' => $product->meta->map(function ($meta) {
@@ -482,7 +480,7 @@ class ProductController extends Controller
                     return [
                         'term_id' => $category->term_id,
                         'name' => $category->name,
-                        'visibility' => $visibility ? $visibility : 'N/A',
+                        'visibility' => $visibility ? $visibility : 'public',
                     ];
                 }),
                 'meta' => $product->meta->map(function ($meta) {
