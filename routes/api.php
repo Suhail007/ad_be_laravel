@@ -67,7 +67,7 @@ Route::get('/log', function () {
 Route::post('/add-to-cart', [WooCommerceController::class, 'addToCart']);
 
 Route::get('/cart/get', [WooCommerceController::class, 'getCart']);
-Route::get('/product/{id}', [WooCommerceController::class, 'show']);
+Route::get('/product/{slug}', [WooCommerceController::class, 'show']);
 Route::post('cart/add', [CartController::class, 'addToCart']);
 
 

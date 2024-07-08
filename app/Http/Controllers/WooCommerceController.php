@@ -10,19 +10,15 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Automattic\WooCommerce\Client;
 class WooCommerceController extends Controller
 {
-    public function show(Request $request, $id)
-    {
-        // $user = JWTAuth::parseToken()->authenticate();
-        // $userId = $user->ID;
-        // $user = User::find($userId);
+    public function show(Request $request, $slug){
+        // dd($slug);
         $product = Product::with([
             'meta', 
             'categories.taxonomies', 
             'categories.children', 
             'categories.categorymeta'
-        ])->findOrFail($id);
-    
-        // Fetch meta data
+        ])->where('post_name', $slug)->firstOrFail();
+
         $metaData = $product->meta->map(function ($meta) {
             return [
                 'id' => $meta->meta_id,
@@ -30,8 +26,7 @@ class WooCommerceController extends Controller
                 'value' => $meta->meta_value,
             ];
         });
-    
-        // Fetch categories with taxonomy and meta data
+
         $categories = $product->categories->map(function ($category) {
             return [
                 'id' => $category->term_id,
@@ -42,18 +37,11 @@ class WooCommerceController extends Controller
                 'children' => $category->children,
             ];
         });
-    
-        // Fetch variations for variable products (if any)
         $variations = $this->getVariations($product->ID);
-    
-        // Fetch product image URLs
         $thumbnailUrl = $this->getThumbnailUrl($product->ID);
         $galleryImagesUrls = $this->getGalleryImagesUrls($product->ID);
-    
-        // Determine the price from the product metadata
         $price = $metaData->where('key', '_price')->first()['value'] ?? '';
     
-        // Construct the product response
         $response = [
             'id' => $product->ID,
             'name' => $product->post_title,
