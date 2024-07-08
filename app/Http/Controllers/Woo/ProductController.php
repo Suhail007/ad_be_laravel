@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Automattic\WooCommerce\Client;
 use Illuminate\Database\Query\Builder;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class ProductController extends Controller
 {
@@ -109,9 +110,9 @@ class ProductController extends Controller
         // }
         $category = CustomCategory::get();
         $brand = CustomBrand::where('category', '!=', '')->get();
-        $response= response()->json(['category' => $category, 'brands' => $brand]);
-            $response->header('Cache-Control', 'public, max-age=3600');
-            return $response;
+        $response = response()->json(['category' => $category, 'brands' => $brand]);
+        $response->header('Cache-Control', 'public, max-age=3600');
+        return $response;
     }
     public function categoryProduct(string $slug)
     {
@@ -176,7 +177,8 @@ class ProductController extends Controller
 
         return response()->json($products);
     }
-    public function brandProducts(string $slug){
+    public function brandProducts(string $slug)
+    {
         $perPage = 20;
 
         $products = Product::with([
@@ -243,14 +245,10 @@ class ProductController extends Controller
     {
         $searchTerm = $request->input('searchTerm', '');
         $perPage = 20;
-    
-        // Normalize the search term (convert to lowercase, remove special characters)
         $normalizedSearchTerm = preg_replace('/[^a-z0-9]+/i', ' ', $searchTerm);
         $normalizedSearchTerm = strtolower($normalizedSearchTerm);
-    
-        // Split the normalized search term into individual words
         $searchWords = explode(' ', $normalizedSearchTerm);
-    
+
         $products = Product::with([
             'meta' => function ($query) {
                 $query->select('post_id', 'meta_key', 'meta_value')
@@ -275,35 +273,78 @@ class ProductController extends Controller
             })
             ->orderBy('post_modified', 'desc')
             ->paginate($perPage);
-    
-        $products->getCollection()->transform(function ($product) {
-            $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
-            $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
-    
-            return [
-                'ID' => $product->ID,
-                'title' => $product->post_title,
-                'slug' => $product->post_name,
-                'thumbnail_url' => $thumbnailUrl,
-                'categories' => $product->categories->map(function ($category) {
-                    $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            if ($user) {
+                $products->getCollection()->transform(function ($product) {
+                    $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
+                    $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
+
                     return [
-                        'term_id' => $category->term_id,
-                        'name' => $category->name,
-                        'visibility' => $visibility ? $visibility : 'public',
+                        'ID' => $product->ID,
+                        'title' => $product->post_title,
+                        'slug' => $product->post_name,
+                        'thumbnail_url' => $thumbnailUrl,
+                        'categories' => $product->categories->map(function ($category) {
+                            $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                            return [
+                                'term_id' => $category->term_id,
+                                'name' => $category->name,
+                                'visibility' => $visibility ? $visibility : 'public',
+                            ];
+                        }),
+                        'meta' => $product->meta->map(function ($meta) {
+                            return [
+                                'meta_key' => $meta->meta_key,
+                                'meta_value' => $meta->meta_value
+                            ];
+                        }),
+                        'post_modified' => $product->post_modified
                     ];
-                }),
-                'meta' => $product->meta->map(function ($meta) {
+                });
+            }
+            return response()->json(['status' => 'auth', 'user' => $user, 'products' => $products]);
+        } catch (\Throwable $th) {
+            try {
+                $filteredProducts = $products->getCollection()->filter(function ($product) {
+                    $hasProtectedCategory = $product->categories->contains(function ($category) {
+                        $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                        return $visibility === 'protected';
+                    });
+                    return !$hasProtectedCategory;
+                });
+                $transformedProducts = $filteredProducts->transform(function ($product) {
+                    $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
+                    $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
+
                     return [
-                        'meta_key' => $meta->meta_key,
-                        'meta_value' => $meta->meta_value
+                        'ID' => $product->ID,
+                        'title' => $product->post_title,
+                        'slug' => $product->post_name,
+                        'thumbnail_url' => $thumbnailUrl,
+                        'categories' => $product->categories->map(function ($category) {
+                            $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                            return [
+                                'term_id' => $category->term_id,
+                                'name' => $category->name,
+                                'visibility' => $visibility ? $visibility : 'public',
+                            ];
+                        }),
+                        'meta' => $product->meta->map(function ($meta) {
+                            return [
+                                'meta_key' => $meta->meta_key,
+                                'meta_value' => $meta->meta_value
+                            ];
+                        }),
+                        'post_modified' => $product->post_modified
                     ];
-                }),
-                'post_modified' => $product->post_modified
-            ];
-        });
-    
-        return response()->json($products);
+                });
+
+                return response()->json(['status' => 'no-auth', 'products' => $transformedProducts]);
+            } catch (\Throwable $th) {
+                return response()->json(['status' => 'no-auth', 'message' => $th->getMessage()], 500);
+            }
+        }
     }
     public function searchProductsBySKU(Request $request)
     {
