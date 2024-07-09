@@ -245,11 +245,8 @@ class ProductController extends Controller
     {
         $searchTerm = $request->input('searchTerm', '');
         $perPage = 20;
-        $normalizedSearchTerm = preg_replace('/[^a-z0-9]+/i', ' ', $searchTerm);
-        $normalizedSearchTerm = strtolower($normalizedSearchTerm);
-        $searchWords = explode(' ', $normalizedSearchTerm);
-
-        $products = Product::with([
+    
+        $query = Product::with([
             'meta' => function ($query) {
                 $query->select('post_id', 'meta_key', 'meta_value')
                     ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id']);
@@ -264,22 +261,29 @@ class ProductController extends Controller
                     ]);
             }
         ])
-            ->select('ID', 'post_title', 'post_modified', 'post_name')
-            ->where('post_type', 'product')
-            ->where(function ($query) use ($searchWords) {
-                foreach ($searchWords as $word) {
-                    $query->orWhereRaw('LOWER(REPLACE(REPLACE(post_title, "-", " "), "_", " ")) LIKE ?', ["%{$word}%"]);
-                }
-            })
-            ->orderBy('post_modified', 'desc')
-            ->paginate($perPage);
+        ->select('ID', 'post_title', 'post_modified', 'post_name')
+        ->where('post_type', 'product');
+    
+        if (!empty($searchTerm)) {
+            $searchWords = preg_split('/\s+/', $searchTerm);
+            $regexPattern = implode('.*', array_map(function ($word) {
+                return "(?=.*" . preg_quote($word) . ")";
+            }, $searchWords));
+    
+            $query->where(function ($query) use ($regexPattern) {
+                $query->where('post_title', 'REGEXP', $regexPattern)
+                      ->orWhere('post_name', 'REGEXP', $regexPattern);
+            });
+        }
+        $products = $query->orderBy('post_modified', 'desc')->paginate($perPage);
+
         try {
             $user = JWTAuth::parseToken()->authenticate();
             if ($user) {
                 $products->getCollection()->transform(function ($product) {
                     $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
                     $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
-
+        
                     return [
                         'ID' => $product->ID,
                         'title' => $product->post_title,
@@ -306,17 +310,20 @@ class ProductController extends Controller
             return response()->json(['status' => 'auth', 'user' => $user, 'products' => $products]);
         } catch (\Throwable $th) {
             try {
-                $filteredProducts = $products->getCollection()->filter(function ($product) {
+                $originalCollection = $products->getCollection();
+        
+                $filteredCollection = $originalCollection->filter(function ($product) {
                     $hasProtectedCategory = $product->categories->contains(function ($category) {
                         $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
                         return $visibility === 'protected';
                     });
                     return !$hasProtectedCategory;
                 });
-                $transformedProducts = $filteredProducts->transform(function ($product) {
+        
+                $transformedCollection = $filteredCollection->transform(function ($product) {
                     $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
                     $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
-
+        
                     return [
                         'ID' => $product->ID,
                         'title' => $product->post_title,
@@ -339,12 +346,15 @@ class ProductController extends Controller
                         'post_modified' => $product->post_modified
                     ];
                 });
-
-                return response()->json(['status' => 'no-auth', 'products' => $transformedProducts]);
+        
+                $products->setCollection($transformedCollection);
+        
+                return response()->json(['status' => 'no-auth', 'products' => $products]);
             } catch (\Throwable $th) {
                 return response()->json(['status' => 'no-auth', 'message' => $th->getMessage()], 500);
             }
         }
+        
     }
     public function searchProductsBySKU(Request $request)
     {
