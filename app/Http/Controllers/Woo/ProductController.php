@@ -312,44 +312,44 @@ class ProductController extends Controller
             try {
                 $originalCollection = $products->getCollection();
 
-                $filteredCollection = $originalCollection->filter(function ($product) {
-                    $hasProtectedCategory = $product->categories->contains(function ($category) {
+            $filteredCollection = $originalCollection->filter(function ($product) {
+                $hasProtectedCategory = $product->categories->contains(function ($category) {
+                    $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                    return $visibility === 'protected';
+                });
+                return !$hasProtectedCategory;
+            });
+
+            $transformedCollection = $filteredCollection->transform(function ($product) {
+                $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
+                $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
+
+                return [
+                    'ID' => $product->ID,
+                    'title' => $product->post_title,
+                    'slug' => $product->post_name,
+                    'thumbnail_url' => $thumbnailUrl,
+                    'categories' => $product->categories->map(function ($category) {
                         $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
-                        return $visibility === 'protected';
-                    });
-                    return !$hasProtectedCategory;
-                });
+                        return [
+                            'term_id' => $category->term_id,
+                            'name' => $category->name,
+                            'visibility' => $visibility ? $visibility : 'public',
+                        ];
+                    }),
+                    'meta' => $product->meta->map(function ($meta) {
+                        return [
+                            'meta_key' => $meta->meta_key,
+                            'meta_value' => $meta->meta_value
+                        ];
+                    }),
+                    'post_modified' => $product->post_modified
+                ];
+            });
 
-                $transformedCollection = $filteredCollection->transform(function ($product) {
-                    $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
-                    $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
+            $products->setCollection($transformedCollection->values());
 
-                    return [
-                        'ID' => $product->ID,
-                        'title' => $product->post_title,
-                        'slug' => $product->post_name,
-                        'thumbnail_url' => $thumbnailUrl,
-                        'categories' => $product->categories->map(function ($category) {
-                            $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
-                            return [
-                                'term_id' => $category->term_id,
-                                'name' => $category->name,
-                                'visibility' => $visibility ? $visibility : 'public',
-                            ];
-                        }),
-                        'meta' => $product->meta->map(function ($meta) {
-                            return [
-                                'meta_key' => $meta->meta_key,
-                                'meta_value' => $meta->meta_value
-                            ];
-                        }),
-                        'post_modified' => $product->post_modified
-                    ];
-                });
-
-                $products->setCollection($transformedCollection);
-
-                return response()->json(['status' => 'no-auth', 'products' => $products]);
+            return response()->json(['status' => 'no-auth', 'products' => $products]);
             } catch (\Throwable $th) {
                 return response()->json(['status' => 'no-auth', 'message' => $th->getMessage()], 500);
             }
