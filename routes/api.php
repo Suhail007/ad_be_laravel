@@ -84,3 +84,6 @@ Route::get('/get-shipping-zone',[WooCommerceController::class,'getShippingZone']
 
 Route::post('/create-payment', [PayPalController::class, 'createPayment']);
 Route::post('/execute-payment', [PayPalController::class, 'executePayment']);
+
+
+Route::get('/test',[LoginController::class,'fetchApiData']);
