@@ -240,7 +240,7 @@ private function woocommerce(){
         ];
         $woocommerce=$this->woocommerce();
        $order= $woocommerce->post('orders', $data);
-       return response()->json($order);
+       return response()->json([$order]);
 
     }
 
