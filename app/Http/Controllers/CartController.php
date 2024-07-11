@@ -10,6 +10,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\Product;
 use App\Models\ProductMeta;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
@@ -104,17 +105,8 @@ class CartController extends Controller
 
         $variationAttributes = [];
         if ($variation) {
-            $attributes = ProductMeta::where('post_id', $variation->ID)
-                ->where('meta_key', '_product_attributes')
-                ->value('meta_value');
-            $attributes =unserialize($attributes); // Unserialize the attributes
-
-            foreach ($attributes as $attribute_name => $attribute_data) {
-                $attribute_value = ProductMeta::where('post_id', $variation->ID)
-                    ->where('meta_key', 'attribute_' . $attribute_name)
-                    ->value('meta_value');
-                $variationAttributes[$attribute_name] = $attribute_value;
-            }
+            $attributes =DB::select("select meta_value from wp_postmeta where post_id= ? and meta_key LIKE 'attribute_'",[$variation->ID]);
+            print_r($attributes);
         }
 
         $cartData[] = [
@@ -127,7 +119,7 @@ class CartController extends Controller
             'stock_status' => $stockStatus,
             'quantity' => $cartItem->quantity,
             'variation_id' => $variation ? $variation->ID : null,
-            'variation' => $variationAttributes,
+            'variation' => $attributes,
         ];
     }
 
