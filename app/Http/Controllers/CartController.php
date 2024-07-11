@@ -148,7 +148,7 @@ class CartController extends Controller
         return response()->json(['success' => 'Product removed from cart'], 200);
     }
 
-    public function updateCartQuantity(UpdateCartQuantityRequest $request){
+    public function updateCartQuantity(Request $request){
         $user = JWTAuth::parseToken()->authenticate();
         if (!$user) {
             return response()->json(['message' => 'User not authenticated', 'status' => 'error'], 401);
@@ -157,7 +157,7 @@ class CartController extends Controller
             ->where('product_id', $request->product_id)
             ->where('variation_id', $request->variation_id)
             ->first();
-        if (!$cartItem) {
+        if (!$cartItem || $request->quantity <=0) {
             return response()->json(['message' => 'Item not found', 'status' => 'error'], 404);
         }
         $cartItem->quantity = $request->quantity;
