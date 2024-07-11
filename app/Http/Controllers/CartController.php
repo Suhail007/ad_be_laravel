@@ -25,7 +25,7 @@ class CartController extends Controller
 
         return response()->json(['success' => 'Product added to cart', 'cart' => $cart], 200);
     }
-    public function bulkAddToCart(BulkAddToCartRequest $request)
+    public function bulkAddToCart(Request $request)
     {
         $user_id = $request->user_id;
         $product_id = $request->product_id;
