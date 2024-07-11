@@ -45,93 +45,100 @@ class CartController extends Controller
         return response()->json(['success' => 'Products added to cart', 'cart' => $cartItems], 200);
     }
     public function getCart(Request $request)
-{
-    $user = JWTAuth::parseToken()->authenticate();
-    if (!$user) {
-        return response()->json(['message' => 'User not authenticated', 'status' => 'error'], 401);
-    }
-    $cartItems = Cart::where('user_id', $user->ID)->get();
-    $userIp = $request->ip();
-    if ($cartItems->isEmpty()) {
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+        if (!$user) {
+            return response()->json(['message' => 'User not authenticated', 'status' => 'error'], 401);
+        }
+        $cartItems = Cart::where('user_id', $user->ID)->get();
+        $userIp = $request->ip();
+        if ($cartItems->isEmpty()) {
+            return response()->json([
+                'username' => $user->user_login,
+                'message' => 'Cart is empty',
+                'data' => $userIp,
+                'time' => now()->toDateTimeString(),
+                'cart_count' => 0,
+                'cart_items' => [],
+            ], 200);
+        }
+        $priceTier = $user->price_tier;
+        $cartData = [];
+        foreach ($cartItems as $cartItem) {
+            $product = $cartItem->product;
+            $variation = $cartItem->variation;
+            $wholesalePrice = 0;
+            if ($variation) {
+                $wholesalePrice = ProductMeta::where('post_id', $variation->ID)
+                    ->where('meta_key', $priceTier)
+                    ->value('meta_value');
+            } else {
+                $wholesalePrice = ProductMeta::where('post_id', $product->ID)
+                    ->where('meta_key', $priceTier)
+                    ->value('meta_value');
+            }
+    
+            $stockLevel = 0;
+            $stockStatus = 'outofstock'; 
+            if ($variation) {
+                $stockLevel = ProductMeta::where('post_id', $variation->ID)
+                    ->where('meta_key', '_stock')
+                    ->value('meta_value');
+    
+                $stockStatus = ProductMeta::where('post_id', $variation->ID)
+                    ->where('meta_key', '_stock_status')
+                    ->value('meta_value');
+            } else {
+                $stockLevel = ProductMeta::where('post_id', $product->ID)
+                    ->where('meta_key', '_stock')
+                    ->value('meta_value');
+    
+                $stockStatus = ProductMeta::where('post_id', $product->ID)
+                    ->where('meta_key', '_stock_status')
+                    ->value('meta_value');
+            }
+            if ($stockStatus === 'instock' && $stockLevel > 0) {
+                $stockStatus = 'instock';
+            } else {
+                $stockStatus = 'outofstock';
+            }
+    
+            $variationAttributes = [];
+            if ($variation) {
+                $attributes = DB::select("SELECT meta_value FROM wp_postmeta WHERE post_id = ? AND meta_key LIKE 'attribute_%'", [$variation->ID]);
+                foreach ($attributes as $attribute) {
+                    $variationAttributes[] = $attribute->meta_value;
+                }
+            }
+    
+            // Fetch product slug
+            $productSlug = $product->post_name;
+    
+            $cartData[] = [
+                'key' => $cartItem->id,
+                'product_id' => $product->ID,
+                'product_name' => $product->post_title,
+                'product_slug' => $productSlug,
+                'product_price' => $wholesalePrice,
+                'product_image' => $product->thumbnail_url,
+                'stock' => $stockLevel,
+                'stock_status' => $stockStatus,
+                'quantity' => $cartItem->quantity,
+                'variation_id' => $variation ? $variation->ID : null,
+                'variation' => $variationAttributes,
+            ];
+        }
+    
         return response()->json([
             'username' => $user->user_login,
-            'message' => 'Cart is empty',
+            'message' => 'Cart items',
             'data' => $userIp,
             'time' => now()->toDateTimeString(),
-            'cart_count' => 0,
-            'cart_items' => [],
+            'cart_count' => count($cartData),
+            'cart_items' => $cartData,
         ], 200);
     }
-    $priceTier = $user->price_tier;
-    $cartData = [];
-    foreach ($cartItems as $cartItem) {
-        $product = $cartItem->product;
-        $variation = $cartItem->variation;
-        $wholesalePrice = 0;
-        if ($variation) {
-            $wholesalePrice = ProductMeta::where('post_id', $variation->ID)
-                ->where('meta_key', $priceTier)
-                ->value('meta_value');
-        } else {
-            $wholesalePrice = ProductMeta::where('post_id', $product->ID)
-                ->where('meta_key', $priceTier)
-                ->value('meta_value');
-        }
-
-        $stockLevel = 0;
-        $stockStatus = 'outofstock'; 
-        if ($variation) {
-            $stockLevel = ProductMeta::where('post_id', $variation->ID)
-                ->where('meta_key', '_stock')
-                ->value('meta_value');
-
-            $stockStatus = ProductMeta::where('post_id', $variation->ID)
-                ->where('meta_key', '_stock_status')
-                ->value('meta_value');
-        } else {
-            $stockLevel = ProductMeta::where('post_id', $product->ID)
-                ->where('meta_key', '_stock')
-                ->value('meta_value');
-
-            $stockStatus = ProductMeta::where('post_id', $product->ID)
-                ->where('meta_key', '_stock_status')
-                ->value('meta_value');
-        }
-        if ($stockStatus === 'instock' && $stockLevel > 0) {
-            $stockStatus = 'instock';
-        } else {
-            $stockStatus = 'outofstock';
-        }
-
-        $variationAttributes = [];
-        if ($variation) {
-            $attributes =DB::select("select meta_value from wp_postmeta where post_id= ? and meta_key LIKE 'attribute_'",[$variation->ID]);
-            print_r($attributes);
-        }
-
-        $cartData[] = [
-            'key' => $cartItem->id,
-            'product_id' => $product->ID,
-            'product_name' => $product->post_title,
-            'product_price' => $wholesalePrice,
-            'product_image' => $product->thumbnail_url,
-            'stock' => $stockLevel,
-            'stock_status' => $stockStatus,
-            'quantity' => $cartItem->quantity,
-            'variation_id' => $variation ? $variation->ID : null,
-            'variation' => $attributes,
-        ];
-    }
-
-    return response()->json([
-        'username' => $user->user_login,
-        'message' => 'Cart items',
-        'data' => $userIp,
-        'time' => now()->toDateTimeString(),
-        'cart_count' => count($cartData),
-        'cart_items' => $cartData,
-    ], 200);
-}
+    
 
     public function deleteFromCart($id)
     {
