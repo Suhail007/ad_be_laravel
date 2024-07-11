@@ -4,11 +4,16 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\LayoutController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PayPalController;
-use App\Http\Controllers\Woo\CartController;
+use App\Http\Controllers\Woo\WooCartController;
 use App\Http\Controllers\Woo\ProductController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WooCommerceController;
+// routes/web.php or routes/api.php
+use App\Http\Controllers\CartController;
+
+
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -35,6 +40,13 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
 
     Route::get('/get-u-addresses',[WooCommerceController::class,'getUAddresses']);
+
+    Route::post('/cart/add', [CartController::class, 'addToCart']);
+    Route::get('/cart/{userId}', [CartController::class, 'getCart']);
+    Route::delete('/cart/{id}', [CartController::class, 'deleteFromCart']);
+    // Route::put('/cart/update/{id}', [CartController::class, 'updateCart']);
+    Route::post('/cart/bulk-add', [CartController::class, 'bulkAddToCart']);
+    Route::post('/cart/update', [CartController::class, 'updateCartQuantity']);
 });
 
 Route::get('/layout', [LayoutController::class, 'layouts']);
@@ -52,8 +64,8 @@ Route::get('/searchProductsALL', [ProductController::class, 'searchProductsAll']
 
 Route::get('/sidebar', [ProductController::class, 'sidebar']);
 
-Route::get('/cart', [CartController::class, 'index']);
-Route::get('/cart-products', [CartController::class, 'show']);
+Route::get('/cart', [WooCartController::class, 'index']);
+Route::get('/cart-products', [WooCartController::class, 'show']);
 // Route::post('/cart/add', [CartController::class, 'addToCart']);
 
 Route::get('/log', function () {
@@ -61,20 +73,8 @@ Route::get('/log', function () {
 })->name('login');
 
 
-
-
-
-Route::post('/add-to-cart', [WooCommerceController::class, 'addToCart']);
-
-Route::get('/cart/get', [WooCommerceController::class, 'getCart']);
 Route::get('/product/{slug}', [WooCommerceController::class, 'show']);
-Route::post('cart/add', [CartController::class, 'addToCart']);
-
-
-
 Route::get('/get-all-orders',[WooCommerceController::class,'getAllOrders']);
-
-
 
 Route::post('/create-new-order',[WooCommerceController::class,'createNewOrder']);
 Route::get('/get-all-payment-option',[WooCommerceController::class,'allPaymentGate']);

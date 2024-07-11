@@ -7,8 +7,9 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Automattic\WooCommerce\Client;
 use Illuminate\Support\Facades\DB;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
-class CartController extends Controller
+class WooCartController extends Controller
 {
     protected $woocommerce;
     public function __construct(Client $woocommerce)
@@ -145,7 +146,7 @@ class CartController extends Controller
     }
     public function addToCar(Request $request)
     {
-        $userId =1; //$request->user()->ID; 
+        $userId = JWTAuth::parseToken()->authenticate();
         $productId = $request->input('product_id');
         $quantity = $request->input('quantity');
         $variationId = $request->input('variation_id', 0); 
