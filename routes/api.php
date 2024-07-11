@@ -41,19 +41,19 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
     Route::get('/get-u-addresses',[WooCommerceController::class,'getUAddresses']);
 
-    // Route::post('/cart/add', [CartController::class, 'addToCart']);
-    // Route::get('/cart/{userId}', [CartController::class, 'getCart']);
-    // Route::delete('/cart/{id}', [CartController::class, 'deleteFromCart']);
-    // // Route::put('/cart/update/{id}', [CartController::class, 'updateCart']);
-    // Route::post('/cart/bulk-add', [CartController::class, 'bulkAddToCart']);
-    // Route::post('/cart/update', [CartController::class, 'updateCartQuantity']);
-});
-Route::post('/cart/add', [CartController::class, 'addToCart']);
+    Route::post('/cart/add', [CartController::class, 'addToCart']);
     Route::get('/cart/{userId}', [CartController::class, 'getCart']);
     Route::delete('/cart/{id}', [CartController::class, 'deleteFromCart']);
     // Route::put('/cart/update/{id}', [CartController::class, 'updateCart']);
     Route::post('/cart/bulk-add', [CartController::class, 'bulkAddToCart']);
     Route::post('/cart/update', [CartController::class, 'updateCartQuantity']);
+});
+// Route::post('/cart/add', [CartController::class, 'addToCart']);
+//     Route::get('/cart/{userId}', [CartController::class, 'getCart']);
+//     Route::delete('/cart/{id}', [CartController::class, 'deleteFromCart']);
+//     // Route::put('/cart/update/{id}', [CartController::class, 'updateCart']);
+//     Route::post('/cart/bulk-add', [CartController::class, 'bulkAddToCart']);
+//     Route::post('/cart/update', [CartController::class, 'updateCartQuantity']);
 Route::get('/layout', [LayoutController::class, 'layouts']);
 Route::get('/position/{layout}', [LayoutController::class, 'position']);
 Route::get('/positionLayout/{layout}/{position}', [LayoutController::class, 'positionLayout']);

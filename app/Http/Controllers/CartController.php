@@ -107,7 +107,7 @@ class CartController extends Controller
             $attributes = ProductMeta::where('post_id', $variation->ID)
                 ->where('meta_key', '_product_attributes')
                 ->value('meta_value');
-            $attributes = maybe_unserialize($attributes); // Unserialize the attributes
+            $attributes =unserialize($attributes); // Unserialize the attributes
 
             foreach ($attributes as $attribute_name => $attribute_data) {
                 $attribute_value = ProductMeta::where('post_id', $variation->ID)
@@ -148,7 +148,7 @@ class CartController extends Controller
 
         return response()->json(['success' => 'Product removed from cart'], 200);
     }
-    
+
     public function updateCartQuantity(UpdateCartQuantityRequest $request){
         $user = JWTAuth::parseToken()->authenticate();
         if (!$user) {
