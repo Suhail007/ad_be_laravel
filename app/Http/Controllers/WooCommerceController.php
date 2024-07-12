@@ -382,7 +382,45 @@ private function woocommerce(){
                     'date_paid' => null, // or specify a valid datetime value if necessary
                     'date_completed' => null,
                 ]);
-    
+                
+                $orderNotes = [
+                    [
+                        'comment_post_ID' => $orderId,
+                        'comment_author' => 'WooCommerce',
+                        'comment_author_email' => '',
+                        'comment_author_url' => '',
+                        'comment_author_IP' => $request->ip(),
+                        'comment_date' => now(),
+                        'comment_date_gmt' => now(),
+                        'comment_content' => 'Order status changed from Pending payment to Processing.',
+                        'comment_karma' => 0,
+                        'comment_approved' => 1,
+                        'comment_agent' => $request->userAgent(),
+                        'comment_type' => 'order_note',
+                        'comment_parent' => 0,
+                        'user_id' => 0,
+                    ],
+                    [
+                        'comment_post_ID' => $orderId,
+                        'comment_author' => 'WooCommerce',
+                        'comment_author_email' => '',
+                        'comment_author_url' => '',
+                        'comment_author_IP' => $request->ip(),
+                        'comment_date' => now(),
+                        'comment_date_gmt' => now(),
+                        'comment_content' => 'NMI charge complete (Charge ID: 9662XXX234)',
+                        'comment_karma' => 0,
+                        'comment_approved' => 1,
+                        'comment_agent' => $request->userAgent(),
+                        'comment_type' => 'order_note',
+                        'comment_parent' => 0,
+                        'user_id' => 0,
+                    ],
+                ];
+                
+                foreach ($orderNotes as $note) {
+                    DB::table('wp_comments')->insert($note);
+                }
     
             DB::commit();
             //send success mail to admin
