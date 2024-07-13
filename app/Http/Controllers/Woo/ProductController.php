@@ -631,6 +631,56 @@ class ProductController extends Controller
     //     return response()->json($products);
     // }
 
+    public function getRelatedProducts($id)
+    {
+        // Fetch the product
+        $product = Product::find($id);
+
+        if (!$product) {
+            return response()->json(['error' => 'Product not found'], 404);
+        }
+
+        // Fetch the subcategories
+        $subcatIds = $product->categories()
+                             ->whereHas('taxonomies', function ($query) {
+                                 $query->where('parent', '!=', 0);
+                             })
+                             ->pluck('term_id');
+
+        if ($subcatIds->isEmpty()) {
+            return response()->json(['error' => 'No subcategories found for this product'], 404);
+        }
+
+        // Fetch related products
+        $relatedProducts = Product::whereHas('categories', function ($query) use ($subcatIds) {
+                $query->whereIn('term_taxonomy_id', $subcatIds);
+            })
+            ->where('ID', '!=', $id) // Exclude the current product
+            ->take(10)
+            ->get();
+
+        if ($relatedProducts->isEmpty()) {
+            return response()->json(['error' => 'No related products found'], 404);
+        }
+
+        // Format the response
+        $relatedProductsData = $relatedProducts->map(function ($relatedProduct) {
+            $categoryVisibility = $relatedProduct->categories->map(function ($category) {
+                return $category->visibility;
+            })->toArray();
+
+            return [
+                'name' => $relatedProduct->post_title,
+                'slug' => $relatedProduct->post_name,
+                'thumbnail' => $relatedProduct->thumbnail_url,
+                'product_visibility' => $relatedProduct->visibility,
+                'category_visibility' => $categoryVisibility
+            ];
+        });
+
+        return response()->json(['related_products' => $relatedProductsData], 200);
+    }
+
     /**
      * Display a listing of the resource.
      */

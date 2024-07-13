@@ -37,4 +37,9 @@ class Category extends Model
             'term_id' // Local key on CategoryTaxonomy table
         );
     }
+
+    public function getVisibilityAttribute()
+    {
+        return $this->categorymeta()->where('meta_key', 'visibility')->value('meta_value');
+    }
 }

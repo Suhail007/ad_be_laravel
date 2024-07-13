@@ -79,6 +79,8 @@ Route::get('/log', function () {
 
 
 Route::get('/product/{slug}', [WooCommerceController::class, 'show']);
+Route::get('products/{id}/related', [ProductController::class, 'getRelatedProducts']);
+
 Route::get('/get-all-orders',[WooCommerceController::class,'getAllOrders']);
 
 Route::post('/create-new-order',[WooCommerceController::class,'createNewOrder']);

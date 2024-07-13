@@ -26,4 +26,9 @@ class Product extends Model
         }
         return null;
     }
+
+    public function getVisibilityAttribute()
+    {
+        return $this->meta()->where('meta_key', '_stock_status')->value('meta_value');
+    }
 }
