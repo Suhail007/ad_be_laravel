@@ -26,15 +26,26 @@ class CartController extends Controller
         return response()->json(['success' => 'Product added to cart', 'cart' => $cart], 200);
     }
     public function bulkAddToCart(Request $request)
-    {
-        $user_id = $request->user_id;
-        $product_id = $request->product_id;
-        $variations = $request->variations;
+{
+    $user_id = $request->user_id;
+    $product_id = $request->product_id;
+    $variations = $request->variations;
 
-        $cartItems = [];
+    $cartItems = [];
 
-        foreach ($variations as $variation) {
-            $cartItems[] = Cart::create([
+    foreach ($variations as $variation) {
+        $cartItem = Cart::where('user_id', $user_id)
+                        ->where('product_id', $product_id)
+                        ->where('variation_id', $variation['variation_id'])
+                        ->first();
+
+        if ($cartItem) {
+            // Update the quantity if the item is already in the cart
+            $cartItem->quantity += $variation['quantity'];
+            $cartItem->save();
+        } else {
+            // Add a new item if it's not in the cart
+            $cartItem = Cart::create([
                 'user_id' => $user_id,
                 'product_id' => $product_id,
                 'variation_id' => $variation['variation_id'],
@@ -42,8 +53,12 @@ class CartController extends Controller
             ]);
         }
 
-        return response()->json(['success' => 'Products added to cart', 'cart' => $cartItems], 200);
+        $cartItems[] = $cartItem;
     }
+
+    return response()->json(['success' => 'Products added to cart', 'cart' => $cartItems], 200);
+}
+
     public function getCart(Request $request)
     {
         $user = JWTAuth::parseToken()->authenticate();
