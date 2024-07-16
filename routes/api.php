@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WooCommerceController;
 // routes/web.php or routes/api.php
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\DiscountRuleController;
 use App\Http\Controllers\OrderController;
 
 Route::get('/user', function (Request $request) {
@@ -42,6 +43,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('/cart/bulk-add', [CartController::class, 'bulkAddToCart']);
     Route::post('/cart/update', [CartController::class, 'updateCartQuantity']);
 
+    //checkout Cart with category Id
+
     //payment 
     Route::post('/process-payment', [PayPalController::class, 'processPayment']);
 
@@ -49,6 +52,9 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     //user get Order
     Route::get('orders', [OrderController::class, 'index']);
     Route::get('orders/{id}', [OrderController::class, 'show']);
+
+    //discount api
+    Route::get('/cart-discount',[DiscountRuleController::class,'index']);
 });
 //Layouts Public
 Route::get('/layout', [LayoutController::class, 'layouts']);
@@ -87,6 +93,7 @@ Route::get('/get-shipping-zone',[WooCommerceController::class,'getShippingZone']
 
 
 Route::get('/get-all-orders',[WooCommerceController::class,'getAllOrders']);
+
 Route::get('/log', function () {
     return response()->json(['status' => 'error', 'redirect_url' => '/login']);
 })->name('login');

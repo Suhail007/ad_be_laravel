@@ -128,6 +128,8 @@ class CartController extends Controller
     
             // Fetch product slug
             $productSlug = $product->post_name;
+
+            $categoryIds = $product->categories->pluck('term_id')->toArray();
     
             $cartData[] = [
                 'key' => $cartItem->id,
@@ -141,6 +143,7 @@ class CartController extends Controller
                 'quantity' => $cartItem->quantity,
                 'variation_id' => $variation ? $variation->ID : null,
                 'variation' => $variationAttributes,
+                'taxonomies'=>$categoryIds
             ];
         }
     
