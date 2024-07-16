@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use Exception;
+use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use PayPal\Api\Amount;
@@ -16,98 +18,149 @@ use PayPal\Rest\ApiContext;
 
 class PayPalController extends Controller
 {
-    private $apiContext;
+
+
+    
+    private $security_key;
 
     public function __construct()
     {
-        $this->apiContext = new ApiContext(
-            new OAuthTokenCredential(
-                config('services.paypal.clientID'),
-                config('services.paypal.clientSecret')
-            )
-        );
-
-        $this->apiContext->setConfig([
-            'mode' =>config('services.paypal.paypalMode'),
-        ]);
+        $this->security_key = config('services.nmi.security'); //env('NMI_SECURITY_KEY');
     }
 
-    public function createPayment(Request $request)
+    private function validateBilling($billingInformation)
     {
-        try {
-            // Validate request input
-            $request->validate([
-                'amount' => 'required|numeric|min:0.01',
-            ]);
+        $validBillingKeys = [
+            "first_name",
+            "last_name",
+            "company",
+            "address1",
+            "address2",
+            "city",
+            "state",
+            "zip",
+            "country",
+            "phone",
+            "fax",
+            "email"
+        ];
 
-            $payer = new Payer();
-            $payer->setPaymentMethod('paypal');
-
-            $amount = new Amount();
-            $amount->setTotal($request->input('amount'));
-            $amount->setCurrency('USD');
-
-            $transaction = new Transaction();
-            $transaction->setAmount($amount);
-            $transaction->setDescription('Payment description');
-
-            $redirectUrls = new RedirectUrls();
-            $redirectUrls->setReturnUrl(url('/api/execute-payment'))
-                         ->setCancelUrl(url('/api/cancel'));
-
-            $payment = new Payment();
-            $payment->setIntent('sale')
-                    ->setPayer($payer)
-                    ->setTransactions([$transaction])
-                    ->setRedirectUrls($redirectUrls);
-
-            Log::info('Creating payment with the following details:', [
-                'intent' => $payment->getIntent(),
-                'payer' => [
-                    'payment_method' => $payer->getPaymentMethod()
-                ],
-                'transactions' => array_map(function ($transaction) {
-                    return [
-                        'amount' => $transaction->getAmount()->getTotal(),
-                        'currency' => $transaction->getAmount()->getCurrency(),
-                        'description' => $transaction->getDescription()
-                    ];
-                }, $payment->getTransactions()),
-                'redirect_urls' => [
-                    'return_url' => $redirectUrls->getReturnUrl(),
-                    'cancel_url' => $redirectUrls->getCancelUrl()
-                ]
-            ]);
-
-            // Output apiContext for debugging
-            Log::info('API Context:', (array) $this->apiContext);
-
-            // Create payment
-            $payment->create($this->apiContext);
-
-            return response()->json(['id' => $payment->getId()]);
-        } catch (\Exception $ex) {
-            Log::error('Error creating PayPal payment: ' . $ex->getMessage());
-            return response()->json(['error' => $ex->getMessage()], 500);
+        foreach ($billingInformation as $key => $value) {
+            if (!in_array($key, $validBillingKeys)) {
+                throw new Exception("Invalid key provided in billingInformation. '{$key}' is not a valid billing parameter.");
+            }
         }
     }
 
-
-    public function executePayment(Request $request)
+    private function validateShipping($shippingInformation)
     {
-        $paymentId = $request->input('paymentID');
-        $payerId = $request->input('payerID');
+        $validShippingKeys = [
+            "shipping_first_name",
+            "shipping_last_name",
+            "shipping_company",
+            "shipping_address1",
+            "address2",
+            "shipping_city",
+            "shipping_state",
+            "shipping_zip",
+            "shipping_country",
+            "shipping_email"
+        ];
 
-        $payment = Payment::get($paymentId, $this->apiContext);
+        foreach ($shippingInformation as $key => $value) {
+            if (!in_array($key, $validShippingKeys)) {
+                throw new Exception("Invalid key provided in shippingInformation. '{$key}' is not a valid shipping parameter.");
+            }
+        }
+    }
 
-        $execution = new PaymentExecution();
-        $execution->setPayerId($payerId);
+    private function doSale($amount, $payment_token, $billing, $shipping)
+    {
+        $requestOptions = [
+            'type' => 'sale',
+            'amount' => $amount,
+            'payment_token' => $payment_token
+        ];
+
+        // Merge billing and shipping into requestOptions
+        $requestOptions = array_merge($requestOptions, $billing, $shipping);
+
+        return $requestOptions;
+    }
+
+    private function _doRequest($postData)
+    {
+        $hostName = "secure.nmi.com";
+        $path = "/api/transact.php";
+        $client = new Client();
+
+        $postData['security_key'] = config('services.nmi.security');
+        $postUrl = "https://{$hostName}{$path}";
 
         try {
-            $result = $payment->execute($execution, $this->apiContext);
-            return response()->json($result);
-        } catch (\Exception $ex) {
-            return response()->json(['error' => $ex->getMessage()], 500);
+            $response = $client->post($postUrl, [
+                'form_params' => $postData,
+                'headers' => [
+                    'Content-Type' => 'application/x-www-form-urlencoded'
+                ]
+            ]);
+
+            parse_str($response->getBody(), $responseArray);
+
+            $parsedResponseCode = (int)$responseArray['response_code'];
+            $status = in_array($parsedResponseCode, [100, 200]);
+
+            $paydata = [
+                'status' => $status,
+                'date' => $response->getHeaderLine('Date'),
+                'responsetext' => $responseArray['responsetext'],
+                'authcode' => $responseArray['authcode'] ?? '',
+                'transactionid' => $responseArray['transactionid'] ?? 'failed',
+                'avsresponse' => $responseArray['avsresponse'] ?? 'N',
+                'cvvresponse' => $responseArray['cvvresponse'] ?? 'N',
+                'description' => $response->getBody()->getContents(),
+                'response_code' => $parsedResponseCode,
+                'type' => $responseArray['type'] ?? ''
+            ];
+
+            return $paydata;
+        } catch (Exception $e) {
+            throw new Exception("Error: " . $e->getMessage());
+        }
+    }
+
+    public function processPayment(Request $request)
+    {
+        $billingInfo = $request->input('billing');
+        $shippingInfo = $request->input('shipping');
+        $amount = $request->input('amount');
+        $payment_token = $request->input('payment_token');
+
+        try {
+            $this->validateBilling($billingInfo);
+            $this->validateShipping($shippingInfo);
+
+            $saleData = $this->doSale($amount, $payment_token, $billingInfo, $shippingInfo);
+            $paymentResult = $this->_doRequest($saleData);
+
+            if (!$paymentResult['status']) {
+                return response()->json([
+                    'status' => false,
+                    'message' => $paymentResult,
+                    'uniqueId' => null
+                ], 200);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Payment successful',
+                'data' => $paymentResult
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 400);
         }
     }
    

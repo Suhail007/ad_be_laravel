@@ -43,6 +43,10 @@ return [
         'clientID'=>env('PAYPAL_CLIENT_ID'),
         'clientSecret'=>env('PAYPAL_CLIENT_SECRET'),
         'paypalMode'=>env('PAYPAL_MODE')
+    ],
+    'nmi' =>[
+        'security'=>env('NMI_SECURITY_KEY'),
+        'transactionkey'=>env('NMI_TOKENIZATION_KEY'),
     ]
 
 

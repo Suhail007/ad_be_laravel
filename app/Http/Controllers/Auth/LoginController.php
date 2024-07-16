@@ -13,26 +13,7 @@ use MikeMcLin\WpPassword\Facades\WpPassword;
 class LoginController extends Controller
 {
 
-    public function fetchApiData()
-    {
-        $username = 'jass.suhail';
-        $authKey = '6FlFHt6Nr4vYBFtUjFq6jxc1HXzPKXEyDcLV7SBn7WZ8%2FaARsVHfzAgoxtnV7Rav';
-        $authSecret = 'pulKQmYV2lhY5rsW0sGogrwG%2B17Kv4U7Kk8B9AA5kJ3w8XG6ifa0kQtWOOCRSkzS';
-
-        $url = 'https://ad.phantasm.solutions/wp-json/ade-woocart/v1/check';
-
-        $response = Http::get($url, [
-            'username' => $username,
-            'authKey' => $authKey,
-            'authSecret' => $authSecret,
-        ]);
-
-        if ($response->successful()) {
-            return response()->json($response->json());
-        } else {
-            return response()->json(['error' => 'Failed to fetch data'], $response->status());
-        }
-    }
+    
     public function login(Request $request)
     {
         $email = $request->input('user_email');
