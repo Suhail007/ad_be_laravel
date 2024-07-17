@@ -670,11 +670,13 @@ class ProductController extends Controller
             })->toArray();
 
             return [
+                'ID'=>$relatedProduct->ID,
                 'name' => $relatedProduct->post_title,
                 'slug' => $relatedProduct->post_name,
                 'thumbnail' => $relatedProduct->thumbnail_url,
                 'product_visibility' => $relatedProduct->visibility,
-                'category_visibility' => $categoryVisibility
+                ''
+                // 'category_visibility' => $categoryVisibility
             ];
         });
 
