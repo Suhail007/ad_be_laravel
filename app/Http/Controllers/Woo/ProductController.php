@@ -656,7 +656,7 @@ class ProductController extends Controller
                 $query->whereIn('term_taxonomy_id', $subcatIds);
             })
             ->where('ID', '!=', $id) // Exclude the current product
-            ->take(10)
+            ->take(20)
             ->get();
 
         if ($relatedProducts->isEmpty()) {
