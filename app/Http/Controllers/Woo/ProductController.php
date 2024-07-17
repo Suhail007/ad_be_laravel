@@ -655,7 +655,7 @@ class ProductController extends Controller
         $relatedProducts = Product::whereHas('categories', function ($query) use ($subcatIds) {
                 $query->whereIn('term_taxonomy_id', $subcatIds);
             })
-            ->where('ID', '!=', $id) // Exclude the current product
+            // ->where('ID', '!=', $id) // Exclude the current product
             ->take(20)
             ->get();
 
