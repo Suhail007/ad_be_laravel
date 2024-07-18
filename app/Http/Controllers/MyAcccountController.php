@@ -54,7 +54,7 @@ class MyAcccountController extends Controller
                 ],
             ];
             if (empty($customAddresses)) {
-                $customAddresses=$defaultAddress;
+                $customAddresses=[];
             }
             return response()->json([
                 'status' => true,
