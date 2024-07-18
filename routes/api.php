@@ -12,6 +12,7 @@ use App\Http\Controllers\WooCommerceController;
 // routes/web.php or routes/api.php
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\DiscountRuleController;
+use App\Http\Controllers\MyAcccountController;
 use App\Http\Controllers\OrderController;
 
 Route::get('/user', function (Request $request) {
@@ -36,6 +37,9 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::put('/media/{id}', [MediaController::class, 'update']);
     Route::delete('/media/{id}', [MediaController::class, 'destroy']);
     Route::get('/get-u-addresses',[WooCommerceController::class,'getUAddresses']);
+
+    //myaccount
+    Route::get('/my-account/addresses',[MyAcccountController::class,'getUserAddresses']);
 
     //user Cart
     Route::get('/cart/{userId}', [CartController::class, 'getCart']);
