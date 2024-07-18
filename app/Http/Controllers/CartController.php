@@ -137,7 +137,7 @@ class CartController extends Controller
         }
     
         return response()->json([
-            // 'username' => $user->user_login,
+            'status'=>true,
             'success' => 'Products added to cart',
             'data' => $userIp,
             // 'time' => now()->toDateTimeString(),
@@ -157,6 +157,7 @@ class CartController extends Controller
         $userIp = $request->ip();
         if ($cartItems->isEmpty()) {
             return response()->json([
+                'status'=>false,
                 'username' => $user->user_login,
                 'message' => 'Cart is empty',
                 'data' => $userIp,
@@ -235,6 +236,7 @@ class CartController extends Controller
         }
     
         return response()->json([
+            'status'=>true,
             'username' => $user->user_login,
             'message' => 'Cart items',
             'data' => $userIp,
@@ -250,23 +252,23 @@ class CartController extends Controller
         $cart = Cart::findOrFail($id);
         $cart->delete();
 
-        return response()->json(['success' => 'Product removed from cart'], 200);
+        return response()->json([ 'status'=>true,'success' => 'Product removed from cart'], 200);
     }
 
     public function updateCartQuantity(Request $request){
         $user = JWTAuth::parseToken()->authenticate();
         if (!$user) {
-            return response()->json(['message' => 'User not authenticated', 'status' => 'error'], 401);
+            return response()->json([ 'status'=>false,'message' => 'User not authenticated'], 200);
         }
         $cartItem = Cart::where('user_id', $user->ID)
             ->where('product_id', $request->product_id)
             ->where('variation_id', $request->variation_id)
             ->first();
         if (!$cartItem || $request->quantity <=0) {
-            return response()->json(['message' => 'Item not found', 'status' => 'error'], 404);
+            return response()->json([ 'status'=>false,'message' => 'Item not found'], 200);
         }
         $cartItem->quantity = $request->quantity;
         $cartItem->save();
-        return response()->json(['message' => 'Item quantity updated', 'status' => 'success'], 200);
+        return response()->json(['message' => 'Item quantity updated',  'status'=>true], 200);
     }
 }
