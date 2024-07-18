@@ -14,14 +14,11 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $user = JWTAuth::parseToken()->authenticate();
-        $orders = Order::
-        where('post_type', 'shop_order')
-            ->where('post_author', $user->ID)
-            ->with(['items', 'items.meta', 'meta'])
-            ->
-            get();
-
-        return response()->json($orders);
+        $orders = Order::where('post_type', 'shop_order')->where('post_author', $user->ID)->with(['items', 'items.meta', 'meta'])->get();
+        if($orders){
+            return response()->json(['status'=>true,'data'=>$orders]);
+        }
+        return response()->json(['status'=>true,'data'=>'Orders Not Found Create A order']);
     }
 
     public function show($id)

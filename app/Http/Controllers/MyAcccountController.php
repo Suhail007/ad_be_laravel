@@ -61,7 +61,7 @@ class MyAcccountController extends Controller
                 'username' => $user->user_login,
                 'message' => 'User addresses',
                 'addresses' => $customAddresses,
-                'default-address' => $defaultAddress,
+                'defaultAddress' => $defaultAddress,
             ], 200);
         } catch (\Throwable $th) {
             return response()->json([

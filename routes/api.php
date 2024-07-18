@@ -40,6 +40,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
     //myaccount
     Route::get('/my-account/addresses',[MyAcccountController::class,'getUserAddresses']);
+    Route::get('orders', [OrderController::class, 'index']);
+    Route::get('orders/{id}', [OrderController::class, 'show']);
 
     //user Cart
     Route::get('/cart/{userId}', [CartController::class, 'getCart']);
@@ -53,12 +55,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     //payment 
     Route::get('/payment-price',[PayPalController::class, 'me']);
     Route::post('/process-payment', [PayPalController::class, 'processPayment']);
-
-
-    //user get Order
-    Route::get('orders', [OrderController::class, 'index']);
-    Route::get('orders/{id}', [OrderController::class, 'show']);
-
+    
     //discount api
     Route::get('/cart-discount',[DiscountRuleController::class,'index']);
 });
