@@ -14,7 +14,7 @@ use PayPal\Api\RedirectUrls;
 use PayPal\Api\Transaction;
 use PayPal\Auth\OAuthTokenCredential;
 use PayPal\Rest\ApiContext;
-
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class PayPalController extends Controller
 {
@@ -50,6 +50,13 @@ class PayPalController extends Controller
                 throw new Exception("Invalid key provided in billingInformation. '{$key}' is not a valid billing parameter.");
             }
         }
+    }
+    public function me(Request $request){
+        $user = JWTAuth::parseToken()->authenticate();
+ 
+        $data  = $user->capabilities;
+       $data= array_key_first($data);
+        return response()->json($data);
     }
 
     private function validateShipping($shippingInformation)

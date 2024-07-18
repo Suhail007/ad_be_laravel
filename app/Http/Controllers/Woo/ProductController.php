@@ -600,37 +600,6 @@ class ProductController extends Controller
         }
     }
 
-
-    // public function categoryProducts(Request $request){
-    //     $searchTerm = $request->input('searchTerm', '');
-    //     $perPage = $request->input('perPage', 20);
-    //     $products = Product::with([
-    //         'meta' => function($query) {
-    //             $query->select('post_id', 'meta_key', 'meta_value')
-    //                   ->whereIn('meta_key', ['_price', '_stock_status', '_sku']);
-    //         },
-    //         'categories' => function($query) {
-    //             $query->select('wp_terms.term_id', 'wp_terms.name');
-    //         }
-    //     ])
-    //     ->select('ID', 'post_title', 'post_modified')
-    //     ->where('post_type', 'product')
-    //     ->where(function($query) use ($searchTerm) {
-    //         $query //->where('post_title', 'LIKE', '%' . $searchTerm . '%')
-    //             //   ->orWhereHas('meta', function($query) use ($searchTerm) {
-    //             //       $query->where('meta_key', '_sku')
-    //             //             ->where('meta_value', 'LIKE', '%' . $searchTerm . '%');
-    //             //   })
-    //               ->whereHas('categories', function($query) use ($searchTerm) {
-    //                   $query->where('slug', 'LIKE', '%' . $searchTerm . '%');
-    //               })
-    //               ;
-    //     })
-    //     ->orderBy('post_modified', 'desc')
-    //     ->paginate($perPage);
-    //     return response()->json($products);
-    // }
-
     public function getRelatedProducts($id)
     {
         // Fetch the product

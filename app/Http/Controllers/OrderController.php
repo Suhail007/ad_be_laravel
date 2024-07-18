@@ -39,7 +39,7 @@ class OrderController extends Controller
             DB::beginTransaction();
             $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
             $currentValue = (int)$options[0]->option_value;
-            dd($currentValue);
+            // dd($currentValue);
             $orderId = DB::table('wp_posts')->insertGetId([
                 'post_author' => $user->ID,
                 'post_date' => now(),
@@ -86,7 +86,7 @@ class OrderController extends Controller
                 }, 0)],
                 ['post_id' => $orderId, 'meta_key' => '_order_currency', 'meta_value' => 'USD'],
                 ['post_id' => $orderId, 'meta_key' => '_order_key', 'meta_value' => 'wc_order_' . uniqid()],
-                ['post_id' => $orderId, 'meta_key' => '_customer_user', 'meta_value' => $user->ID],  // Assuming customer ID is 1
+                ['post_id' => $orderId, 'meta_key' => '_customer_user', 'meta_value' => $user->ID],  
                 ['post_id' => $orderId, 'meta_key' => '_created_via', 'meta_value' => 'checkout'],
                 ['post_id' => $orderId, 'meta_key' => '_order_stock_reduced', 'meta_value' => 'yes'],
                 ['post_id' => $orderId, 'meta_key' => '_billing_address_index', 'meta_value' => implode(' ', $orderData['billing'])],
@@ -167,7 +167,7 @@ class OrderController extends Controller
                 'type' => 'shop_order',
                 'tax_amount' => 0,
                 'total_amount' => $totalAmount,
-                'customer_id' => $user->ID,  // Assuming customer ID is 1
+                'customer_id' => $user->ID, 
                 'billing_email' => $orderData['billing']['email'],
                 'date_created_gmt' => now(),
                 'date_updated_gmt' => now(),
@@ -223,8 +223,8 @@ class OrderController extends Controller
                     'state' => $orderData['shipping']['state'],
                     'postcode' => $orderData['shipping']['postcode'],
                     'country' => $orderData['shipping']['country'],
-                    'email' => $orderData['billing']['email'], // Assuming shipping email is the same as billing email
-                    'phone' => $orderData['billing']['phone'] // Assuming shipping phone is the same as billing phone
+                    'email' => $orderData['billing']['email'], 
+                    'phone' => $orderData['billing']['phone'] 
                 ]
             ]);
             DB::table('wp_wc_order_stats')->insert([

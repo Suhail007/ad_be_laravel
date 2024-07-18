@@ -78,9 +78,9 @@ class MyAcccountController extends Controller
             ->value('meta_value');
     }
 
-    private function maybe_unserialize($value)
-    {
-        $unserialized = @unserialize($value);
-        return ($unserialized !== false || $value === 'b:0;') ? $unserialized : $value;
-    }
+    // private function maybe_unserialize($value)
+    // {
+    //     $unserialized = @unserialize($value);
+    //     return ($unserialized !== false || $value === 'b:0;') ? $unserialized : $value;
+    // }
 }

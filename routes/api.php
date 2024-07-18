@@ -46,10 +46,12 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::delete('/cart/{id}', [CartController::class, 'deleteFromCart']);
     Route::post('/cart/bulk-add', [CartController::class, 'bulkAddToCart']);
     Route::post('/cart/update', [CartController::class, 'updateCartQuantity']);
+    Route::post('/cart/empty',[CartController::class,'empty']);
 
     //checkout Cart with category Id
 
     //payment 
+    Route::get('/payment-price',[PayPalController::class, 'me']);
     Route::post('/process-payment', [PayPalController::class, 'processPayment']);
 
 

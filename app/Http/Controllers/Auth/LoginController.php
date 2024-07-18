@@ -25,7 +25,7 @@ class LoginController extends Controller
                 'ID' => $user->ID,
                 'name' => $user->user_login,
                 'email' => $user->user_email,
-                'capabilities' => $user->capabilities, // Fetch the capabilities attribute
+                'capabilities' => $user->capabilities, 
             ];
 
  
