@@ -53,8 +53,9 @@ class CartController extends Controller
         }
 
         $cartItems[] = $cartItem;
-        $cartItems = [];
-        $cartItems = Cart::where('user_id', $user->ID)->get();
+    }
+
+    $cartItems = Cart::where('user_id', $user->ID)->get();
         $userIp = $request->ip();
         if ($cartItems->isEmpty()) {
             return response()->json([
@@ -136,15 +137,14 @@ class CartController extends Controller
         }
     
         return response()->json([
-            'username' => $user->user_login,
-            'message' => 'Cart items',
+            // 'username' => $user->user_login,
+            'success' => 'Products added to cart',
             'data' => $userIp,
-            'time' => now()->toDateTimeString(),
-            'cart_count' => count($cartData),
-            'cart_items' => $cartData,
+            // 'time' => now()->toDateTimeString(),
+            // 'cart_count' => count($cartData),
+            'cart' => $cartData,
         ], 200);
-    }
-    return response()->json(['success' => 'Products added to cart', 'cart' => $cartItems], 200);
+    // return response()->json(['success' => 'Products added to cart', 'cart' => $cartItems], 200);
 }
 
     public function getCart(Request $request)
