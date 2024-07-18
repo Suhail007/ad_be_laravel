@@ -57,6 +57,7 @@ class MyAcccountController extends Controller
                 $customAddresses=$defaultAddress;
             }
             return response()->json([
+                'status' => true,
                 'username' => $user->user_login,
                 'message' => 'User addresses',
                 'addresses' => $customAddresses,
