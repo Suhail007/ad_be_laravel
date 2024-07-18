@@ -18,7 +18,7 @@ class OrderController extends Controller
         if($orders){
             return response()->json(['status'=>true,'data'=>$orders]);
         }
-        return response()->json(['status'=>true,'data'=>'Orders Not Found Create A order']);
+        return response()->json(['status'=>false,'data'=>'Orders Not Found Create A order']);
     }
 
     public function show($id)
