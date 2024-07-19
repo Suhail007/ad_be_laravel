@@ -27,6 +27,7 @@ class CartController extends Controller
     }
     public function bulkAddToCart(Request $request)
     {
+
         $user = JWTAuth::parseToken()->authenticate();
         $user_id = $user->ID;
         $product_id = $request->product_id;
@@ -145,6 +146,118 @@ class CartController extends Controller
             'cart' => $cartData,
         ], 200);
         // return response()->json(['success' => 'Products added to cart', 'cart' => $cartItems], 200);
+    }
+
+    public function bulkUpdateCart(Request $request){
+        $user = JWTAuth::parseToken()->authenticate();
+        $user_id = $user->ID;
+        $items = $request->items; 
+        $cartItems = [];
+        foreach ($items as $item) {
+            $product_id = $item['product_id'];
+            $variation_id = $item['variation_id'];
+            $quantity = $item['quantity'];
+            $cartItem = Cart::where('user_id', $user_id)
+                ->where('product_id', $product_id)
+                ->where('variation_id', $variation_id)
+                ->first();
+
+            if ($cartItem) {
+                $cartItem->quantity = $quantity;
+                $cartItem->save();
+            } else {
+                $cartItem = Cart::create([
+                    'user_id' => $user_id,
+                    'product_id' => $product_id,
+                    'variation_id' => $variation_id,
+                    'quantity' => $quantity,
+                ]);
+            }
+
+            $cartItems[] = $cartItem;
+        }
+        $cartItems = Cart::where('user_id', $user->ID)->get();
+        $userIp = $request->ip();
+        if ($cartItems->isEmpty()) {
+            return response()->json([
+                'username' => $user->user_login,
+                'message' => 'Cart is empty',
+                'data' => $userIp,
+                'time' => now()->toDateTimeString(),
+                'cart_count' => 0,
+                'cart_items' => [],
+            ], 200);
+        }
+
+        $priceTier = $user->price_tier;
+        $cartData = [];
+        foreach ($cartItems as $cartItem) {
+            $product = $cartItem->product;
+            $variation = $cartItem->variation;
+            $wholesalePrice = 0;
+            if ($variation) {
+                $wholesalePrice = ProductMeta::where('post_id', $variation->ID)
+                    ->where('meta_key', $priceTier)
+                    ->value('meta_value');
+            } else {
+                $wholesalePrice = ProductMeta::where('post_id', $product->ID)
+                    ->where('meta_key', $priceTier)
+                    ->value('meta_value');
+            }
+            $stockLevel = 0;
+            $stockStatus = 'outofstock';
+            if ($variation) {
+                $stockLevel = ProductMeta::where('post_id', $variation->ID)
+                    ->where('meta_key', '_stock')
+                    ->value('meta_value');
+
+                $stockStatus = ProductMeta::where('post_id', $variation->ID)
+                    ->where('meta_key', '_stock_status')
+                    ->value('meta_value');
+            } else {
+                $stockLevel = ProductMeta::where('post_id', $product->ID)
+                    ->where('meta_key', '_stock')
+                    ->value('meta_value');
+
+                $stockStatus = ProductMeta::where('post_id', $product->ID)
+                    ->where('meta_key', '_stock_status')
+                    ->value('meta_value');
+            }
+            if ($stockStatus === 'instock' && $stockLevel > 0) {
+                $stockStatus = 'instock';
+            } else {
+                $stockStatus = 'outofstock';
+            }
+            $variationAttributes = [];
+            if ($variation) {
+                $attributes = DB::select("SELECT meta_value FROM wp_postmeta WHERE post_id = ? AND meta_key LIKE 'attribute_%'", [$variation->ID]);
+                foreach ($attributes as $attribute) {
+                    $variationAttributes[] = $attribute->meta_value;
+                }
+            }
+            $productSlug = $product->post_name;
+            $categoryIds = $product->categories->pluck('term_id')->toArray();
+            $cartData[] = [
+                'key' => $cartItem->id,
+                'product_id' => $product->ID,
+                'product_name' => $product->post_title,
+                'product_slug' => $productSlug,
+                'product_price' => $wholesalePrice,
+                'product_image' => $product->thumbnail_url,
+                'stock' => $stockLevel,
+                'stock_status' => $stockStatus,
+                'quantity' => $cartItem->quantity,
+                'variation_id' => $variation ? $variation->ID : null,
+                'variation' => $variationAttributes,
+                'taxonomies' => $categoryIds
+            ];
+        }
+        return response()->json([
+            'status' => true,
+            'success' => 'Cart updated successfully',
+            'data' => $userIp,
+            'cart' => $cartData,
+        ], 200);
     }
 
     public function getCart(Request $request)

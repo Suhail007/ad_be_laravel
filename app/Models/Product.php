@@ -11,7 +11,7 @@ class Product extends Model
     protected $table = 'wp_posts';
     protected $primaryKey = 'ID';
 
-    public $timestamps = false;
+    
     public function meta(){
         return $this->hasMany(ProductMeta::class,'post_id','ID');
     }

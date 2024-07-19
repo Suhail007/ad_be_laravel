@@ -49,6 +49,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('/cart/bulk-add', [CartController::class, 'bulkAddToCart']);
     Route::post('/cart/update', [CartController::class, 'updateCartQuantity']);
     Route::post('/cart/empty',[CartController::class,'empty']);
+    Route::post('/cart/bulk-update',[CartController::class,'bulkUpdateCart']);
 
     //checkout Cart with category Id
 
