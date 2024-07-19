@@ -10,6 +10,7 @@ class Order extends Model
     use HasFactory;
     protected $table = 'wp_posts';
     protected $primaryKey = 'ID';
+    public $timestamps = false;
 
     public function items()
     {

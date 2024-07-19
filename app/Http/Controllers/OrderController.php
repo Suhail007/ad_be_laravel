@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cart;
 use App\Models\Order;
+use App\Models\OrderMeta;
 use App\Models\ProductMeta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +37,8 @@ class OrderController extends Controller
             DB::beginTransaction();
             $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
             $currentValue = (int)$options[0]->option_value;
-            // dd($currentValue);
+            $newValue = $currentValue + 1;
+            DB::update("UPDATE wp_options SET option_value = ? WHERE option_name = 'wt_last_order_number'", [$newValue]);
             $orderId = DB::table('wp_posts')->insertGetId([
                 'post_author' => $user->ID,
                 'post_date' => now(),
@@ -88,10 +90,10 @@ class OrderController extends Controller
                 ['post_id' => $orderId, 'meta_key' => '_order_stock_reduced', 'meta_value' => 'yes'],
                 ['post_id' => $orderId, 'meta_key' => '_billing_address_index', 'meta_value' => implode(' ', $orderData['billing'])],
                 ['post_id' => $orderId, 'meta_key' => '_shipping_address_index', 'meta_value' => implode(' ', $orderData['shipping'])],
-                ['post_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $currentValue],
+                ['post_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
             ];
             foreach ($metaData as $meta) {
-                DB::table('wp_postmeta')->insert($meta);
+                OrderMeta::insert($meta);
             }
             $totalAmount = $orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {
                 return $carry + $item['quantity'] * $item['price'];
@@ -123,6 +125,7 @@ class OrderController extends Controller
                     ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
                     ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $item['wholesale_role']],
                     ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_price', 'meta_value' => $item['wholesale_price']],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
                 ];
 
                 foreach ($itemMeta as $meta) {
@@ -177,7 +180,7 @@ class OrderController extends Controller
                 'customer_note' => ''
             ]);
             $wp_wc_order_meta = [
-                ['order_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $currentValue],
+                ['order_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
                 ['order_id' => $orderId, 'meta_key' => '_wwpp_order_type', 'meta_value' => 'wholesale'],
                 ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => 'mm_price_2'],
                 ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => 'mm_price_2'],
@@ -191,7 +194,7 @@ class OrderController extends Controller
                         (isset($orderData['shipping']['postcode']) ? $orderData['shipping']['postcode'] : '')
                 ],
             ];
-            DB::table('wp_wc_order_meta')->insert($wp_wc_order_meta);
+            DB::table('wp_wc_orders_meta')->insert($wp_wc_order_meta);
             DB::table('wp_wc_order_addresses')->insert([
                 [
                     'order_id' => $orderId,
@@ -235,8 +238,8 @@ class OrderController extends Controller
                 'tax_total' => 0,
                 'shipping_total' => $orderData['shipping_lines'][0]['total'],
                 'net_total' => $totalAmount,
-                'returning_customer' => 0,  // Assuming it's a new customer
-                'customer_id' => $user->ID,  // Assuming customer ID is 1
+                'returning_customer' => 0,  
+                'customer_id' => $user->ID, 
                 'date_paid' => null, 
                 'date_completed' => null,
             ]);
@@ -277,15 +280,14 @@ class OrderController extends Controller
             foreach ($orderNotes as $note) {
                 DB::table('wp_comments')->insert($note);
             }
-            $newValue = $currentValue + 1;
-            DB::update("UPDATE wp_options SET option_value = ? WHERE option_name = 'wt_last_order_number'", [$newValue]);
+            
             DB::commit();
             //send success mail to admin
-            return response()->json(['message' => 'Order created successfully', 'order_id' => $orderId], 201);
+            return response()->json(['status'=>true, 'message' => "Order Created Successfull Order No: $newValue and Order ID: $orderId", 'order_id' => $orderId, 'order_number'=>$newValue], 201);
         } catch (\Exception $e) {
             DB::rollBack();
             //send failure mail to admin to take action
-            return response()->json(['error' => 'Failed to create order: ' . $e->getMessage()], 500);
+            return response()->json(['status'=>false,'error' => 'Failed to create order: ' . $e->getMessage()], 500);
         }
     }
 }

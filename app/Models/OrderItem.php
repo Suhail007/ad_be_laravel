@@ -10,6 +10,7 @@ class OrderItem extends Model
     use HasFactory;
     protected $table = 'wp_woocommerce_order_items';
     protected $primaryKey = 'order_item_id';
+    public $timestamps = false;
 
     public function meta()
     {
