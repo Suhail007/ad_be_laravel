@@ -110,13 +110,14 @@ class OrderController extends Controller
                     if ($productMeta) {
                         $productMeta->meta_value -= $item['quantity'];
                         $productMeta->save();
-                     echo "stock". $productMeta->meta_value;
+                        echo "  $productMeta->meta_value ,";
                     }
                 } else {
                     $productMeta = ProductMeta::where('post_id', $item['product_id'])->where('meta_key', '_stock')->first();
                     if ($productMeta) {
                         $productMeta->meta_value -= $item['quantity'];
                         $productMeta->save();
+                        echo "  $productMeta->meta_value ,";
                     }
                 }
                 Cart::where('user_id', $user->ID)

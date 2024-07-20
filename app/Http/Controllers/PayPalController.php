@@ -216,7 +216,7 @@ class PayPalController extends Controller
     private function createNewOrder($userID)
     {
         $orderData = Checkout::where('user_id',$userID)->first();
-        $user= User::first($userID);
+        $user= User::firstOrFail($userID);
         try {
             $user = JWTAuth::parseToken()->authenticate();
             DB::beginTransaction();
@@ -290,6 +290,23 @@ class PayPalController extends Controller
                     'order_item_name' => $item['product_name'],
                     'order_item_type' => 'line_item'
                 ]);
+                if ($item['variation_id']) {
+                    $productMeta = ProductMeta::where('post_id', $item['variation_id'])->where('meta_key', '_stock')->first();
+                    if ($productMeta) {
+                        $productMeta->meta_value -= $item['quantity'];
+                        $productMeta->save();
+                    }
+                } else {
+                    $productMeta = ProductMeta::where('post_id', $item['product_id'])->where('meta_key', '_stock')->first();
+                    if ($productMeta) {
+                        $productMeta->meta_value -= $item['quantity'];
+                        $productMeta->save();
+                    }
+                }
+                Cart::where('user_id', $userID)
+                    ->where('product_id', $item['product_id'])
+                    ->where('variation_id', $item['variation_id'] ?? null)
+                    ->delete();
 
                 $itemMeta = [
                     ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
@@ -315,23 +332,6 @@ class PayPalController extends Controller
 
                 foreach ($itemMeta as $meta) {
                     DB::table('wp_woocommerce_order_itemmeta')->insert($meta);
-                    if ($item['variation_id']) {
-                        $productMeta = ProductMeta::where('post_id', $item['variation_id'])->where('meta_key', '_stock')->first();
-                        if ($productMeta) {
-                            $productMeta->meta_value -= $item['quantity'];
-                            $productMeta->save();
-                        }
-                    } else {
-                        $productMeta = ProductMeta::where('post_id', $item['product_id'])->where('meta_key', '_stock')->first();
-                        if ($productMeta) {
-                            $productMeta->meta_value -= $item['quantity'];
-                            $productMeta->save();
-                        }
-                    }
-                    Cart::where('user_id', $userID)
-                        ->where('product_id', $item['product_id'])
-                        ->where('variation_id', $item['variation_id'] ?? null)
-                        ->delete();
                 }
                 DB::table('wp_wc_order_product_lookup')->insert([
                     'order_item_id' => $orderItemId,
@@ -487,113 +487,113 @@ class PayPalController extends Controller
         $amount = $request->input('amount');
         $payment_token = $request->input('payment_token');
 
-        // $lineItems = $request->input('line_items');
+        $lineItems = $request->input('line_items');
 
-        // $order_type = $request->input('order_type');
-        // $order_role = $request->input('order_role');
-        // $order_wholesale_role = $request->input('order_wholesale_role');
+        $order_type = $request->input('order_type');
+        $order_role = $request->input('order_role');
+        $order_wholesale_role = $request->input('order_wholesale_role');
 
-        // $oncard = $request->input('oncard');
+        $oncard = $request->input('oncard');
 
 
-        // if($oncard == 'card'){
-        //     try {
-        //         $this->validateBilling($billingInfo);
-        //         $this->validateShipping($shippingInfo);
+        if($oncard == 'card'){
+            try {
+                $this->validateBilling($billingInfo);
+                $this->validateShipping($shippingInfo);
     
-        //         $checkout = Checkout::updateOrCreate(
-        //             ['user_id' => $user->ID],
-        //             [
-        //                 'isFreeze' => true,
-        //                 'total' => $amount,
-        //                 'billing' => json_encode($billingInfo),
-        //                 'shipping' => json_encode($shippingInfo),
-        //                 'extra' => json_encode(['line_items' => $lineItems]),
-        //             ]
-        //         );
+                $checkout = Checkout::updateOrCreate(
+                    ['user_id' => $user->ID],
+                    [
+                        'isFreeze' => true,
+                        'total' => $amount,
+                        'billing' => json_encode($billingInfo),
+                        'shipping' => json_encode($shippingInfo),
+                        'extra' => json_encode(['line_items' => $lineItems]),
+                    ]
+                );
                 
-        //         $saleData = $this->doSale($amount, $payment_token, $billingInfo, $shippingInfo);
-        //         $paymentResult = $this->_doRequest($saleData);
+                $saleData = $this->doSale($amount, $payment_token, $billingInfo, $shippingInfo);
+                $paymentResult = $this->_doRequest($saleData);
     
-        //         if (!$paymentResult['status']) {
-        //             return response()->json([
-        //                 'status' => false,
-        //                 'message' => $paymentResult,
-        //                 'uniqueId' => null
-        //             ], 200);
-        //         }
-        //         $this->createNewOrder($user->ID);
-        //         return response()->json([
-        //             'status' => true,
-        //             'message' => 'Payment successful',
-        //             'data' => $paymentResult,
-        //             'checkout_id' => $checkout->id,
-        //         ], 200);
-        //     } catch (Exception $e) {
-        //         return response()->json([
-        //             'status' => false,
-        //             'message' => $e->getMessage()
-        //         ], 400);
-        //     }
-        // } else if($oncard == 'onaccount') {
-        //     try {
-        //         $this->validateBilling($billingInfo);
-        //         $this->validateShipping($shippingInfo);
-    
-        //         $checkout = Checkout::updateOrCreate(
-        //             ['user_id' => $user->ID],
-        //             [
-        //                 'isFreeze' => true,
-        //                 'total' => $amount,
-        //                 'billing' => json_encode($billingInfo),
-        //                 'shipping' => json_encode($shippingInfo),
-        //                 'extra' => json_encode(['line_items' => $lineItems]),
-        //             ]
-        //         );
-
-        //     } catch (\Throwable $th) {
-        //         //throw $th;
-        //     }
-        // }
-
-        try {
-            $this->validateBilling($billingInfo);
-            $this->validateShipping($shippingInfo);
-
-            // $checkout = Checkout::updateOrCreate(
-            //     ['user_id' => $user->ID],
-            //     [
-            //         'isFreeze' => true,
-            //         'total' => $amount,
-            //         'billing' => json_encode($billingInfo),
-            //         'shipping' => json_encode($shippingInfo),
-            //         'extra' => json_encode(['line_items' => $lineItems]),
-            //     ]
-            // );
-            
-            // Process the payment
-            $saleData = $this->doSale($amount, $payment_token, $billingInfo, $shippingInfo);
-            $paymentResult = $this->_doRequest($saleData);
-
-            if (!$paymentResult['status']) {
+                if (!$paymentResult['status']) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => $paymentResult,
+                        'uniqueId' => null
+                    ], 200);
+                }
+                $this->createNewOrder($user->ID);
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Payment successful',
+                    'data' => $paymentResult,
+                    'checkout_id' => $checkout->id,
+                ], 200);
+            } catch (Exception $e) {
                 return response()->json([
                     'status' => false,
-                    'message' => $paymentResult,
-                    'uniqueId' => null
-                ], 200);
+                    'message' => $e->getMessage()
+                ], 400);
             }
+        } else if($oncard == 'onaccount') {
+            try {
+                $this->validateBilling($billingInfo);
+                $this->validateShipping($shippingInfo);
+    
+                $checkout = Checkout::updateOrCreate(
+                    ['user_id' => $user->ID],
+                    [
+                        'isFreeze' => true,
+                        'total' => $amount,
+                        'billing' => json_encode($billingInfo),
+                        'shipping' => json_encode($shippingInfo),
+                        'extra' => json_encode(['line_items' => $lineItems]),
+                    ]
+                );
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Payment successful',
-                'data' => $paymentResult,
-                // 'checkout_id' => $checkout->id,
-            ], 200);
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => $e->getMessage()
-            ], 400);
+            } catch (\Throwable $th) {
+                //throw $th;
+            }
         }
+
+        // try {
+        //     $this->validateBilling($billingInfo);
+        //     $this->validateShipping($shippingInfo);
+
+        //     $checkout = Checkout::updateOrCreate(
+        //         ['user_id' => $user->ID],
+        //         [
+        //             'isFreeze' => true,
+        //             'total' => $amount,
+        //             'billing' => json_encode($billingInfo),
+        //             'shipping' => json_encode($shippingInfo),
+        //             'extra' => json_encode(['line_items' => $lineItems]),
+        //         ]
+        //     );
+            
+        //     // Process the payment
+        //     $saleData = $this->doSale($amount, $payment_token, $billingInfo, $shippingInfo);
+        //     $paymentResult = $this->_doRequest($saleData);
+
+        //     if (!$paymentResult['status']) {
+        //         return response()->json([
+        //             'status' => false,
+        //             'message' => $paymentResult,
+        //             'uniqueId' => null
+        //         ], 200);
+        //     }
+
+        //     return response()->json([
+        //         'status' => true,
+        //         'message' => 'Payment successful',
+        //         'data' => $paymentResult,
+        //         'checkout_id' => $checkout->id,
+        //     ], 200);
+        // } catch (Exception $e) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => $e->getMessage()
+        //     ], 400);
+        // }
     }
 }
