@@ -21,11 +21,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class PayPalController extends Controller
 {
-
-
-    
     private $security_key;
-
     public function __construct()
     {
         $this->security_key = config('services.nmi.security'); //env('NMI_SECURITY_KEY');
@@ -236,8 +232,8 @@ class PayPalController extends Controller
             // }
 
             return response()->json([
-                // 'status' => true,
-                // 'message' => 'Payment successful',
+                'status' => true,
+                'message' => 'Payment successful',
                 'data' => $paymentResult
             ], 200);
         } catch (Exception $e) {
