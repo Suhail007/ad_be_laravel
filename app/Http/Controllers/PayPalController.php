@@ -211,10 +211,17 @@ class PayPalController extends Controller
 
     public function processPayment(Request $request)
     {
+        $user = JWTAuth::parseToken()->authenticate();
+        if (!$user) {
+            return response()->json(['message' => 'User not authenticated', 'status' => false], 401);
+        }
+
         $billingInfo = $request->input('billing');
         $shippingInfo = $request->input('shipping');
         $amount = $request->input('amount');
         $payment_token = $request->input('payment_token');
+
+        
 
         try {
             $this->validateBilling($billingInfo);
@@ -223,13 +230,13 @@ class PayPalController extends Controller
             $saleData = $this->doSale($amount, $payment_token, $billingInfo, $shippingInfo);
             $paymentResult = $this->_doRequest($saleData);
 
-            // if (!$paymentResult['status']) {
-            //     return response()->json([
-            //         'status' => false,
-            //         'message' => $paymentResult,
-            //         'uniqueId' => null
-            //     ], 200);
-            // }
+            if (!$paymentResult['status']) {
+                return response()->json([
+                    'status' => false,
+                    'message' => $paymentResult,
+                    'uniqueId' => null
+                ], 200);
+            }
 
             return response()->json([
                 'status' => true,

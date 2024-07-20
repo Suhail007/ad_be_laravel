@@ -81,7 +81,7 @@ class OrderController extends Controller
                 ['post_id' => $orderId, 'meta_key' => '_payment_method_title', 'meta_value' => $orderData['payment_method_title']],
                 ['post_id' => $orderId, 'meta_key' => '_transaction_id', 'meta_value' => uniqid()],
                 ['post_id' => $orderId, 'meta_key' => '_order_total', 'meta_value' => $orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {
-                    return $carry + $item['quantity'] * $item['price'];
+                    return $carry + $item['quantity'] * $item['product_price'];
                 }, 0)],
                 ['post_id' => $orderId, 'meta_key' => '_order_currency', 'meta_value' => 'USD'],
                 ['post_id' => $orderId, 'meta_key' => '_order_key', 'meta_value' => 'wc_order_' . uniqid()],
@@ -96,13 +96,13 @@ class OrderController extends Controller
                 OrderMeta::insert($meta);
             }
             $totalAmount = $orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {
-                return $carry + $item['quantity'] * $item['price'];
+                return $carry + $item['quantity'] * $item['product_price'];
             }, 0);
             $productCount = count($orderData['line_items']);
             foreach ($orderData['line_items'] as $item) {
                 $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
                     'order_id' => $orderId,
-                    'order_item_name' => $item['name'],
+                    'order_item_name' => $item['product_name'],
                     'order_item_type' => 'line_item'
                 ]);
 
@@ -111,9 +111,9 @@ class OrderController extends Controller
                     ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
                     ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
                     ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
-                    ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $item['quantity'] * $item['price']],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $item['quantity'] * $item['product_price']],
                     ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => 0],
-                    ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $item['quantity'] * $item['price']],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $item['quantity'] * $item['product_price']],
                     ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' => 0],
                     ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' => serialize(['total' => [], 'subtotal' => []])],
                     ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => 0],
@@ -156,8 +156,8 @@ class OrderController extends Controller
                     'customer_id' => $user->ID, 
                     'date_created' => now(),
                     'product_qty' => $item['quantity'],
-                    'product_net_revenue' => $item['quantity'] * $item['price'],
-                    'product_gross_revenue' => $item['quantity'] * $item['price'],
+                    'product_net_revenue' => $item['quantity'] * $item['product_price'],
+                    'product_gross_revenue' => $item['quantity'] * $item['product_price'],
                 ]);
             }
             DB::table('wp_wc_orders')->insert([
@@ -282,8 +282,7 @@ class OrderController extends Controller
             }
             
             DB::commit();
-            //send success mail to admin
-            return response()->json(['status'=>true, 'message' => "Order Created Successfull Order No: $newValue and Order ID: $orderId", 'order_id' => $orderId, 'order_number'=>$newValue], 201);
+            return response()->json(['status'=>true, 'message' => "Order Created Successfull Order No: $newValue and Order ID: $orderId", 'order_id' => $orderId, 'order_number'=>$newValue,'transaction_id'=>''], 201);
         } catch (\Exception $e) {
             DB::rollBack();
             //send failure mail to admin to take action
