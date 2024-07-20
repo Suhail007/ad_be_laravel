@@ -236,8 +236,8 @@ class PayPalController extends Controller
             // }
 
             return response()->json([
-                'status' => true,
-                'message' => 'Payment successful',
+                // 'status' => true,
+                // 'message' => 'Payment successful',
                 'data' => $paymentResult
             ], 200);
         } catch (Exception $e) {
