@@ -143,7 +143,7 @@ class OrderController extends Controller
                             $productMeta->save();
                         }
                     }
-                    Cart::where('user_id', $request->user()->id)
+                    Cart::where('user_id', $user->ID)
                         ->where('product_id', $item['product_id'])
                         ->where('variation_id', $item['variation_id'] ?? null)
                         ->delete();
