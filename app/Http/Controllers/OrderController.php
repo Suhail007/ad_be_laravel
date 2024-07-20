@@ -105,6 +105,24 @@ class OrderController extends Controller
                     'order_item_name' => $item['product_name'],
                     'order_item_type' => 'line_item'
                 ]);
+                if ($item['variation_id']) {
+                    $productMeta = ProductMeta::where('post_id', $item['variation_id'])->where('meta_key', '_stock')->first();
+                    if ($productMeta) {
+                        $productMeta->meta_value -= $item['quantity'];
+                        $productMeta->save();
+                     echo "stock". $productMeta->meta_value;
+                    }
+                } else {
+                    $productMeta = ProductMeta::where('post_id', $item['product_id'])->where('meta_key', '_stock')->first();
+                    if ($productMeta) {
+                        $productMeta->meta_value -= $item['quantity'];
+                        $productMeta->save();
+                    }
+                }
+                Cart::where('user_id', $user->ID)
+                    ->where('product_id', $item['product_id'])
+                    ->where('variation_id', $item['variation_id'] ?? null)
+                    ->delete();
 
                 $itemMeta = [
                     ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
@@ -130,24 +148,7 @@ class OrderController extends Controller
 
                 foreach ($itemMeta as $meta) {
                     DB::table('wp_woocommerce_order_itemmeta')->insert($meta);
-                    if ($item['variation_id']) {
-                        $productMeta = ProductMeta::where('post_id', $item['variation_id'])->where('meta_key', '_stock')->first();
-                        if ($productMeta) {
-                            $productMeta->meta_value -= $item['quantity'];
-                            $productMeta->save();
-                         
-                        }
-                    } else {
-                        $productMeta = ProductMeta::where('post_id', $item['product_id'])->where('meta_key', '_stock')->first();
-                        if ($productMeta) {
-                            $productMeta->meta_value -= $item['quantity'];
-                            $productMeta->save();
-                        }
-                    }
-                    Cart::where('user_id', $user->ID)
-                        ->where('product_id', $item['product_id'])
-                        ->where('variation_id', $item['variation_id'] ?? null)
-                        ->delete();
+                    
                 }
                 DB::table('wp_wc_order_product_lookup')->insert([
                     'order_item_id' => $orderItemId,
