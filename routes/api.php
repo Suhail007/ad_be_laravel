@@ -40,8 +40,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
     //myaccount
     Route::get('/my-account/addresses',[MyAcccountController::class,'getUserAddresses']);
-    Route::get('orders', [OrderController::class, 'index']);
-    Route::get('orders/{id}', [OrderController::class, 'show']);
+    Route::get('/orders', [OrderController::class, 'index']);
+    Route::get('/orders/{id}', [OrderController::class, 'show']);
 
     //user Cart
     Route::get('/cart/{userId}', [CartController::class, 'getCart']);
