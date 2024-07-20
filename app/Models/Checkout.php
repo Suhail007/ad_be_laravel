@@ -9,4 +9,10 @@ class Checkout extends Model
 {
     use HasFactory;
     protected $guarded = [];
+
+    protected $casts = [
+        'billing' => 'array', 
+        'shipping' => 'array', 
+        'extra' => 'array'
+    ];
 }
