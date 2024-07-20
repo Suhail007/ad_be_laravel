@@ -227,13 +227,13 @@ class PayPalController extends Controller
             $saleData = $this->doSale($amount, $payment_token, $billingInfo, $shippingInfo);
             $paymentResult = $this->_doRequest($saleData);
 
-            if (!$paymentResult['status']) {
-                return response()->json([
-                    'status' => false,
-                    'message' => $paymentResult,
-                    'uniqueId' => null
-                ], 200);
-            }
+            // if (!$paymentResult['status']) {
+            //     return response()->json([
+            //         'status' => false,
+            //         'message' => $paymentResult,
+            //         'uniqueId' => null
+            //     ], 200);
+            // }
 
             return response()->json([
                 'status' => true,

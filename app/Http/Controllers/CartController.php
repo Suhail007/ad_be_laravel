@@ -6,6 +6,7 @@ use App\Http\Requests\BulkAddToCartRequest;
 use App\Http\Requests\UpdateCartQuantityRequest;
 use Illuminate\Http\Request;
 use App\Models\Cart;
+use App\Models\Checkout;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\Product;
 use App\Models\ProductMeta;
@@ -14,6 +15,31 @@ use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
+    protected function reduceStock($cartItem)
+    {
+        $product = $cartItem->product;
+        $variation = $cartItem->variation;
+
+        if ($variation) {
+            $stockLevel = ProductMeta::where('post_id', $variation->ID)
+                ->where('meta_key', '_stock')
+                ->value('meta_value');
+
+            $newStockLevel = max(0, $stockLevel - $cartItem->quantity);
+            ProductMeta::where('post_id', $variation->ID)
+                ->where('meta_key', '_stock')
+                ->update(['meta_value' => $newStockLevel]);
+        } else {
+            $stockLevel = ProductMeta::where('post_id', $product->ID)
+                ->where('meta_key', '_stock')
+                ->value('meta_value');
+
+            $newStockLevel = max(0, $stockLevel - $cartItem->quantity);
+            ProductMeta::where('post_id', $product->ID)
+                ->where('meta_key', '_stock')
+                ->update(['meta_value' => $newStockLevel]);
+        }
+    }
     public function addToCart(Request $request)
     {
         $cart = Cart::create([
@@ -25,11 +51,13 @@ class CartController extends Controller
 
         return response()->json(['success' => 'Product added to cart', 'cart' => $cart], 200);
     }
-    public function bulkAddToCart(Request $request)
-    {
-
+    public function bulkAddToCart(Request $request){
         $user = JWTAuth::parseToken()->authenticate();
         $user_id = $user->ID;
+
+        $checkout = Checkout::where('user_id', $user_id)->first();
+        $isFreeze = $checkout ? $checkout->isFreeze : false;
+
         $product_id = $request->product_id;
         $variations = $request->variations;
 
@@ -52,12 +80,16 @@ class CartController extends Controller
                     'quantity' => $variation['quantity'],
                 ]);
             }
+            if ($isFreeze) {
+                $this->reduceStock($cartItem);
+            }
 
             $cartItems[] = $cartItem;
         }
 
-        $cartItems = Cart::where('user_id', $user->ID)->get();
+        $cartItems = Cart::where('user_id', $user_id)->get();
         $userIp = $request->ip();
+
         if ($cartItems->isEmpty()) {
             return response()->json([
                 'username' => $user->user_login,
@@ -68,12 +100,15 @@ class CartController extends Controller
                 'cart_items' => [],
             ], 200);
         }
+
         $priceTier = $user->price_tier;
         $cartData = [];
+
         foreach ($cartItems as $cartItem) {
             $product = $cartItem->product;
             $variation = $cartItem->variation;
             $wholesalePrice = 0;
+
             if ($variation) {
                 $wholesalePrice = ProductMeta::where('post_id', $variation->ID)
                     ->where('meta_key', $priceTier)
@@ -103,6 +138,7 @@ class CartController extends Controller
                     ->where('meta_key', '_stock_status')
                     ->value('meta_value');
             }
+
             if ($stockStatus === 'instock' && $stockLevel > 0) {
                 $stockStatus = 'instock';
             } else {
@@ -118,7 +154,6 @@ class CartController extends Controller
             }
 
             $productSlug = $product->post_name;
-
             $categoryIds = $product->categories->pluck('term_id')->toArray();
 
             $cartData[] = [
@@ -141,17 +176,15 @@ class CartController extends Controller
             'status' => true,
             'success' => 'Products added to cart',
             'data' => $userIp,
-            // 'time' => now()->toDateTimeString(),
-            // 'cart_count' => count($cartData),
             'cart' => $cartData,
         ], 200);
-        // return response()->json(['success' => 'Products added to cart', 'cart' => $cartItems], 200);
     }
+
 
     public function bulkUpdateCart(Request $request){
         $user = JWTAuth::parseToken()->authenticate();
         $user_id = $user->ID;
-        $items = $request->items; 
+        $items = $request->items;
         $cartItems = [];
         foreach ($items as $item) {
             $product_id = $item['product_id'];
