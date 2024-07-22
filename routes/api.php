@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WooCommerceController;
 // routes/web.php or routes/api.php
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\DiscountRuleController;
 use App\Http\Controllers\MyAcccountController;
 use App\Http\Controllers\OrderController;
@@ -51,7 +52,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('/cart/empty',[CartController::class,'empty']);
     Route::post('/cart/bulk-update',[CartController::class,'bulkUpdateCart']);
 
-    //checkout Cart with category Id
+    //checkout 
+    Route::post('/checkout/address',[CheckoutController::class,'checkoutAddress']);
 
     //payment 
     Route::get('/payment-price',[PayPalController::class, 'me']);
