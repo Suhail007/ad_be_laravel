@@ -212,259 +212,261 @@ class PayPalController extends Controller
         }
     }
 
-    private function createNewOrder($userID, $agent, $ip, $paymentResult){
-    $orderData = Checkout::where('user_id', $userID)->first();
-    $user = User::findOrFail($userID);
-
-    try {
-        DB::beginTransaction();
-        $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
-        $currentValue = (int)$options[0]->option_value;
-        $newValue = $currentValue + 1;
-        DB::update("UPDATE wp_options SET option_value = ? WHERE option_name = 'wt_last_order_number'", [$newValue]);
-        $orderId = DB::table('wp_posts')->insertGetId([
-            'post_author' => $user->ID,
-            'post_date' => now(),
-            'post_date_gmt' => now(),
-            'post_content' => '',
-            'post_title' => 'Order',
-            'to_ping' => '',
-            'pinged' => '',
-            'post_content_filtered' => '',
-            'post_excerpt' => '',
-            'post_status' => 'wc-processing',
-            'comment_status' => 'closed',
-            'ping_status' => 'closed',
-            'post_name' => 'order-' . uniqid(),
-            'post_modified' => now(),
-            'post_modified_gmt' => now(),
-            'post_type' => 'shop_order',
-            'guid' => 'https://ad.phantasm.solutions/?post_type=shop_order&p=' . uniqid(),
-        ]);
-        $metaData = [
-            ['post_id' => $orderId, 'meta_key' => '_billing_first_name', 'meta_value' => $orderData['billing']['first_name']],
-            ['post_id' => $orderId, 'meta_key' => '_billing_last_name', 'meta_value' => $orderData['billing']['last_name']],
-            ['post_id' => $orderId, 'meta_key' => '_billing_address_1', 'meta_value' => $orderData['billing']['address_1']],
-            ['post_id' => $orderId, 'meta_key' => '_billing_address_2', 'meta_value' => $orderData['billing']['address_2']],
-            ['post_id' => $orderId, 'meta_key' => '_billing_city', 'meta_value' => $orderData['billing']['city']],
-            ['post_id' => $orderId, 'meta_key' => '_billing_state', 'meta_value' => $orderData['billing']['state']],
-            ['post_id' => $orderId, 'meta_key' => '_billing_postcode', 'meta_value' => $orderData['billing']['postcode']],
-            ['post_id' => $orderId, 'meta_key' => '_billing_country', 'meta_value' => $orderData['billing']['country']],
-            ['post_id' => $orderId, 'meta_key' => '_billing_email', 'meta_value' => $orderData['billing']['email']],
-            ['post_id' => $orderId, 'meta_key' => '_billing_phone', 'meta_value' => $orderData['billing']['phone']],
-            ['post_id' => $orderId, 'meta_key' => '_shipping_first_name', 'meta_value' => $orderData['shipping']['first_name']],
-            ['post_id' => $orderId, 'meta_key' => '_shipping_last_name', 'meta_value' => $orderData['shipping']['last_name']],
-            ['post_id' => $orderId, 'meta_key' => '_shipping_address_1', 'meta_value' => $orderData['shipping']['address_1']],
-            ['post_id' => $orderId, 'meta_key' => '_shipping_address_2', 'meta_value' => $orderData['shipping']['address_2']],
-            ['post_id' => $orderId, 'meta_key' => '_shipping_city', 'meta_value' => $orderData['shipping']['city']],
-            ['post_id' => $orderId, 'meta_key' => '_shipping_state', 'meta_value' => $orderData['shipping']['state']],
-            ['post_id' => $orderId, 'meta_key' => '_shipping_postcode', 'meta_value' => $orderData['shipping']['postcode']],
-            ['post_id' => $orderId, 'meta_key' => '_shipping_country', 'meta_value' => $orderData['shipping']['country']],
-            ['post_id' => $orderId, 'meta_key' => '_payment_method', 'meta_value' => $orderData['payment_method']],
-            ['post_id' => $orderId, 'meta_key' => '_payment_method_title', 'meta_value' => $orderData['payment_method_title']],
-            ['post_id' => $orderId, 'meta_key' => '_transaction_id', 'meta_value' => uniqid()],
-            ['post_id' => $orderId, 'meta_key' => '_order_total', 'meta_value' => $orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {
-                return $carry + $item['quantity'] * $item['product_price'];
-            }, 0)],
-            ['post_id' => $orderId, 'meta_key' => '_order_currency', 'meta_value' => 'USD'],
-            ['post_id' => $orderId, 'meta_key' => '_order_key', 'meta_value' => 'wc_order_' . uniqid()],
-            ['post_id' => $orderId, 'meta_key' => '_customer_user', 'meta_value' => $user->ID],
-            ['post_id' => $orderId, 'meta_key' => '_created_via', 'meta_value' => 'checkout'],
-            ['post_id' => $orderId, 'meta_key' => '_order_stock_reduced', 'meta_value' => 'yes'],
-            ['post_id' => $orderId, 'meta_key' => '_billing_address_index', 'meta_value' => implode(' ', $orderData['billing'])],
-            ['post_id' => $orderId, 'meta_key' => '_shipping_address_index', 'meta_value' => implode(' ', $orderData['shipping'])],
-            ['post_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
-        ];
-        foreach ($metaData as $meta) {
-            OrderMeta::insert($meta);
-        }
-        $totalAmount = $orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {
-            return $carry + $item['quantity'] * $item['product_price'];
-        }, 0);
-        $productCount = count($orderData['line_items']);
-        foreach ($orderData['line_items'] as $item) {
-            $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
-                'order_id' => $orderId,
-                'order_item_name' => $item['product_name'],
-                'order_item_type' => 'line_item'
+    // public function createNewOrder($userID, $agent, $ip, $paymentResult, $order_type, $order_role)
+    public function createNewOrder($userID, $agent, $ip, $paymentResult, $order_type, $order_role)
+    {
+        $orderData = Checkout::where('user_id', $userID)->first();
+        dd($orderData);
+        $user = User::findOrFail($userID);
+        try {
+            DB::beginTransaction();
+            $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
+            $currentValue = (int)$options[0]->option_value;
+            $newValue = $currentValue + 1;
+            DB::update("UPDATE wp_options SET option_value = ? WHERE option_name = 'wt_last_order_number'", [$newValue]);
+            $orderId = DB::table('wp_posts')->insertGetId([
+                'post_author' => $user->ID,
+                'post_date' => now(),
+                'post_date_gmt' => now(),
+                'post_content' => '',
+                'post_title' => 'Order',
+                'to_ping' => '',
+                'pinged' => '',
+                'post_content_filtered' => '',
+                'post_excerpt' => '',
+                'post_status' => 'wc-processing',
+                'comment_status' => 'closed',
+                'ping_status' => 'closed',
+                'post_name' => 'order-' . uniqid(),
+                'post_modified' => now(),
+                'post_modified_gmt' => now(),
+                'post_type' => 'shop_order',
+                'guid' => 'https://ad.phantasm.solutions/?post_type=shop_order&p=' . uniqid(),
             ]);
-            if ($item['variation_id']) {
-                $productMeta = ProductMeta::where('post_id', $item['variation_id'])->where('meta_key', '_stock')->first();
-                if ($productMeta) {
-                    $productMeta->meta_value -= $item['quantity'];
-                    $productMeta->save();
-                }
-            } else {
-                $productMeta = ProductMeta::where('post_id', $item['product_id'])->where('meta_key', '_stock')->first();
-                if ($productMeta) {
-                    $productMeta->meta_value -= $item['quantity'];
-                    $productMeta->save();
-                }
-            }
-            Cart::where('user_id', $userID)
-                ->where('product_id', $item['product_id'])
-                ->where('variation_id', $item['variation_id'] ?? null)
-                ->delete();
-            $itemMeta = [
-                ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
-                ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
-                ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
-                ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
-                ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $item['quantity'] * $item['product_price']],
-                ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => 0],
-                ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $item['quantity'] * $item['product_price']],
-                ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' => 0],
-                ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' => serialize(['total' => [], 'subtotal' => []])],
-                ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => 0],
-                ['order_item_id' => $orderItemId, 'meta_key' => '_total_order', 'meta_value' => $totalAmount],
-                ['order_item_id' => $orderItemId, 'meta_key' => '_product_count', 'meta_value' => $productCount],
-                ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
-                ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $item['wholesale_role']],
-                ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_price', 'meta_value' => $item['wholesale_price']],
-                ['order_item_id' => $orderItemId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
+            $metaData = [
+                ['post_id' => $orderId, 'meta_key' => '_billing_first_name', 'meta_value' => $orderData['billing']['first_name']],
+                ['post_id' => $orderId, 'meta_key' => '_billing_last_name', 'meta_value' => $orderData['billing']['last_name']],
+                ['post_id' => $orderId, 'meta_key' => '_billing_address_1', 'meta_value' => $orderData['billing']['address_1']],
+                ['post_id' => $orderId, 'meta_key' => '_billing_address_2', 'meta_value' => $orderData['billing']['address_2']],
+                ['post_id' => $orderId, 'meta_key' => '_billing_city', 'meta_value' => $orderData['billing']['city']],
+                ['post_id' => $orderId, 'meta_key' => '_billing_state', 'meta_value' => $orderData['billing']['state']],
+                ['post_id' => $orderId, 'meta_key' => '_billing_postcode', 'meta_value' => $orderData['billing']['postcode']],
+                ['post_id' => $orderId, 'meta_key' => '_billing_country', 'meta_value' => $orderData['billing']['country']],
+                ['post_id' => $orderId, 'meta_key' => '_billing_email', 'meta_value' => $orderData['billing']['email']],
+                ['post_id' => $orderId, 'meta_key' => '_billing_phone', 'meta_value' => $orderData['billing']['phone']],
+                ['post_id' => $orderId, 'meta_key' => '_shipping_first_name', 'meta_value' => $orderData['shipping']['first_name']],
+                ['post_id' => $orderId, 'meta_key' => '_shipping_last_name', 'meta_value' => $orderData['shipping']['last_name']],
+                ['post_id' => $orderId, 'meta_key' => '_shipping_address_1', 'meta_value' => $orderData['shipping']['address_1']],
+                ['post_id' => $orderId, 'meta_key' => '_shipping_address_2', 'meta_value' => $orderData['shipping']['address_2']],
+                ['post_id' => $orderId, 'meta_key' => '_shipping_city', 'meta_value' => $orderData['shipping']['city']],
+                ['post_id' => $orderId, 'meta_key' => '_shipping_state', 'meta_value' => $orderData['shipping']['state']],
+                ['post_id' => $orderId, 'meta_key' => '_shipping_postcode', 'meta_value' => $orderData['shipping']['postcode']],
+                ['post_id' => $orderId, 'meta_key' => '_shipping_country', 'meta_value' => $orderData['shipping']['country']],
+                ['post_id' => $orderId, 'meta_key' => '_payment_method', 'meta_value' => $orderData['payment_method']],
+                ['post_id' => $orderId, 'meta_key' => '_payment_method_title', 'meta_value' => $orderData['payment_method_title']],
+                ['post_id' => $orderId, 'meta_key' => '_transaction_id', 'meta_value' => uniqid()],
+                ['post_id' => $orderId, 'meta_key' => '_order_total', 'meta_value' => $orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {
+                    return $carry + $item['quantity'] * $item['product_price'];
+                }, 0)],
+                ['post_id' => $orderId, 'meta_key' => '_order_currency', 'meta_value' => 'USD'],
+                ['post_id' => $orderId, 'meta_key' => '_order_key', 'meta_value' => 'wc_order_' . uniqid()],
+                ['post_id' => $orderId, 'meta_key' => '_customer_user', 'meta_value' => $user->ID],
+                ['post_id' => $orderId, 'meta_key' => '_created_via', 'meta_value' => 'checkout'],
+                ['post_id' => $orderId, 'meta_key' => '_order_stock_reduced', 'meta_value' => 'yes'],
+                ['post_id' => $orderId, 'meta_key' => '_billing_address_index', 'meta_value' => implode(' ', $orderData['billing'])],
+                ['post_id' => $orderId, 'meta_key' => '_shipping_address_index', 'meta_value' => implode(' ', $orderData['shipping'])],
+                ['post_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
             ];
-            foreach ($itemMeta as $meta) {
-                OrderItemMeta::insert($meta);
+            foreach ($metaData as $meta) {
+                OrderMeta::insert($meta);
             }
-            DB::table('wp_wc_order_product_lookup')->insert([
-                'order_item_id' => $orderItemId,
-                'order_id' => $orderId,
-                'product_id' => $item['product_id'],
-                'variation_id' => $item['variation_id'] ?? 0,
-                'customer_id' => $user->ID, 
-                'date_created' => now(),
-                'product_qty' => $item['quantity'],
-                'product_net_revenue' => $item['quantity'] * $item['product_price'],
-                'product_gross_revenue' => $item['quantity'] * $item['product_price'],
+            $totalAmount = $orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {
+                return $carry + $item['quantity'] * $item['product_price'];
+            }, 0);
+            $productCount = count($orderData['line_items']);
+            foreach ($orderData['line_items'] as $item) {
+                $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
+                    'order_id' => $orderId,
+                    'order_item_name' => $item['product_name'],
+                    'order_item_type' => 'line_item'
+                ]);
+                if ($item['variation_id']) {
+                    $productMeta = ProductMeta::where('post_id', $item['variation_id'])->where('meta_key', '_stock')->first();
+                    if ($productMeta) {
+                        $productMeta->meta_value -= $item['quantity'];
+                        $productMeta->save();
+                    }
+                } else {
+                    $productMeta = ProductMeta::where('post_id', $item['product_id'])->where('meta_key', '_stock')->first();
+                    if ($productMeta) {
+                        $productMeta->meta_value -= $item['quantity'];
+                        $productMeta->save();
+                    }
+                }
+                Cart::where('user_id', $userID)
+                    ->where('product_id', $item['product_id'])
+                    ->where('variation_id', $item['variation_id'] ?? null)
+                    ->delete();
+                $itemMeta = [
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $item['quantity'] * $item['product_price']],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => 0],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $item['quantity'] * $item['product_price']],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' => 0],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' => serialize(['total' => [], 'subtotal' => []])],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => 0],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_total_order', 'meta_value' => $totalAmount],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_product_count', 'meta_value' => $productCount],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $item['wholesale_role']],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_price', 'meta_value' => $item['wholesale_price']],
+                    ['order_item_id' => $orderItemId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
+                ];
+                foreach ($itemMeta as $meta) {
+                    OrderItemMeta::insert($meta);
+                }
+                DB::table('wp_wc_order_product_lookup')->insert([
+                    'order_item_id' => $orderItemId,
+                    'order_id' => $orderId,
+                    'product_id' => $item['product_id'],
+                    'variation_id' => $item['variation_id'] ?? 0,
+                    'customer_id' => $user->ID,
+                    'date_created' => now(),
+                    'product_qty' => $item['quantity'],
+                    'product_net_revenue' => $item['quantity'] * $item['product_price'],
+                    'product_gross_revenue' => $item['quantity'] * $item['product_price'],
+                ]);
+            }
+            DB::table('wp_wc_orders')->insert([
+                'id' => $orderId,
+                'status' => 'wc-processing',
+                'currency' => 'USD',
+                'type' => 'shop_order',
+                'tax_amount' => 0,
+                'total_amount' => $totalAmount,
+                'customer_id' => $user->ID,
+                'billing_email' => $orderData['billing']['email'],
+                'date_created_gmt' => now(),
+                'date_updated_gmt' => now(),
+                'parent_order_id' => 0,
+                'payment_method' => $orderData['payment_method'],
+                'payment_method_title' => $orderData['payment_method_title'],
+                'transaction_id' => uniqid(),
+                'ip_address' => $ip,
+                'user_agent' => $agent,
+                'customer_note' => ''
             ]);
+            $wp_wc_order_meta = [
+                ['order_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
+                ['order_id' => $orderId, 'meta_key' => '_wwpp_order_type', 'meta_value' => 'wholesale'],
+                ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => 'mm_price_2'],
+                ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => 'mm_price_2'],
+                [
+                    'order_id' => $orderId,
+                    'meta_key' => '_shipping_address_index',
+                    'meta_value' => (isset($orderData['shipping']['first_name']) ? $orderData['shipping']['first_name'] . ' ' : '') .
+                        (isset($orderData['shipping']['address_1']) ? $orderData['shipping']['address_1'] . ' ' : '') .
+                        (isset($orderData['shipping']['city']) ? $orderData['shipping']['city'] . ' ' : '') .
+                        (isset($orderData['shipping']['state']) ? $orderData['shipping']['state'] . ' ' : '') .
+                        (isset($orderData['shipping']['postcode']) ? $orderData['shipping']['postcode'] : '')
+                ],
+            ];
+            DB::table('wp_wc_orders_meta')->insert($wp_wc_order_meta);
+            DB::table('wp_wc_order_addresses')->insert([
+                [
+                    'order_id' => $orderId,
+                    'address_type' => 'billing',
+                    'first_name' => $orderData['billing']['first_name'],
+                    'last_name' => $orderData['billing']['last_name'],
+                    'company' => '',
+                    'address_1' => $orderData['billing']['address_1'],
+                    'address_2' => $orderData['billing']['address_2'],
+                    'city' => $orderData['billing']['city'],
+                    'state' => $orderData['billing']['state'],
+                    'postcode' => $orderData['billing']['postcode'],
+                    'country' => $orderData['billing']['country'],
+                    'email' => $orderData['billing']['email'],
+                    'phone' => $orderData['billing']['phone']
+                ],
+                [
+                    'order_id' => $orderId,
+                    'address_type' => 'shipping',
+                    'first_name' => $orderData['shipping']['first_name'],
+                    'last_name' => $orderData['shipping']['last_name'],
+                    'company' => '',
+                    'address_1' => $orderData['shipping']['address_1'],
+                    'address_2' => $orderData['shipping']['address_2'],
+                    'city' => $orderData['shipping']['city'],
+                    'state' => $orderData['shipping']['state'],
+                    'postcode' => $orderData['shipping']['postcode'],
+                    'country' => $orderData['shipping']['country'],
+                    'email' => $orderData['billing']['email'],
+                    'phone' => $orderData['billing']['phone']
+                ]
+            ]);
+            DB::table('wp_wc_order_stats')->insert([
+                'order_id' => $orderId,
+                'parent_id' => 0,
+                'status' => 'wc-processing',
+                'date_created' => now(),
+                'date_created_gmt' => now(),
+                'num_items_sold' => $productCount,
+                'total_sales' => $totalAmount,
+                'tax_total' => 0,
+                'shipping_total' => $orderData['shipping_lines'][0]['total'],
+                'net_total' => $totalAmount,
+                'returning_customer' => 0,
+                'customer_id' => $user->ID,
+                'date_paid' => null,
+                'date_completed' => null,
+            ]);
+            $orderNotes = [
+                [
+                    'comment_post_ID' => $orderId,
+                    'comment_author' => 'Laravel',
+                    'comment_author_email' => '',
+                    'comment_author_url' => '',
+                    'comment_author_IP' => $ip,
+                    'comment_date' => now(),
+                    'comment_date_gmt' => now(),
+                    'comment_content' => 'Order status changed from Pending payment to Processing (express).',
+                    'comment_karma' => 0,
+                    'comment_approved' => 1,
+                    'comment_agent' => $agent,
+                    'comment_type' => 'order_note',
+                    'comment_parent' => 0,
+                    'user_id' => 0,
+                ],
+                [
+                    'comment_post_ID' => $orderId,
+                    'comment_author' => 'Laravel',
+                    'comment_author_email' => '',
+                    'comment_author_url' => '',
+                    'comment_author_IP' => $ip,
+                    'comment_date' => now(),
+                    'comment_date_gmt' => now(),
+                    'comment_content' => 'NMI charge complete (Charge ID: 9662XXX234)',
+                    'comment_karma' => 0,
+                    'comment_approved' => 1,
+                    'comment_agent' => $agent,
+                    'comment_type' => 'order_note',
+                    'comment_parent' => 0,
+                    'user_id' => 0,
+                ],
+            ];
+            foreach ($orderNotes as $note) {
+                DB::table('wp_comments')->insert($note);
+            }
+            DB::commit();
+            return $orderId;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Order creation failed: ' . $e->getMessage()], 500);
         }
-        DB::table('wp_wc_orders')->insert([
-            'id' => $orderId,
-            'status' => 'wc-processing',
-            'currency' => 'USD',
-            'type' => 'shop_order',
-            'tax_amount' => 0,
-            'total_amount' => $totalAmount,
-            'customer_id' => $user->ID, 
-            'billing_email' => $orderData['billing']['email'],
-            'date_created_gmt' => now(),
-            'date_updated_gmt' => now(),
-            'parent_order_id' => 0,
-            'payment_method' => $orderData['payment_method'],
-            'payment_method_title' => $orderData['payment_method_title'],
-            'transaction_id' => uniqid(),
-            'ip_address' => $ip,
-            'user_agent' => $agent,
-            'customer_note' => ''
-        ]);
-        $wp_wc_order_meta = [
-            ['order_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
-            ['order_id' => $orderId, 'meta_key' => '_wwpp_order_type', 'meta_value' => 'wholesale'],
-            ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => 'mm_price_2'],
-            ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => 'mm_price_2'],
-            [
-                'order_id' => $orderId,
-                'meta_key' => '_shipping_address_index',
-                'meta_value' => (isset($orderData['shipping']['first_name']) ? $orderData['shipping']['first_name'] . ' ' : '') .
-                    (isset($orderData['shipping']['address_1']) ? $orderData['shipping']['address_1'] . ' ' : '') .
-                    (isset($orderData['shipping']['city']) ? $orderData['shipping']['city'] . ' ' : '') .
-                    (isset($orderData['shipping']['state']) ? $orderData['shipping']['state'] . ' ' : '') .
-                    (isset($orderData['shipping']['postcode']) ? $orderData['shipping']['postcode'] : '')
-            ],
-        ];
-        DB::table('wp_wc_orders_meta')->insert($wp_wc_order_meta);
-        DB::table('wp_wc_order_addresses')->insert([
-            [
-                'order_id' => $orderId,
-                'address_type' => 'billing',
-                'first_name' => $orderData['billing']['first_name'],
-                'last_name' => $orderData['billing']['last_name'],
-                'company' => '',
-                'address_1' => $orderData['billing']['address_1'],
-                'address_2' => $orderData['billing']['address_2'],
-                'city' => $orderData['billing']['city'],
-                'state' => $orderData['billing']['state'],
-                'postcode' => $orderData['billing']['postcode'],
-                'country' => $orderData['billing']['country'],
-                'email' => $orderData['billing']['email'],
-                'phone' => $orderData['billing']['phone']
-            ],
-            [
-                'order_id' => $orderId,
-                'address_type' => 'shipping',
-                'first_name' => $orderData['shipping']['first_name'],
-                'last_name' => $orderData['shipping']['last_name'],
-                'company' => '',
-                'address_1' => $orderData['shipping']['address_1'],
-                'address_2' => $orderData['shipping']['address_2'],
-                'city' => $orderData['shipping']['city'],
-                'state' => $orderData['shipping']['state'],
-                'postcode' => $orderData['shipping']['postcode'],
-                'country' => $orderData['shipping']['country'],
-                'email' => $orderData['billing']['email'], 
-                'phone' => $orderData['billing']['phone'] 
-            ]
-        ]);
-        DB::table('wp_wc_order_stats')->insert([
-            'order_id' => $orderId,
-            'parent_id' => 0,
-            'status' => 'wc-processing',
-            'date_created' => now(),
-            'date_created_gmt' => now(),
-            'num_items_sold' => $productCount,
-            'total_sales' => $totalAmount,
-            'tax_total' => 0,
-            'shipping_total' => $orderData['shipping_lines'][0]['total'],
-            'net_total' => $totalAmount,
-            'returning_customer' => 0,  
-            'customer_id' => $user->ID, 
-            'date_paid' => null, 
-            'date_completed' => null,
-        ]);
-        $orderNotes = [
-            [
-                'comment_post_ID' => $orderId,
-                'comment_author' => 'Laravel',
-                'comment_author_email' => '',
-                'comment_author_url' => '',
-                'comment_author_IP' => $ip,
-                'comment_date' => now(),
-                'comment_date_gmt' => now(),
-                'comment_content' => 'Order status changed from Pending payment to Processing (express).',
-                'comment_karma' => 0,
-                'comment_approved' => 1,
-                'comment_agent' => $agent,
-                'comment_type' => 'order_note',
-                'comment_parent' => 0,
-                'user_id' => 0,
-            ],
-            [
-                'comment_post_ID' => $orderId,
-                'comment_author' => 'Laravel',
-                'comment_author_email' => '',
-                'comment_author_url' => '',
-                'comment_author_IP' => $ip,
-                'comment_date' => now(),
-                'comment_date_gmt' => now(),
-                'comment_content' => 'NMI charge complete (Charge ID: 9662XXX234)',
-                'comment_karma' => 0,
-                'comment_approved' => 1,
-                'comment_agent' => $agent,
-                'comment_type' => 'order_note',
-                'comment_parent' => 0,
-                'user_id' => 0,
-            ],
-        ];
-        foreach ($orderNotes as $note) {
-            DB::table('wp_comments')->insert($note);
-        }
-        DB::commit();
-        return $orderId;
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return response()->json(['error' => 'Order creation failed: ' . $e->getMessage()], 500);
     }
-}
 
     public function processPayment(Request $request)
     {
@@ -472,43 +474,41 @@ class PayPalController extends Controller
         if (!$user) {
             return response()->json(['message' => 'User not authenticated', 'status' => false], 401);
         }
-        $agent= $request->userAgent();
-        $ip= $request->ip();
-        $billingInfo = $request->input('billing');
-        $shippingInfo = $request->input('shipping');
+
+        $agent = $request->userAgent() ?? "Unknown Device";
+        $ip = $request->ip() ?? "0.0.0.0";
+        $checkout = Checkout::where('user_id', $user->ID)->first();
+        $billingInfo = $checkout->billing;
+        $shippingInfo = $checkout->shipping;
         $amount = $request->input('amount');
-       
-
         $lineItems = $request->input('line_items');
+        $paytype = $request->input('paymentType');
+        $amount = $request->input('amount');
+        $order_type = $request->input('order_type'); 
+        $order_role = $request->input('order_role'); 
+        $order_wholesale_role = $request->input('order_role'); // $request->input('order_wholesale_role');
+        $shippingLines= $request->input('shipping_lines');
 
-        $order_type = $request->input('order_type'); //'wholesale'
-        $order_role = $request->input('order_role'); //'mm_price_2'
-
-        $order_wholesale_role =$request->input('order_role'); // $request->input('order_wholesale_role');
-
-        $paytype = $request->input('paytype');
+        $paytype = $request->input('paymentType');
 
 
-        if($paytype == 'card'){
+        if ($paytype == 'card') {
             $payment_token = $request->input('payment_token');
             try {
-                $this->validateBilling($billingInfo);
-                $this->validateShipping($shippingInfo);
-    
-                $checkout = Checkout::updateOrCreate(
-                    ['user_id' => $user->ID],
+                // $this->validateBilling($billingInfo);
+                // $this->validateShipping($shippingInfo);
+
+                $checkout->update(
                     [
-                        'isFreeze' => true,
-                        'total' => $amount,
-                        'billing' => json_encode($billingInfo),
-                        'shipping' => json_encode($shippingInfo),
-                        'extra' => json_encode(['line_items' => $lineItems]),
+                        'total' => $shippingLines[0]['total'] + $amount,
+                        'extra' => $lineItems,
+                        'paymentType'=> $paytype,
                     ]
                 );
                 
-                $saleData = $this->doSale($amount, $payment_token, $billingInfo, $shippingInfo);
+                $saleData = $this->doSale($shippingLines[0]['total'] + $amount, $payment_token, $billingInfo, $shippingInfo);
                 $paymentResult = $this->_doRequest($saleData);
-    
+
                 if (!$paymentResult['status']) {
                     return response()->json([
                         'status' => false,
@@ -516,36 +516,291 @@ class PayPalController extends Controller
                         'uniqueId' => null
                     ], 200);
                 }
-                $this->createNewOrder($user->ID, $agent, $ip, $paymentResult);
+                $orderData = Checkout::where('user_id', $user->ID)->first();
+                try {
+                    DB::beginTransaction();
+                    $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
+                    $currentValue = (int)$options[0]->option_value;
+                    $newValue = $currentValue + 1;
+                    DB::update("UPDATE wp_options SET option_value = ? WHERE option_name = 'wt_last_order_number'", [$newValue]);
+                    $orderId = DB::table('wp_posts')->insertGetId([
+                        'post_author' => $user->ID,
+                        'post_date' => now(),
+                        'post_date_gmt' => now(),
+                        'post_content' => '',
+                        'post_title' => 'Order',
+                        'to_ping' => '',
+                        'pinged' => '',
+                        'post_content_filtered' => '',
+                        'post_excerpt' => '',
+                        'post_status' => 'wc-processing',
+                        'comment_status' => 'closed',
+                        'ping_status' => 'closed',
+                        'post_name' => 'order-' . uniqid(),
+                        'post_modified' => now(),
+                        'post_modified_gmt' => now(),
+                        'post_type' => 'shop_order',
+                        'guid' => 'https://ad.phantasm.solutions/?post_type=shop_order&p=' . uniqid(),
+                    ]);
+                    $metaData = [
+                        ['post_id' => $orderId, 'meta_key' => '_billing_first_name', 'meta_value' => $orderData['billing']['first_name']],
+                        ['post_id' => $orderId, 'meta_key' => '_billing_last_name', 'meta_value' => $orderData['billing']['last_name']],
+                        ['post_id' => $orderId, 'meta_key' => '_billing_address_1', 'meta_value' => $orderData['billing']['address_1']],
+                        ['post_id' => $orderId, 'meta_key' => '_billing_address_2', 'meta_value' => $orderData['billing']['address_2']],
+                        ['post_id' => $orderId, 'meta_key' => '_billing_city', 'meta_value' => $orderData['billing']['city']],
+                        ['post_id' => $orderId, 'meta_key' => '_billing_state', 'meta_value' => $orderData['billing']['state']],
+                        ['post_id' => $orderId, 'meta_key' => '_billing_postcode', 'meta_value' => $orderData['billing']['postcode']],
+                        ['post_id' => $orderId, 'meta_key' => '_billing_country', 'meta_value' => $orderData['billing']['country']],
+                        ['post_id' => $orderId, 'meta_key' => '_billing_email', 'meta_value' => $orderData['billing']['email']],
+                        ['post_id' => $orderId, 'meta_key' => '_billing_phone', 'meta_value' => $orderData['billing']['phone']],
+                        ['post_id' => $orderId, 'meta_key' => '_shipping_first_name', 'meta_value' => $orderData['shipping']['first_name']],
+                        ['post_id' => $orderId, 'meta_key' => '_shipping_last_name', 'meta_value' => $orderData['shipping']['last_name']],
+                        ['post_id' => $orderId, 'meta_key' => '_shipping_address_1', 'meta_value' => $orderData['shipping']['address_1']],
+                        ['post_id' => $orderId, 'meta_key' => '_shipping_address_2', 'meta_value' => $orderData['shipping']['address_2']],
+                        ['post_id' => $orderId, 'meta_key' => '_shipping_city', 'meta_value' => $orderData['shipping']['city']],
+                        ['post_id' => $orderId, 'meta_key' => '_shipping_state', 'meta_value' => $orderData['shipping']['state']],
+                        ['post_id' => $orderId, 'meta_key' => '_shipping_postcode', 'meta_value' => $orderData['shipping']['postcode']],
+                        ['post_id' => $orderId, 'meta_key' => '_shipping_country', 'meta_value' => $orderData['shipping']['country']],
+                        ['post_id' => $orderId, 'meta_key' => '_payment_method', 'meta_value' => $orderData['paymentType']],
+                        ['post_id' => $orderId, 'meta_key' => '_payment_method_title', 'meta_value' => 'NMI Payment on Card'] , //$orderData['payment_method_title']],
+                        ['post_id' => $orderId, 'meta_key' => '_transaction_id', 'meta_value' => uniqid()],
+                        ['post_id' => $orderId, 'meta_key' => '_order_total', 'meta_value' =>$shippingLines[0]['total'] + $amount], //$orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {return $carry + $item['quantity'] * $item['product_price'];}, 0)],
+                        ['post_id' => $orderId, 'meta_key' => '_order_currency', 'meta_value' => 'USD'],
+                        ['post_id' => $orderId, 'meta_key' => '_order_key', 'meta_value' => 'wc_order_' . uniqid()],
+                        ['post_id' => $orderId, 'meta_key' => '_customer_user', 'meta_value' => $user->ID],
+                        ['post_id' => $orderId, 'meta_key' => '_created_via', 'meta_value' => 'checkout'],
+                        ['post_id' => $orderId, 'meta_key' => '_order_stock_reduced', 'meta_value' => 'yes'],
+                        ['post_id' => $orderId, 'meta_key' => '_billing_address_index', 'meta_value' => implode(' ', $orderData['billing'])],
+                        ['post_id' => $orderId, 'meta_key' => '_shipping_address_index', 'meta_value' => implode(' ', $orderData['shipping'])],
+                        ['post_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
+                    ];
+                    foreach ($metaData as $meta) {
+                        OrderMeta::insert($meta);
+                    }
+                    $totalAmount = $shippingLines[0]['total'] + $amount; // $orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {return $carry + $item['quantity'] * $item['product_price'];}, 0);
+                    $productCount = count($orderData['extra']);
+                    foreach ($orderData['extra'] as $item) {
+                        $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
+                            'order_id' => $orderId,
+                            'order_item_name' => $item['product_name'],
+                            'order_item_type' => 'line_item'
+                        ]);
+                       
+                        
+                        if ($item['variation_id']) {
+                            $productMeta = ProductMeta::where('post_id', $item['variation_id'])->where('meta_key', '_stock')->first();
+                            if ($productMeta) {
+                                $productMeta->meta_value -= $item['quantity'];
+                                $productMeta->save();
+                            }
+                        } else {
+                            $productMeta = ProductMeta::where('post_id', $item['product_id'])->where('meta_key', '_stock')->first();
+                            if ($productMeta) {
+                                $productMeta->meta_value -= $item['quantity'];
+                                $productMeta->save();
+                            }
+                        }
+                        Cart::where('user_id', $user->ID)
+                            ->where('product_id', $item['product_id'])
+                            ->where('variation_id', $item['variation_id'] ?? null)
+                            ->delete();
+                            
+                        $itemMeta = [
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $item['quantity'] * $item['product_price']],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $item['quantity'] * $item['product_price']],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' => 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' => serialize(['total' => [], 'subtotal' => []])],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_total_order', 'meta_value' => $totalAmount],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_product_count', 'meta_value' => $productCount],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $item['wholesale_role']],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_price', 'meta_value' => $item['wholesale_price']],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
+                        ]; 
+                        
+                        foreach ($itemMeta as $meta) {
+                            OrderItemMeta::insert($meta);
+                        }
+                        
+                        DB::table('wp_wc_order_product_lookup')->insert([
+                            'order_item_id' => $orderItemId,
+                            'order_id' => $orderId,
+                            'product_id' => $item['product_id'],
+                            'variation_id' => $item['variation_id'] ?? 0,
+                            'customer_id' => $user->ID,
+                            'date_created' => now(),
+                            'product_qty' => $item['quantity'],
+                            'product_net_revenue' => $item['quantity'] * $item['product_price'],
+                            'product_gross_revenue' => $item['quantity'] * $item['product_price'],
+                        ]);
+                    }
+                    
+                    DB::table('wp_wc_orders')->insert([
+                        'id' => $orderId,
+                        'status' => 'wc-processing',
+                        'currency' => 'USD',
+                        'type' => 'shop_order',
+                        'tax_amount' => 0,
+                        'total_amount' => $totalAmount,
+                        'customer_id' => $user->ID,
+                        'billing_email' => $orderData['billing']['email'],
+                        'date_created_gmt' => now(),
+                        'date_updated_gmt' => now(),
+                        'parent_order_id' => 0,
+                        'payment_method' => $orderData['paymentType'],
+                        'payment_method_title' =>'NMI on Card Express Transaction ID:' .$paymentResult['data']['transactionid'] ,//$orderData['payment_method_title'],
+                        'transaction_id' => uniqid(),
+                        'ip_address' => $ip,
+                        'user_agent' => $agent,
+                        'customer_note' => ''
+                    ]);
+                    
+                    $wp_wc_order_meta = [
+                        ['order_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
+                        ['order_id' => $orderId, 'meta_key' => '_wwpp_order_type', 'meta_value' => $order_type],
+                        ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => $order_wholesale_role],
+                        ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => $order_wholesale_role],
+                        [
+                            'order_id' => $orderId,
+                            'meta_key' => '_shipping_address_index',
+                            'meta_value' => (isset($orderData['shipping']['first_name']) ? $orderData['shipping']['first_name'] . ' ' : '') .
+                                (isset($orderData['shipping']['address_1']) ? $orderData['shipping']['address_1'] . ' ' : '') .
+                                (isset($orderData['shipping']['city']) ? $orderData['shipping']['city'] . ' ' : '') .
+                                (isset($orderData['shipping']['state']) ? $orderData['shipping']['state'] . ' ' : '') .
+                                (isset($orderData['shipping']['postcode']) ? $orderData['shipping']['postcode'] : '')
+                        ],
+                    ];
+                   
+                    DB::table('wp_wc_orders_meta')->insert($wp_wc_order_meta);
+                    
+                    DB::table('wp_wc_order_addresses')->insert([
+                        [
+                            'order_id' => $orderId,
+                            'address_type' => 'billing',
+                            'first_name' => $orderData['billing']['first_name'],
+                            'last_name' => $orderData['billing']['last_name'],
+                            'company' => '',
+                            'address_1' => $orderData['billing']['address_1'],
+                            'address_2' => $orderData['billing']['address_2'],
+                            'city' => $orderData['billing']['city'],
+                            'state' => $orderData['billing']['state'],
+                            'postcode' => $orderData['billing']['postcode'],
+                            'country' => $orderData['billing']['country'],
+                            'email' => $orderData['billing']['email'],
+                            'phone' => $orderData['billing']['phone']
+                        ],
+                        [
+                            'order_id' => $orderId,
+                            'address_type' => 'shipping',
+                            'first_name' => $orderData['shipping']['first_name'],
+                            'last_name' => $orderData['shipping']['last_name'],
+                            'company' => '',
+                            'address_1' => $orderData['shipping']['address_1'],
+                            'address_2' => $orderData['shipping']['address_2'],
+                            'city' => $orderData['shipping']['city'],
+                            'state' => $orderData['shipping']['state'],
+                            'postcode' => $orderData['shipping']['postcode'],
+                            'country' => $orderData['shipping']['country'],
+                            'email' => $orderData['billing']['email'],
+                            'phone' => $orderData['billing']['phone']
+                        ]
+                    ]);
+                    
+                    DB::table('wp_wc_order_stats')->insert([
+                        'order_id' => $orderId,
+                        'parent_id' => 0,
+                        'status' => 'wc-processing',
+                        'date_created' => now(),
+                        'date_created_gmt' => now(),
+                        'num_items_sold' => $productCount,
+                        'total_sales' => $totalAmount,
+                        'tax_total' => 0,
+                        'shipping_total' => $shippingLines[0]['total'],
+                        'net_total' => $totalAmount,
+                        'returning_customer' => 0,
+                        'customer_id' => $user->ID,
+                        'date_paid' => null,
+                        'date_completed' => null,
+                    ]);
+                    
+                    $orderNotes = [
+                        [
+                            'comment_post_ID' => $orderId,
+                            'comment_author' => 'Laravel',
+                            'comment_author_email' => '',
+                            'comment_author_url' => '',
+                            'comment_author_IP' => $ip,
+                            'comment_date' => now(),
+                            'comment_date_gmt' => now(),
+                            'comment_content' => 'Order status changed from Pending payment to Processing (express).',
+                            'comment_karma' => 0,
+                            'comment_approved' => 1,
+                            'comment_agent' => $agent,
+                            'comment_type' => 'order_note',
+                            'comment_parent' => 0,
+                            'user_id' => 0,
+                        ],
+                        [
+                            'comment_post_ID' => $orderId,
+                            'comment_author' => 'Laravel',
+                            'comment_author_email' => '',
+                            'comment_author_url' => '',
+                            'comment_author_IP' => $ip,
+                            'comment_date' => now(),
+                            'comment_date_gmt' => now(),
+                            'comment_content' => 'NMI charge complete (Charge ID: '.$paymentResult['data']['transactionid'] ,
+                            'comment_karma' => 0,
+                            'comment_approved' => 1,
+                            'comment_agent' => $agent,
+                            'comment_type' => 'order_note',
+                            'comment_parent' => 0,
+                            'user_id' => 0,
+                        ],
+                    ];
+                    foreach ($orderNotes as $note) {
+                        DB::table('wp_comments')->insert($note);
+                    }
+
+                    $checkout->delete();
+                    DB::commit();
+                   
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'Order creation failed: ' . $e->getMessage()], 500);
+                }
+
                 return response()->json([
                     'status' => true,
                     'message' => 'Payment successful',
                     'data' => $paymentResult,
-                    'checkout_id' => $checkout->id,
+                    'order'=>$orderId,
+                    'orderNo'=>$newValue
                 ], 200);
+
             } catch (Exception $e) {
                 return response()->json([
                     'status' => false,
                     'message' => $e->getMessage()
                 ], 400);
             }
-        } else if($paytype == 'onaccount') {
+        } else if ($paytype == 'onaccount') {
 
             try {
                 $this->validateBilling($billingInfo);
                 $this->validateShipping($shippingInfo);
-    
-                $checkout = Checkout::updateOrCreate(
-                    ['user_id' => $user->ID],
+
+                $checkout->update(
                     [
-                        'isFreeze' => true,
                         'total' => $amount,
-                        'billing' => json_encode($billingInfo),
-                        'shipping' => json_encode($shippingInfo),
-                        'extra' => json_encode(['line_items' => $lineItems]),
+                        'extra' => $lineItems,
                     ]
                 );
-
             } catch (\Throwable $th) {
                 //throw $th;
             }
@@ -566,7 +821,7 @@ class PayPalController extends Controller
         //     //         'extra' => json_encode(['payment_token' => $payment_token]),
         //     //     ]
         //     // );
-            
+
         //     // Process the payment
         //     $saleData = $this->doSale($amount, $payment_token, $billingInfo, $shippingInfo);
         //     $paymentResult = $this->_doRequest($saleData);

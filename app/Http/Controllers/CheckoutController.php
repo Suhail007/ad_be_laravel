@@ -37,12 +37,12 @@ class CheckoutController extends Controller
         $checkout = Checkout::updateOrCreate(
             ['user_id' => $user->ID],
             [
-                'is_freeze' => true,
+                'isFreeze' => true,
                 'billing' => $data['billing'],
                 'shipping' => $data['shipping']
             ]
         );
-        UnfreezeCart::dispatch($user->ID)->delay(now()->addMinutes(10));
+        UnfreezeCart::dispatch($user->ID)->delay(now()->addMinutes(1));
         return response()->json(['status' => true, 'message' => 'Address Selected Successfully', 'data' => $response], 201);
     }
     public function freezeCart(Request $request)

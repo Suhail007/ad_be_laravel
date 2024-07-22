@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Cart;
 use App\Models\Checkout;
+use App\Models\ProductMeta;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -33,6 +34,31 @@ class UnfreezeCart implements ShouldQueue
      */
     public function handle()
     {
+        $cartItems = Cart::where('user_id', $this->userId)->get();
+
+        foreach ($cartItems as $cartItem) {
+            $product = $cartItem->product;
+            $variation = $cartItem->variation;
+
+            if ($variation) {
+                $stockLevel = ProductMeta::where('post_id', $variation->ID)
+                    ->where('meta_key', '_stock')
+                    ->first();
+                if ($stockLevel) {
+                    $stockLevel->meta_value += $cartItem->quantity;
+                    $stockLevel->save();
+                }
+            } else {
+                $stockLevel = ProductMeta::where('post_id', $product->ID)
+                    ->where('meta_key', '_stock')
+                    ->first();
+                if ($stockLevel) {
+                    $stockLevel->meta_value += $cartItem->quantity;
+                    $stockLevel->save();
+                }
+            }
+        }
+
         Checkout::where('user_id', $this->userId)->update(['isFreeze' => false]);
     }
 }
