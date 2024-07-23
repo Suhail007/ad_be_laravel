@@ -104,5 +104,3 @@ Route::get('/log', function () {
     return response()->json(['status' => 'error', 'redirect_url' => '/login']);
 })->name('login');
 
-
-Route::post('/test',[PayPalController::class,'processPayment']);

@@ -121,6 +121,8 @@ class CheckoutController extends Controller
                     'message' => 'Quantity adjusted due to stock availability',
                 ];
             }
+
+            $this->reduceStock($cartItem);
         }
 
         $response = [
@@ -140,7 +142,31 @@ class CheckoutController extends Controller
 
         return response()->json($response);
     }
+    protected function reduceStock($cartItem)
+    {
+        $product = $cartItem->product;
+        $variation = $cartItem->variation;
 
+        if ($variation) {
+            $stockLevel = ProductMeta::where('post_id', $variation->ID)
+                ->where('meta_key', '_stock')
+                ->value('meta_value');
+
+            $newStockLevel = max(0, $stockLevel - $cartItem->quantity);
+            ProductMeta::where('post_id', $variation->ID)
+                ->where('meta_key', '_stock')
+                ->update(['meta_value' => $newStockLevel]);
+        } else {
+            $stockLevel = ProductMeta::where('post_id', $product->ID)
+                ->where('meta_key', '_stock')
+                ->value('meta_value');
+
+            $newStockLevel = max(0, $stockLevel - $cartItem->quantity);
+            ProductMeta::where('post_id', $product->ID)
+                ->where('meta_key', '_stock')
+                ->update(['meta_value' => $newStockLevel]);
+        }
+    }
     private function getWholesalePrice($variation, $product, $priceTier)
     {
         if ($variation) {
