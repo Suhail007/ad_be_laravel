@@ -21,6 +21,7 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::post('/login', [LoginController::class, 'login']);
+Route::post('register', [LoginController::class, 'register']);
 
 Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('/logout', [LoginController::class, 'logout']);
@@ -62,19 +63,26 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     //discount api
     Route::get('/cart-discount',[DiscountRuleController::class,'index']);
 });
+
 //Layouts Public
 Route::get('/layout', [LayoutController::class, 'layouts']);
 Route::get('/position/{layout}', [LayoutController::class, 'position']);
 Route::get('/positionLayout/{layout}/{position}', [LayoutController::class, 'positionLayout']);
 Route::get('/positionLayout/{page}', [LayoutController::class, 'pageLayout']);
 
+//Pages
 Route::get('/categoryProduct/{slug}', [ProductController::class, 'categoryProduct']);
 Route::get('/brandProduct/{slug}', [ProductController::class, 'brandProducts']);
 Route::get('/searchProducts', [ProductController::class, 'searchProducts']); 
-Route::get('/searchProductsBySKU', [ProductController::class, 'searchProductsBySKU']); //in product sku
-Route::get('/searchProductsByCAT', [ProductController::class, 'searchProductsByCAT']); //in cat 
+// Route::get('/searchProductsBySKU', [ProductController::class, 'searchProductsBySKU']); //in product sku
+// Route::get('/searchProductsByCAT', [ProductController::class, 'searchProductsByCAT']); //in cat 
 Route::get('/searchProductsALL', [ProductController::class, 'searchProductsAll']); //in pro sku cat
 
+//product page
+Route::get('/product/{slug}', [WooCommerceController::class, 'show']);
+Route::get('products/{id}/related', [ProductController::class, 'getRelatedProducts']);
+
+//Sidebar menu
 Route::get('/sidebar', [ProductController::class, 'sidebar']);
 
 
@@ -83,22 +91,20 @@ Route::get('/cart', [WooCartController::class, 'index']);
 Route::get('/cart-products', [WooCartController::class, 'show']);
 // Route::post('/cart/add', [CartController::class, 'addToCart']);
 
-//product page
-Route::get('/product/{slug}', [WooCommerceController::class, 'show']);
-Route::get('products/{id}/related', [ProductController::class, 'getRelatedProducts']);
+
 
 Route::post('/create-new-order',[OrderController::class,'createNewOrder']);
 
-Route::get('/get-all-payment-option',[WooCommerceController::class,'allPaymentGate']);
-Route::get('/get-all-payment-option/{method}',[WooCommerceController::class,'getPaymentMethod']);
-Route::get('/get-shipping-zone',[WooCommerceController::class,'getShippingZone']);
+// Route::get('/get-all-payment-option',[WooCommerceController::class,'allPaymentGate']);
+// Route::get('/get-all-payment-option/{method}',[WooCommerceController::class,'getPaymentMethod']);
+// Route::get('/get-shipping-zone',[WooCommerceController::class,'getShippingZone']);
 
 
 // Route::post('/create-payment', [PayPalController::class, 'createPayment']);
 // Route::post('/execute-payment', [PayPalController::class, 'executePayment']);
 
 
-Route::get('/get-all-orders',[WooCommerceController::class,'getAllOrders']);
+// Route::get('/get-all-orders',[WooCommerceController::class,'getAllOrders']);
 
 Route::get('/log', function () {
     return response()->json(['status' => 'error', 'redirect_url' => '/login']);

@@ -60,6 +60,10 @@ class User extends Authenticatable implements JWTSubject
         }
         return null;
     }
+    public function getAccountAttribute(){
+        $account = $this->meta()->where('meta_key', 'mm_field_CID')->value('meta_value');
+        return $account ? $account : null;
+    }
     public function getCapabilitiesAttribute()
     {
         $capabilities = $this->meta()->where('meta_key', 'wp_capabilities')->value('meta_value');
