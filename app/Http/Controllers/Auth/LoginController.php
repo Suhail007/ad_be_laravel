@@ -3,6 +3,7 @@
 // app/Http/Controllers/Auth/LoginController.php
 
 namespace App\Http\Controllers\Auth;
+
 use Illuminate\Http\Request;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -13,30 +14,31 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use MikeMcLin\WpPassword\Facades\WpPassword;
+
 class LoginController extends Controller
 {
 
-    
+
     public function login(Request $request)
     {
         $email = $request->input('user_email');
         $hashedPassword = $request->input('password');
-        $user = User::where('user_email', $email)->orWhere('user_login',$email)->first();
+        $user = User::where('user_email', $email)->orWhere('user_login', $email)->first();
 
         $check = WpPassword::check($hashedPassword, $user->user_pass);
-        if ( $check==true ) {
+        if ($check == true) {
             $data = [
                 'ID' => $user->ID,
                 'name' => $user->user_login,
                 'email' => $user->user_email,
-                'capabilities' => $user->capabilities, 
-                'account_no'=>$user->account
+                'capabilities' => $user->capabilities,
+                'account_no' => $user->account
             ];
             if ($token = JWTAuth::fromUser($user)) {
                 return response()->json([
                     'status' => 'success',
                     'token' => $token,
-                    'data'=>$data,
+                    'data' => $data,
                 ]);
             }
         } else {
@@ -63,12 +65,10 @@ class LoginController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'user_login' => 'required|string|unique:wp_users,user_login',
             'user_email' => 'required|string|email|unique:wp_users,user_email',
             'password' => 'required|string|confirmed|min=8',
             'first_name' => 'required|string',
-            'last_name' => 'required|string',
-            'nickname' => 'required|string',
+            'last_name' => 'string',
             'billing_company' => 'nullable|string',
             'billing_address_1' => 'nullable|string',
             'billing_city' => 'nullable|string',
@@ -81,17 +81,20 @@ class LoginController extends Controller
             'shipping_postcode' => 'nullable|string',
         ]);
 
+        $email = $request->input('user_email');
+        $username = User::generateUniqueUsername($email);
+
         $user = User::create([
-            'user_login' => $request->input('user_login'),
-            'user_pass' => WpPassword::make($request->input('password')), 
-            'user_nicename' => $request->input('user_login'),
+            'user_login' => $username,
+            'user_pass' => WpPassword::make($request->input('password')),
+            'user_nicename' =>  $username,
             'user_email' => $request->input('user_email'),
             'user_registered' => Carbon::now(),
-            'display_name' => $request->input('user_login'),
+            'display_name' =>  $username,
         ]);
 
         $userMetaFields = [
-            'nickname' => $request->input('nickname'),
+            'nickname' =>  $username,
             'first_name' => $request->input('first_name'),
             'last_name' => $request->input('last_name'),
             'billing_company' => $request->input('billing_company'),
@@ -104,6 +107,26 @@ class LoginController extends Controller
             'shipping_city' => $request->input('shipping_city'),
             'shipping_state' => $request->input('shipping_state'),
             'shipping_postcode' => $request->input('shipping_postcode'),
+            'last_update' => $request->input('timestamp'), //time stamp
+            'user_registration_number_box_1675806301' =>  $request->input('user_registration_number_box_1675806301'), //phone number
+            'user_registration_file_1675806995815' =>  $request->input('user_registration_file_1675806995815'), //file id Uplopad FEIN licence
+            'user_registration_number_box_1678138943' =>  $request->input('user_registration_number_box_1678138943'), //fein number
+            'user_registration_file_1675807041669' =>  $request->input('user_registration_file_1675807041669'), //file id Upload Tobacco License
+            'user_registration_file_1675806917' =>  $request->input('user_registration_file_1675806917'), //file id Upload State Tax ID / Business License
+            'user_registration_file_1675806973030' =>  $request->input('user_registration_file_1675806973030'), //file id Government Issued ID (Driver’s license, State ID etc)
+            'user_registration_select2_1676006057' => $request->input('user_registration_select2_1676006057'), //dropdown inspect name value (Distrubutor)
+            'user_registration_select2_121' =>  $request->input('shipping_postcode'), //dropdown inspect name value (Wholesaler)
+            // 'ur_form_id' => '41122',
+            'rich_editing' => 'TRUE',
+            'syntax_highlighting' => 'TRUE',
+            'comment_shortcuts' => 'FALSE',
+            'admin_color' => 'fresh',
+            'use_ssl' => '0',
+            'show_admin_bar_front' => 'TRUE',
+            'wp_user_level' => '0',
+            'dismissed_wp_pointers' => '',
+            'user_registration_country_1676005837' => 'US',
+            'ur_user_status' => '0',
         ];
 
         foreach ($userMetaFields as $key => $value) {
@@ -119,7 +142,7 @@ class LoginController extends Controller
         UserMeta::create([
             'user_id' => $user->ID,
             'meta_key' => 'wp_capabilities',
-            'meta_value' => serialize(['customer' => true]),  
+            'meta_value' => serialize(['customer' => true]),
         ]);
 
         $token = JWTAuth::fromUser($user);
@@ -136,17 +159,16 @@ class LoginController extends Controller
             ],
         ]);
     }
-    public function me(Request $request){
+    public function me(Request $request)
+    {
         $user = JWTAuth::parseToken()->authenticate();
-        $data =[
-            'ID'=>$user->ID,
+        $data = [
+            'ID' => $user->ID,
             'name' => $user->user_login,
             'email' => $user->user_email,
             'capabilities' => $user->capabilities,
-            'account_no' => $user->account, 
+            'account_no' => $user->account,
         ];
-        return response()->json(['status'=>'success','data'=>$data]);
+        return response()->json(['status' => 'success', 'data' => $data]);
     }
-
 }
-

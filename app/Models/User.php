@@ -69,4 +69,18 @@ class User extends Authenticatable implements JWTSubject
         $capabilities = $this->meta()->where('meta_key', 'wp_capabilities')->value('meta_value');
         return $capabilities ? unserialize($capabilities) : [];
     }
+
+    public static function generateUniqueUsername($email)
+    {
+        $baseUsername = strtolower(explode('@', $email)[0]); 
+        $username = $baseUsername;
+        $counter = 1;
+
+        while (User::where('user_login', $username)->exists()) {
+            $username = $baseUsername . $counter; 
+            $counter++;
+        }
+
+        return $username;
+    }
 }

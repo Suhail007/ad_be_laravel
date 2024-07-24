@@ -218,6 +218,9 @@ class CartController extends Controller
 
         $priceTier = $user->price_tier;
         $cartData = [];
+        if(!$priceTier){
+            $priceTier = '_regular_price';
+        }
 
         $cartTotalItems = Cart::where('user_id', $user->ID)->get();
         $total = $this->cartTotal($cartTotalItems, $priceTier);
@@ -372,6 +375,9 @@ class CartController extends Controller
         }
 
         $priceTier = $user->price_tier;
+        if(!$priceTier){
+            $priceTier = '_regular_price';
+        }
         $cartData = [];
         $cartTotalItems = Cart::where('user_id', $user->ID)->get();
         $total = $this->cartTotal($cartTotalItems, $priceTier);
@@ -488,6 +494,9 @@ class CartController extends Controller
         }
 
         $priceTier = $user->price_tier;
+        if(!$priceTier){
+            $priceTier = '_regular_price';
+        }
         $cartData = [];
 
         $cartTotalItems = Cart::where('user_id', $user->ID)->get();
@@ -599,6 +608,9 @@ class CartController extends Controller
 
         $cart->delete();
         $priceTier = $user->price_tier;
+        if(!$priceTier){
+            $priceTier = '_regular_price';
+        }
         $cartTotalItems = Cart::where('user_id', $user->ID)->get();
         $total = $this->cartTotal($cartTotalItems, $priceTier);
         $itemCount = $this->cartItemCount($cartTotalItems);
@@ -633,6 +645,9 @@ class CartController extends Controller
             $this->adjustStock($cartItem, $oldQuantity, $request->quantity);
         }
         $priceTier = $user->price_tier;
+        if(!$priceTier){
+            $priceTier = '_regular_price';
+        }
         $cartTotalItems = Cart::where('user_id', $user->ID)->get();
         $total = $this->cartTotal($cartTotalItems, $priceTier);
         $itemCount = $this->cartItemCount($cartTotalItems);
