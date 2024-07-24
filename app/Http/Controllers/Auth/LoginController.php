@@ -142,7 +142,8 @@ class LoginController extends Controller
             'ID'=>$user->ID,
             'name' => $user->user_login,
             'email' => $user->user_email,
-            'capabilities' => $user->capabilities, 
+            'capabilities' => $user->capabilities,
+            'account_no' => $user->account, 
         ];
         return response()->json(['status'=>'success','data'=>$data]);
     }
