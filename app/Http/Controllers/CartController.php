@@ -15,6 +15,31 @@ use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
+    private function cartTotal($cartItems, $priceTier)
+    {
+        $total = 0;
+
+        foreach ($cartItems as $cartItem) {
+            $product = $cartItem->product;
+            $variation = $cartItem->variation;
+            $wholesalePrice = 0;
+
+            if ($variation) {
+                $wholesalePrice = ProductMeta::where('post_id', $variation->ID)
+                    ->where('meta_key', $priceTier)
+                    ->value('meta_value');
+            } else {
+                $wholesalePrice = ProductMeta::where('post_id', $product->ID)
+                    ->where('meta_key', $priceTier)
+                    ->value('meta_value');
+            }
+
+            $total += round($wholesalePrice * $cartItem->quantity, 2);
+        }
+
+        return round($total, 2);
+    }
+
     protected function reduceStock($cartItem)
     {
         $product = $cartItem->product;
@@ -94,30 +119,41 @@ class CartController extends Controller
         }
     }
     protected function reduceStockByQuantity($cartItem, $quantity)
-{
-    $product = $cartItem->product;
-    $variation = $cartItem->variation;
+    {
+        $product = $cartItem->product;
+        $variation = $cartItem->variation;
 
-    if ($variation) {
-        $stockLevel = ProductMeta::where('post_id', $variation->ID)
-            ->where('meta_key', '_stock')
-            ->value('meta_value');
+        if ($variation) {
+            $stockLevel = ProductMeta::where('post_id', $variation->ID)
+                ->where('meta_key', '_stock')
+                ->value('meta_value');
 
-        $newStockLevel = max(0, $stockLevel - $quantity);
-        ProductMeta::where('post_id', $variation->ID)
-            ->where('meta_key', '_stock')
-            ->update(['meta_value' => $newStockLevel]);
-    } else {
-        $stockLevel = ProductMeta::where('post_id', $product->ID)
-            ->where('meta_key', '_stock')
-            ->value('meta_value');
+            $newStockLevel = max(0, $stockLevel - $quantity);
+            ProductMeta::where('post_id', $variation->ID)
+                ->where('meta_key', '_stock')
+                ->update(['meta_value' => $newStockLevel]);
+        } else {
+            $stockLevel = ProductMeta::where('post_id', $product->ID)
+                ->where('meta_key', '_stock')
+                ->value('meta_value');
 
-        $newStockLevel = max(0, $stockLevel - $quantity);
-        ProductMeta::where('post_id', $product->ID)
-            ->where('meta_key', '_stock')
-            ->update(['meta_value' => $newStockLevel]);
+            $newStockLevel = max(0, $stockLevel - $quantity);
+            ProductMeta::where('post_id', $product->ID)
+                ->where('meta_key', '_stock')
+                ->update(['meta_value' => $newStockLevel]);
+        }
     }
+    private function cartItemCount($cartItems)
+{
+    $totalCount = 0;
+
+    foreach ($cartItems as $cartItem) {
+        $totalCount += $cartItem->quantity;
+    }
+
+    return $totalCount;
 }
+
 
     public function bulkAddToCart(Request $request)
     {
@@ -133,6 +169,7 @@ class CartController extends Controller
 
         $cartItems = [];
 
+
         foreach ($variations as $variation) {
             $cartItem = Cart::where('user_id', $user_id)
                 ->where('product_id', $product_id)
@@ -140,7 +177,7 @@ class CartController extends Controller
                 ->first();
 
             if ($cartItem) {
-               
+
                 $newQty = $variation['quantity'];
                 $cartItem->quantity += $variation['quantity'];
                 $cartItem->save();
@@ -182,6 +219,8 @@ class CartController extends Controller
         $priceTier = $user->price_tier;
         $cartData = [];
 
+        $cartTotalItems = Cart::where('user_id', $user->ID)->get();
+        $total = $this->cartTotal($cartTotalItems, $priceTier);
         foreach ($cartItems as $cartItem) {
             $product = $cartItem->product;
             $variation = $cartItem->variation;
@@ -255,6 +294,7 @@ class CartController extends Controller
             'success' => 'Products added to cart',
             'data' => $userIp,
             'cart' => $cartData,
+            'cart_total' => $total,
             'pagination' => [
                 'total' => $cartItems->total(),
                 'per_page' => $cartItems->perPage(),
@@ -333,7 +373,9 @@ class CartController extends Controller
 
         $priceTier = $user->price_tier;
         $cartData = [];
-
+        $cartTotalItems = Cart::where('user_id', $user->ID)->get();
+        $total = $this->cartTotal($cartTotalItems, $priceTier);
+        $itemCount = $this->cartItemCount($cartTotalItems);
         foreach ($cartItems as $cartItem) {
             $product = $cartItem->product;
             $variation = $cartItem->variation;
@@ -407,6 +449,8 @@ class CartController extends Controller
             'success' => 'Cart updated successfully',
             'data' => $userIp,
             'cart' => $cartData,
+            'cart_total' => $total,
+            'cart_count'=>$itemCount,
             'pagination' => [
                 'total' => $cartItems->total(),
                 'per_page' => $cartItems->perPage(),
@@ -429,6 +473,7 @@ class CartController extends Controller
         $perPage = $request->input('per_page', 15);
         $cartItems = Cart::where('user_id', $user->ID)->paginate($perPage);
 
+
         $userIp = $request->ip();
         if ($cartItems->isEmpty()) {
             return response()->json([
@@ -444,6 +489,10 @@ class CartController extends Controller
 
         $priceTier = $user->price_tier;
         $cartData = [];
+
+        $cartTotalItems = Cart::where('user_id', $user->ID)->get();
+        $total = $this->cartTotal($cartTotalItems, $priceTier);
+        $itemCount = $this->cartItemCount($cartTotalItems);
         // dd($cartItems);
         foreach ($cartItems as $cartItem) {
             $product = $cartItem->product;
@@ -518,7 +567,8 @@ class CartController extends Controller
             'message' => 'Cart items',
             'data' => $userIp,
             'time' => now()->toDateTimeString(),
-            'cart_count' => count($cartData),
+            'cart_total' => $total,
+            'cart_count' => $itemCount,
             'cart_items' => $cartData,
             'pagination' => [
                 'total' => $cartItems->total(),
@@ -548,8 +598,11 @@ class CartController extends Controller
         }
 
         $cart->delete();
-
-        return response()->json(['status' => true, 'success' => 'Product removed from cart'], 200);
+        $priceTier = $user->price_tier;
+        $cartTotalItems = Cart::where('user_id', $user->ID)->get();
+        $total = $this->cartTotal($cartTotalItems, $priceTier);
+        $itemCount = $this->cartItemCount($cartTotalItems);
+        return response()->json(['status' => true,'cart_total'=>$total,'cart_count'=>$itemCount, 'success' => 'Product removed from cart'], 200);
     }
 
 
@@ -564,7 +617,7 @@ class CartController extends Controller
             ->where('product_id', $request->product_id)
             ->where('variation_id', $request->variation_id)
             ->first();
-
+        
         if (!$cartItem || $request->quantity <= 0) {
             return response()->json(['status' => false, 'message' => 'Item not found'], 200);
         }
@@ -579,8 +632,11 @@ class CartController extends Controller
         if ($isFreeze) {
             $this->adjustStock($cartItem, $oldQuantity, $request->quantity);
         }
-
-        return response()->json(['message' => 'Item quantity updated', 'status' => true], 200);
+        $priceTier = $user->price_tier;
+        $cartTotalItems = Cart::where('user_id', $user->ID)->get();
+        $total = $this->cartTotal($cartTotalItems, $priceTier);
+        $itemCount = $this->cartItemCount($cartTotalItems);
+        return response()->json(['message' => 'Item quantity updated', 'cart_total'=>$total,'cart_count'=>$itemCount,'status' => true], 200);
     }
 
     public function empty(Request $request)
@@ -606,6 +662,6 @@ class CartController extends Controller
 
         Cart::where('user_id', $user_id)->delete();
 
-        return response()->json(['message' => 'All items removed', 'status' => true], 200);
+        return response()->json(['message' => 'All items removed', 'cart_count'=>0, 'status' => true], 200);
     }
 }
