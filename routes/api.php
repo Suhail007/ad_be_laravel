@@ -20,8 +20,8 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:login');
-Route::post('register', [LoginController::class, 'register']);
+Route::post('/login', [LoginController::class, 'login']); //->middleware('throttle:login')
+Route::post('/register', [LoginController::class, 'register']);
 
 Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('/logout', [LoginController::class, 'logout']);

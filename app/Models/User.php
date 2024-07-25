@@ -69,6 +69,11 @@ class User extends Authenticatable implements JWTSubject
         $capabilities = $this->meta()->where('meta_key', 'wp_capabilities')->value('meta_value');
         return $capabilities ? unserialize($capabilities) : [];
     }
+    public function getApprovedAttribute()
+    {
+        $approved = $this->meta()->where('meta_key', 'ur_user_status')->value('meta_value');
+        return $approved;
+    }
 
     public static function generateUniqueUsername($email)
     {

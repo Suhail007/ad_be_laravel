@@ -27,6 +27,12 @@ class LoginController extends Controller
 
         $check = WpPassword::check($hashedPassword, $user->user_pass);
         if ($check == true) {
+            if($user->approved =="0"){
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Your Register Request Not Approved',
+                ]);
+            }
             $data = [
                 'ID' => $user->ID,
                 'name' => $user->user_login,
@@ -145,18 +151,19 @@ class LoginController extends Controller
             'meta_value' => serialize(['customer' => true]),
         ]);
 
-        $token = JWTAuth::fromUser($user);
+        // $token = JWTAuth::fromUser($user);
 
         return response()->json([
-            'status' => 'success',
-            'token' => $token,
-            'user' => [
-                'ID' => $user->ID,
-                'name' => $user->user_login,
-                'email' => $user->user_email,
-                'capabilities' => $user->capabilities,
-                'account_no' => $user->account,
-            ],
+            'status' => true,
+            'message'=>'Wait till verification',
+            // 'token' => $token,
+            // 'user' => [
+            //     'ID' => $user->ID,
+            //     'name' => $user->user_login,
+            //     'email' => $user->user_email,
+            //     'capabilities' => $user->capabilities,
+            //     'account_no' => $user->account,
+            // ],
         ]);
     }
     public function me(Request $request)
