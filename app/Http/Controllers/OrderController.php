@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cart;
+use App\Models\CustomerOrder;
 use App\Models\Order;
 use App\Models\OrderMeta;
 use App\Models\ProductMeta;
@@ -15,7 +16,8 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $user = JWTAuth::parseToken()->authenticate();
-        $orders = Order::where('post_type', 'shop_order')->where('post_status','!=','trash')->where('post_author', $user->ID)->with(['items', 'items.meta', 'meta'])->get();
+        // $orders = Order::where('post_type', 'shop_order')->where('post_status','!=','trash')->where('post_author', $user->ID)->with(['items', 'items.meta', 'meta'])->get();
+        $orders = CustomerOrder::where('type', 'shop_order')->where('status','!=','trash')->where('customer_id', $user->ID)->with(['items', 'items.meta', 'meta']) ->orderBy('id', 'desc')->paginate();
         if($orders){
             return response()->json(['status'=>true,'data'=>$orders]);
         }
@@ -24,7 +26,7 @@ class OrderController extends Controller
 
     public function show($id)
     {
-        $order = Order::with(['items', 'items.meta', 'meta'])->where('post_status','!=','trash')->where('post_status','publish')->findOrFail($id);
+        $order =  CustomerOrder::with(['items', 'items.meta', 'meta'])->where('type', 'shop_order')->where('status','!=','trash')->findOrFail($id);
 
         return response()->json($order);
     }
