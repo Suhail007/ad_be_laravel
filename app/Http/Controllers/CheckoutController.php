@@ -42,7 +42,7 @@ class CheckoutController extends Controller
                 'shipping' => $data['shipping']
             ]
         );
-        UnfreezeCart::dispatch($user->ID)->delay(now()->addMinutes(1));
+        UnfreezeCart::dispatch($user->ID)->delay(now()->addMinutes(5));
         return response()->json(['status' => true, 'message' => 'Address Selected Successfully', 'data' => $response], 201);
     }
     public function freezeCart(Request $request)
