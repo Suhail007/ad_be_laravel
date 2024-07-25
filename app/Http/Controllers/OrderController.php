@@ -15,7 +15,7 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $user = JWTAuth::parseToken()->authenticate();
-        $orders = Order::where('post_type', 'shop_order')->where('post_status','!=','draft')->where('post_status','!=','trash')->where('post_author', $user->ID)->with(['items', 'items.meta', 'meta'])->get();
+        $orders = Order::where('post_type', 'shop_order')->where('post_status','!=','trash')->where('post_author', $user->ID)->with(['items', 'items.meta', 'meta'])->get();
         if($orders){
             return response()->json(['status'=>true,'data'=>$orders]);
         }
@@ -24,7 +24,7 @@ class OrderController extends Controller
 
     public function show($id)
     {
-        $order = Order::with(['items', 'items.meta', 'meta'])->where('post_status','!=','draft')->where('post_status','!=','trash')->where('post_status','publish')->findOrFail($id);
+        $order = Order::with(['items', 'items.meta', 'meta'])->where('post_status','!=','trash')->where('post_status','publish')->findOrFail($id);
 
         return response()->json($order);
     }
