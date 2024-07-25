@@ -13,6 +13,7 @@ use App\Models\UserMeta;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Validator;
 use MikeMcLin\WpPassword\Facades\WpPassword;
 
 class LoginController extends Controller
@@ -70,9 +71,9 @@ class LoginController extends Controller
 
     public function register(Request $request)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(),[
             'user_email' => 'required|string|email|unique:wp_users,user_email',
-            'password' => 'required|string|confirmed|min=8',
+            'password' => 'required|string|confirmed|min:6',
             'first_name' => 'required|string',
             'last_name' => 'string',
             'billing_company' => 'nullable|string',
@@ -86,7 +87,10 @@ class LoginController extends Controller
             'shipping_state' => 'nullable|string',
             'shipping_postcode' => 'nullable|string',
         ]);
-
+       
+        if($validator->fails()){
+            return response()->json(['message'=>$validator->errors()]);
+        }
         $email = $request->input('user_email');
         $username = User::generateUniqueUsername($email);
 

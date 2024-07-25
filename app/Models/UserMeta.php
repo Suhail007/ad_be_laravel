@@ -11,7 +11,7 @@ class UserMeta extends Model
     protected $table = 'wp_usermeta';
     protected $primaryKey = 'umeta_id';
     public $timestamps = false;
-
+    protected $guarded = [];
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
