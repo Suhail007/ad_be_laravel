@@ -62,6 +62,9 @@ class WooCommerceController extends Controller
                         'date_modified_gmt' => $product->post_modified_gmt,
                         'type' => $product->post_type,
                         'status' => $product->post_status,
+                        'min_quantity'=>$metaData->where('key','min_quantity')->first()['value']?? false,
+                        'max_quantity'=>$metaData->where('key','max_quantity')->first()['value']?? false,
+                        
                         'featured' => $metaData->where('key', '_featured')->first()['value'] ?? false,
                         'catalog_visibility' => $metaData->where('key', '_visibility')->first()['value'] ?? 'visible',
                         'description' => $product->post_content,
@@ -187,7 +190,7 @@ class WooCommerceController extends Controller
                 $metaData = $variation->meta->pluck('meta_value', 'meta_key')->toArray();
     
                 // Construct the regex pattern to include the price tier
-                $pattern = '/^(_sku|attribute_.*|_stock|_regular_price|_stock_status|' . preg_quote($priceTier, '/') . '|_thumbnail_id)$/';
+                $pattern = '/^(_sku|attribute_.*|_stock|_regular_price|_stock_status|max_quantity|min_quantity' . preg_quote($priceTier, '/') . '|_thumbnail_id)$/';
     
                 // Filter meta data to include only the selected fields
                 $filteredMetaData = array_filter($metaData, function($key) use ($pattern) {
