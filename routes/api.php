@@ -93,7 +93,7 @@ Route::get('/cart-products', [WooCartController::class, 'show']);
 
 
 
-Route::post('/create-new-order',[OrderController::class,'createNewOrder']);
+// Route::post('/create-new-order',[OrderController::class,'createNewOrder']);
 
 // Route::get('/get-all-payment-option',[WooCommerceController::class,'allPaymentGate']);
 // Route::get('/get-all-payment-option/{method}',[WooCommerceController::class,'getPaymentMethod']);
