@@ -136,7 +136,7 @@ class LoginController extends Controller
             'wp_user_level' => '0',
             'dismissed_wp_pointers' => '',
             'user_registration_country_1676005837' => 'US',
-            'ur_user_status' => '0',
+            // 'ur_user_status' => '0',
         ];
 
         foreach ($userMetaFields as $key => $value) {
@@ -153,6 +153,11 @@ class LoginController extends Controller
             'user_id' => $user->ID,
             'meta_key' => 'wp_capabilities',
             'meta_value' => serialize(['customer' => true]),
+        ]);
+        UserMeta::create([
+            'user_id' => $user->ID,
+            'meta_key' => 'ur_user_status',
+            'meta_value' =>'0'
         ]);
 
         // $token = JWTAuth::fromUser($user);
