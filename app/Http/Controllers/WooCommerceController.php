@@ -14,7 +14,16 @@ use Illuminate\Support\Facades\DB;
 class WooCommerceController extends Controller
 {
 
-    
+    public function getTaxonomyType($taxonomy)
+{
+    if ($taxonomy->taxonomy === 'product_cat') {
+        return 'category';
+    } elseif ($taxonomy->taxonomy === 'product_brand') {
+        return 'brand';
+    }
+    return 'unknown';
+}
+
     public function show(Request $request, $slug)
     {
         $product = Product::with([
@@ -32,7 +41,24 @@ class WooCommerceController extends Controller
             ];
         });
 
-        $categories = $product->categories->map(function ($category) {
+        $categories = 
+        $product->categories->filter(function ($category) {
+            return $this->getTaxonomyType($category->taxonomies) === 'category';
+        })->map(function ($category) {
+            return [
+                'id' => $category->term_id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'taxonomy' => $category->taxonomies,
+                'meta' => $category->categorymeta->pluck('meta_value', 'meta_key')->toArray(),
+                'children' => $category->children,
+            ];
+        });
+    
+        $brands = 
+        $product->categories->filter(function ($category) {
+            return $this->getTaxonomyType($category->taxonomies) === 'brand';
+        })->map(function ($category) {
             return [
                 'id' => $category->term_id,
                 'name' => $category->name,
@@ -112,7 +138,8 @@ class WooCommerceController extends Controller
                         'rating_count' => $metaData->where('key', '_wc_rating_count')->first()['value'] ?? 0,
                         'parent_id' => $product->post_parent,
                         'purchase_note' => $metaData->where('key', '_purchase_note')->first()['value'] ?? '',
-                        'categories' => $categories,
+                        'categories' => $categories ?? '',
+                        'brands' => $brands ?? '',
                         'images' => $galleryImagesUrls,  
                         'thumbnail_url' => $thumbnailUrl,
                         'variations' => $variations,

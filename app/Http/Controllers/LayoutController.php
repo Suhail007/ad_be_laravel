@@ -59,7 +59,7 @@ class LayoutController extends Controller
             'serial' => ['required', 'numeric'],
             'status'=>['required'],
             'link' => ['string'],
-            'url' => ['nullable','mimes:jpeg,png,jpg,gif,webp,avif,mp4', 'max:4048'],
+            'url' => ['nullable','string'],
             'visibility' => ['required', 'string'],
         ]);
 
