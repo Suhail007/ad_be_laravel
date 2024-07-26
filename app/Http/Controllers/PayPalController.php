@@ -561,12 +561,12 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' => 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' => serialize(['total' => [], 'subtotal' => []])],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => 0],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_total_order', 'meta_value' => $totalAmount],
+                            // ['order_item_id' => $orderItemId, 'meta_key' => '_total_order', 'meta_value' => $totalAmount],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_product_count', 'meta_value' => $productCount],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $item['wholesale_role']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_price', 'meta_value' => $item['wholesale_price']],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
+                            // ['order_item_id' => $orderItemId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
                         ];
 
                         foreach ($itemMeta as $meta) {
