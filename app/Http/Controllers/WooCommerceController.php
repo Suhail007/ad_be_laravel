@@ -93,8 +93,8 @@ class WooCommerceController extends Controller
                         'description' => $product->post_content,
                         'short_description' => $product->post_excerpt,
                         'sku' => $metaData->where('key', '_sku')->first()['value'] ?? '',
-                        'price' => $price,
-                        'ad_price'=> $wholesalePrice = ProductMeta::where('post_id', $product->ID)->where('meta_key', $priceTier)->value('meta_value') ?? null,
+                        'price' => $price ?? $metaData->where('key','_regular_price')->first()['value'] ?? $metaData->where('key','_price')->first()['value'] ?? null,
+                        'ad_price'=> $wholesalePrice = ProductMeta::where('post_id', $product->ID)->where('meta_key', $priceTier)->value('meta_value') ?? $metaData->where('key','_price')->first()['value']  ?? $metaData->where('key','_regular_price')->first()['value'] ?? null,
                         'regular_price' => $metaData->where('key', '_regular_price')->first()['value'] ?? '',
                         'sale_price' => $metaData->where('key', '_sale_price')->first()['value'] ?? '',
                         'date_on_sale_from' => $metaData->where('key', '_sale_price_dates_from')->first()['value'] ?? null,
@@ -215,7 +215,7 @@ class WooCommerceController extends Controller
                 $metaData = $variation->meta->pluck('meta_value', 'meta_key')->toArray();
     
                 // Construct the regex pattern to include the price tier
-                $pattern = '/^(_sku|attribute_.*|_stock|_regular_price|_stock_status|max_quantity|min_quantity' . preg_quote($priceTier, '/') . '|_thumbnail_id)$/';
+                $pattern = '/^(_sku|attribute_.*|_stock|_regular_price|_price|_stock_status|max_quantity|min_quantity' . preg_quote($priceTier, '/') . '|_thumbnail_id)$/';
     
                 // Filter meta data to include only the selected fields
                 $filteredMetaData = array_filter($metaData, function($key) use ($pattern) {
@@ -223,7 +223,7 @@ class WooCommerceController extends Controller
                 }, ARRAY_FILTER_USE_KEY);
     
                 // Determine the price to use based on price tier or fallback to regular price
-                $adPrice = $metaData[$priceTier] ?? $metaData['_price'] ?? null;
+                $adPrice = $metaData[$priceTier] ?? $metaData['_price'] ?? $metaData['_regular_price'] ?? null;
     
                 return [
                     'id' => $variation->ID,
