@@ -697,7 +697,9 @@ class CartController extends Controller
         }
 
         Cart::where('user_id', $user_id)->delete();
-        $checkout->delete();
+        if ($checkout) {
+            $checkout->delete();
+        }
 
         return response()->json(['message' => 'All items removed', 'cart_count' => 0, 'status' => true], 200);
     }

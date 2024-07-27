@@ -34,43 +34,24 @@ class CheckoutController extends Controller
 
         $data = $request->all();
 
-        $check = Checkout::firstOrFail($user->ID);
-        // if(!$check->isFreeze){
-        //     $response = $this->freezeCart($request);
-        //     $checkout = Checkout::updateOrCreate(
-        //         ['user_id' => $user->ID],
-        //         [
-        //             'isFreeze' => true,
-        //             'billing' => $data['billing'],
-        //             'shipping' => $data['shipping']
-        //         ]
-        //     );
-        // } else {
-        //     $checkout = Checkout::updateOrCreate(
-        //         ['user_id' => $user->ID],
-        //         [
-        //             'isFreeze' => true,
-        //             'billing' => $data['billing'],
-        //             'shipping' => $data['shipping']
-        //         ]
-        //     );
-        // }
 
-
-
-
-        if (!$check->isFreeze) {
-            $response = $this->freezeCart($request);
-            UnfreezeCart::dispatch($user->ID)->delay(now()->addMinutes(5));
-        }
         $checkout = Checkout::updateOrCreate(
             ['user_id' => $user->ID],
-            [
-                'isFreeze' => true,
+            [   
                 'billing' => $data['billing'],
                 'shipping' => $data['shipping']
             ]
         );
+
+        $check = Checkout::where('user_id', $user->ID)->firstOrFail();
+        if (!$check->isFreeze) {
+            $response = $this->freezeCart($request);
+            $check->update([
+                'isFreeze'=>true,
+            ]);
+            UnfreezeCart::dispatch($user->ID)->delay(now()->addMinutes(5));
+        }
+        
 
         return response()->json(['status' => true, 'message' => 'Address Selected Successfully', 'data' => $response], 201);
     }
