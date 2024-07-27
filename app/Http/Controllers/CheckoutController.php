@@ -33,7 +33,36 @@ class CheckoutController extends Controller
         }
 
         $data = $request->all();
-        $response = $this->freezeCart($request);
+
+        $check = Checkout::firstOrFail($user->ID);
+        // if(!$check->isFreeze){
+        //     $response = $this->freezeCart($request);
+        //     $checkout = Checkout::updateOrCreate(
+        //         ['user_id' => $user->ID],
+        //         [
+        //             'isFreeze' => true,
+        //             'billing' => $data['billing'],
+        //             'shipping' => $data['shipping']
+        //         ]
+        //     );
+        // } else {
+        //     $checkout = Checkout::updateOrCreate(
+        //         ['user_id' => $user->ID],
+        //         [
+        //             'isFreeze' => true,
+        //             'billing' => $data['billing'],
+        //             'shipping' => $data['shipping']
+        //         ]
+        //     );
+        // }
+
+
+
+
+        if (!$check->isFreeze) {
+            $response = $this->freezeCart($request);
+            UnfreezeCart::dispatch($user->ID)->delay(now()->addMinutes(5));
+        }
         $checkout = Checkout::updateOrCreate(
             ['user_id' => $user->ID],
             [
@@ -42,7 +71,7 @@ class CheckoutController extends Controller
                 'shipping' => $data['shipping']
             ]
         );
-        UnfreezeCart::dispatch($user->ID)->delay(now()->addMinutes(5));
+
         return response()->json(['status' => true, 'message' => 'Address Selected Successfully', 'data' => $response], 201);
     }
     public function freezeCart(Request $request)
@@ -83,7 +112,7 @@ class CheckoutController extends Controller
                 ];
                 continue;
             }
-            $tier= $user->price_tier ?? '_price' ?? '_regular_price';
+            $tier = $user->price_tier ?? '_price' ?? '_regular_price';
             $wholesalePrice = $this->getWholesalePrice($variation, $product, $tier);
             list($stockLevel, $stockStatus) = $this->getStockInfo($variation, $product);
 
@@ -103,7 +132,7 @@ class CheckoutController extends Controller
                 $cartItem->quantity = $stockLevel;
                 $cartItem->save();
                 $adjusted = true;
-            } 
+            }
             $variationAttributes = $this->getVariationAttributes($variation);
 
             $cartData[] = [
