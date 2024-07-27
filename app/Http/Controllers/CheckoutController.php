@@ -50,10 +50,11 @@ class CheckoutController extends Controller
                 'isFreeze'=>true,
             ]);
             UnfreezeCart::dispatch($user->ID)->delay(now()->addMinutes(5));
+            return response()->json(['status' => true, 'message' => 'Address Selected Successfully', 'data' => $response], 201);
         }
         
 
-        return response()->json(['status' => true, 'message' => 'Address Selected Successfully', 'data' => $response], 201);
+        return response()->json(['status' => true, 'message' => 'Address Selected Successfully', 'data' => 'cart already Freezed'], 201);
     }
     public function freezeCart(Request $request)
     {
