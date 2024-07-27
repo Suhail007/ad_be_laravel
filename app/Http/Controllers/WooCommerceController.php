@@ -94,7 +94,7 @@ class WooCommerceController extends Controller
                         'short_description' => $product->post_excerpt,
                         'sku' => $metaData->where('key', '_sku')->first()['value'] ?? '',
                         'price' => $price ?? $metaData->where('key','_regular_price')->first()['value'] ?? $metaData->where('key','_price')->first()['value'] ?? null,
-                        'ad_price'=> $wholesalePrice = ProductMeta::where('post_id', $product->ID)->where('meta_key', $priceTier)->value('meta_value') ?? $metaData->where('key','_price')->first()['value']  ?? $metaData->where('key','_regular_price')->first()['value'] ?? null,
+                        'ad_price'=> $wholesalePrice = ProductMeta::where('post_id', $product->ID)->where('meta_key', $priceTier)->value('meta_value') ?? $metaData->where('key','_price')->first()['value']  ?? $metaData->where('key','_regular_price')->first()['value'] ?? $variations->ad_price ?? null,
                         'regular_price' => $metaData->where('key', '_regular_price')->first()['value'] ?? '',
                         'sale_price' => $metaData->where('key', '_sale_price')->first()['value'] ?? '',
                         'date_on_sale_from' => $metaData->where('key', '_sale_price_dates_from')->first()['value'] ?? null,
@@ -227,6 +227,7 @@ class WooCommerceController extends Controller
     
                 return [
                     'id' => $variation->ID,
+                    'date'=> $variation->post_modified_gmt,
                     'meta' => $filteredMetaData,
                     'ad_price' => $adPrice,  // Include ad_price here
                     'thumbnail_url' => $this->getThumbnailUrl($variation->ID),  // Add variation thumbnail URL here

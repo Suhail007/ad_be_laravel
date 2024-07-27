@@ -55,6 +55,8 @@ class User extends Authenticatable implements JWTSubject
                 return 'mm_price_3_wholesale_price';
             } elseif (isset($capabilitiesArray['mm_price_4'])) {
                 return 'mm_price_4_wholesale_price';
+            } elseif (isset($capabilitiesArray['mm_price_5'])) {
+                return 'mm_price_5_wholesale_price';
             }
         }
         return null;
