@@ -37,7 +37,7 @@ class CheckoutController extends Controller
 
         $checkout = Checkout::updateOrCreate(
             ['user_id' => $user->ID],
-            [   
+            [
                 'billing' => $data['billing'],
                 'shipping' => $data['shipping']
             ]
@@ -45,18 +45,18 @@ class CheckoutController extends Controller
 
         $check = Checkout::where('user_id', $user->ID)->firstOrFail();
         if (!$check->isFreeze) {
-            $response = $this->freezeCart($request);
-            $check->update([
-                'isFreeze'=>true,
-            ]);
-            UnfreezeCart::dispatch($user->ID)->delay(now()->addMinutes(5));
+            $response = $this->freezeCart($request, $check);
+            // $check->update([
+            //     'isFreeze' => true,
+            // ]);
+            // UnfreezeCart::dispatch($user->ID)->delay(now()->addMinutes(5));
             return response()->json(['status' => true, 'message' => 'Address Selected Successfully', 'data' => $response], 201);
         }
-        
+
 
         return response()->json(['status' => true, 'message' => 'Address Selected Successfully', 'data' => 'cart already Freezed'], 201);
     }
-    public function freezeCart(Request $request)
+    public function freezeCart(Request $request, $check)
     {
         try {
             $user = JWTAuth::parseToken()->authenticate();
@@ -141,8 +141,17 @@ class CheckoutController extends Controller
                     'message' => 'Quantity adjusted due to stock availability',
                 ];
             }
-
-            $this->reduceStock($cartItem);
+            if (empty($adjustedItems) && !$check->isFreeze) {
+                // $check = Checkout::where('user_id', $user->ID)->firstOrFail();
+                // if (!$check->isFreeze) {
+                    $this->reduceStock($cartItem);
+                    $check->update([
+                        'isFreeze' => true,
+                    ]);
+                    UnfreezeCart::dispatch($user->ID)->delay(now()->addMinutes(5));
+                // }
+                
+            }
         }
 
         $response = [
