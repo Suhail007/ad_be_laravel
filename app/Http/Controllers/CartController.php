@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateCartQuantityRequest;
 use Illuminate\Http\Request;
 use App\Models\Cart;
 use App\Models\Checkout;
+use App\Models\MMTax;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\Product;
 use App\Models\ProductMeta;
@@ -18,7 +19,7 @@ class CartController extends Controller
     private function cartTotal($cartItems, $priceTier)
     {
         $total = 0;
-
+        $taxID = [];
         foreach ($cartItems as $cartItem) {
             $product = $cartItem->product;
             $variation = $cartItem->variation;
@@ -28,16 +29,18 @@ class CartController extends Controller
                 $wholesalePrice = ProductMeta::where('post_id', $variation->ID)
                     ->where('meta_key', $priceTier)
                     ->value('meta_value');
+                $taxID = ProductMeta::where('post_id', $variation->ID)->where('meta_key', 'mm_indirect_tax_type')->value('meta_value');
             } else {
                 $wholesalePrice = ProductMeta::where('post_id', $product->ID)
                     ->where('meta_key', $priceTier)
                     ->value('meta_value');
+                $taxID = ProductMeta::where('post_id', $product->ID)->where('meta_key', 'mm_indirect_tax_type')->value('meta_value');
             }
 
             $total += round($wholesalePrice * $cartItem->quantity, 2);
         }
 
-        return round($total, 2);
+        return [round($total, 2), $taxID];
     }
 
     protected function reduceStock($cartItem)
@@ -143,16 +146,23 @@ class CartController extends Controller
                 ->update(['meta_value' => $newStockLevel]);
         }
     }
-    private function cartItemCount($cartItems)
-{
-    $totalCount = 0;
 
-    foreach ($cartItems as $cartItem) {
-        $totalCount += $cartItem->quantity;
+    public function tax(Request $request)
+    {
+        $tax = MMTax::get();
+        return response()->json($tax);
     }
 
-    return $totalCount;
-}
+    private function cartItemCount($cartItems)
+    {
+        $totalCount = 0;
+
+        foreach ($cartItems as $cartItem) {
+            $totalCount += $cartItem->quantity;
+        }
+
+        return $totalCount;
+    }
 
 
     public function bulkAddToCart(Request $request)
@@ -218,7 +228,7 @@ class CartController extends Controller
 
         $priceTier = $user->price_tier;
         $cartData = [];
-        if(!$priceTier){
+        if (!$priceTier) {
             $priceTier = '_regular_price';
         }
 
@@ -375,7 +385,7 @@ class CartController extends Controller
         }
 
         $priceTier = $user->price_tier;
-        if(!$priceTier){
+        if (!$priceTier) {
             $priceTier = '_regular_price';
         }
         $cartData = [];
@@ -455,8 +465,9 @@ class CartController extends Controller
             'success' => 'Cart updated successfully',
             'data' => $userIp,
             'cart' => $cartData,
-            'cart_total' => $total,
-            'cart_count'=>$itemCount,
+            'cart_total' => $total[0],
+            'taxIDs' => $total[1],
+            'cart_count' => $itemCount,
             'pagination' => [
                 'total' => $cartItems->total(),
                 'per_page' => $cartItems->perPage(),
@@ -494,7 +505,7 @@ class CartController extends Controller
         }
 
         $priceTier = $user->price_tier;
-        if(!$priceTier){
+        if (!$priceTier) {
             $priceTier = '_regular_price';
         }
         $cartData = [];
@@ -519,6 +530,7 @@ class CartController extends Controller
 
             $stockLevel = 0;
             $stockStatus = 'outofstock';
+            $taxID = null;
             if ($variation) {
                 $stockLevel = ProductMeta::where('post_id', $variation->ID)
                     ->where('meta_key', '_stock')
@@ -527,6 +539,7 @@ class CartController extends Controller
                 $stockStatus = ProductMeta::where('post_id', $variation->ID)
                     ->where('meta_key', '_stock_status')
                     ->value('meta_value');
+                $taxID = ProductMeta::where('post_id', $variation->ID)->where('meta_key', 'mm_indirect_tax_type')->value('meta_value');
             } else {
                 $stockLevel = ProductMeta::where('post_id', $product->ID)
                     ->where('meta_key', '_stock')
@@ -535,6 +548,7 @@ class CartController extends Controller
                 $stockStatus = ProductMeta::where('post_id', $product->ID)
                     ->where('meta_key', '_stock_status')
                     ->value('meta_value');
+                $taxID = ProductMeta::where('post_id', $product->ID)->where('meta_key', 'mm_indirect_tax_type')->value('meta_value');
             }
             if ($stockStatus === 'instock' && $stockLevel > 0) {
                 $stockStatus = 'instock';
@@ -566,7 +580,8 @@ class CartController extends Controller
                 'quantity' => $cartItem->quantity,
                 'variation_id' => $variation ? $variation->ID : null,
                 'variation' => $variationAttributes,
-                'taxonomies' => $categoryIds
+                'taxonomies' => $categoryIds,
+                'taxID' => $taxID,
             ];
         }
 
@@ -576,7 +591,8 @@ class CartController extends Controller
             'message' => 'Cart items',
             'data' => $userIp,
             'time' => now()->toDateTimeString(),
-            'cart_total' => $total,
+            'cart_total' => $total[0],
+            'taxIDs' => $total[1],
             'cart_count' => $itemCount,
             'cart_items' => $cartData,
             'pagination' => [
@@ -608,13 +624,16 @@ class CartController extends Controller
 
         $cart->delete();
         $priceTier = $user->price_tier;
-        if(!$priceTier){
+        if (!$priceTier) {
             $priceTier = '_regular_price';
         }
         $cartTotalItems = Cart::where('user_id', $user->ID)->get();
         $total = $this->cartTotal($cartTotalItems, $priceTier);
         $itemCount = $this->cartItemCount($cartTotalItems);
-        return response()->json(['status' => true,'cart_total'=>$total,'cart_count'=>$itemCount, 'success' => 'Product removed from cart'], 200);
+        return response()->json([
+            'status' => true, 'cart_total' => $total[0],
+            'taxIDs' => $total[1], 'cart_count' => $itemCount, 'success' => 'Product removed from cart'
+        ], 200);
     }
 
 
@@ -629,7 +648,7 @@ class CartController extends Controller
             ->where('product_id', $request->product_id)
             ->where('variation_id', $request->variation_id)
             ->first();
-        
+
         if (!$cartItem || $request->quantity <= 0) {
             return response()->json(['status' => false, 'message' => 'Item not found'], 200);
         }
@@ -645,13 +664,16 @@ class CartController extends Controller
             $this->adjustStock($cartItem, $oldQuantity, $request->quantity);
         }
         $priceTier = $user->price_tier;
-        if(!$priceTier){
+        if (!$priceTier) {
             $priceTier = '_regular_price';
         }
         $cartTotalItems = Cart::where('user_id', $user->ID)->get();
         $total = $this->cartTotal($cartTotalItems, $priceTier);
         $itemCount = $this->cartItemCount($cartTotalItems);
-        return response()->json(['message' => 'Item quantity updated', 'cart_total'=>$total,'cart_count'=>$itemCount,'status' => true], 200);
+        return response()->json([
+            'message' => 'Item quantity updated',  'cart_total' => $total[0],
+            'taxIDs' => $total[1], 'cart_count' => $itemCount, 'status' => true
+        ], 200);
     }
 
     public function empty(Request $request)
@@ -677,6 +699,6 @@ class CartController extends Controller
 
         Cart::where('user_id', $user_id)->delete();
 
-        return response()->json(['message' => 'All items removed', 'cart_count'=>0, 'status' => true], 200);
+        return response()->json(['message' => 'All items removed', 'cart_count' => 0, 'status' => true], 200);
     }
 }
