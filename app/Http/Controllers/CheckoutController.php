@@ -144,13 +144,15 @@ class CheckoutController extends Controller
                     'message' => 'Quantity adjusted due to stock availability',
                 ];
             }
-            if (empty($adjustedItems) && !$check->isFreeze) {
+            if (empty($adjustedItems)) {
                 // $check = Checkout::where('user_id', $user->ID)->firstOrFail();
                 // if (!$check->isFreeze) {
+                    if(!$check->isFreeze){
+                        $check->update([
+                            'isFreeze' => true,
+                        ]);
+                    }
                     $this->reduceStock($cartItem);
-                    $check->update([
-                        'isFreeze' => true,
-                    ]);
                     UnfreezeCart::dispatch($user->ID)->delay(now()->addMinutes(5));
                 // }
                 
