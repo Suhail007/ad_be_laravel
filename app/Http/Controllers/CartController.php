@@ -486,7 +486,7 @@ class CartController extends Controller
             return response()->json(['message' => 'User not authenticated', 'status' => 'error'], 401);
         }
 
-        $perPage = $request->input('per_page', 15);
+        // $perPage = $request->input('per_page', 15);
         $cartItems = Cart::where('user_id', $user->ID)->get();
 
 
@@ -504,15 +504,12 @@ class CartController extends Controller
         }
 
         $priceTier = $user->price_tier;
-        if (!$priceTier) {
-            $priceTier = '_regular_price';
-        }
-        $cartData = [];
 
-        // $cartItems = Cart::where('user_id', $user->ID)->get();
+        $priceTier = $priceTier ?? '_regular_price';
+    
+        $cartData = [];
         $total = $this->cartTotal($cartItems, $priceTier);
         $itemCount = $this->cartItemCount($cartItems);
-        // dd($cartItems);
         foreach ($cartItems as $cartItem) {
             $product = $cartItem->product;
             $variation = $cartItem->variation;
@@ -521,40 +518,50 @@ class CartController extends Controller
                 $wholesalePrice = ProductMeta::where('post_id', $variation->ID)
                     ->where('meta_key', $priceTier)
                     ->value('meta_value');
+                $wholesalePrice = $wholesalePrice ?? ProductMeta::where('post_id', $variation->ID)
+                    ->where('meta_key', '_price')
+                    ->value('meta_value');
             } else {
                 $wholesalePrice = ProductMeta::where('post_id', $product->ID)
                     ->where('meta_key', $priceTier)
+                    ->value('meta_value');
+                $wholesalePrice = $wholesalePrice ?? ProductMeta::where('post_id',$product->ID)
+                    ->where('meta_key', '_price')
                     ->value('meta_value');
             }
 
             $stockLevel = 0;
             $stockStatus = 'outofstock';
             $taxID = null;
-            if ($variation) {
-                $stockLevel = ProductMeta::where('post_id', $variation->ID)
-                    ->where('meta_key', '_stock')
-                    ->value('meta_value');
+            $postID = $variation ? $variation->ID : $product->ID;
 
-                $stockStatus = ProductMeta::where('post_id', $variation->ID)
-                    ->where('meta_key', '_stock_status')
-                    ->value('meta_value');
-                $taxID = ProductMeta::where('post_id', $variation->ID)->where('meta_key', 'mm_indirect_tax_type')->value('meta_value');
-            } else {
-                $stockLevel = ProductMeta::where('post_id', $product->ID)
-                    ->where('meta_key', '_stock')
-                    ->value('meta_value');
+            // Fetch all required meta values in a single query
+            $productMeta = ProductMeta::where('post_id', $postID)
+                ->whereIn('meta_key', [
+                    '_stock',
+                    '_stock_status',
+                    'mm_indirect_tax_type',
+                    'mm_product_basis_1',
+                    'mm_product_basis_2',
+                    'mm_product_basis_3'
+                ])
+                ->pluck('meta_value', 'meta_key');
 
-                $stockStatus = ProductMeta::where('post_id', $product->ID)
-                    ->where('meta_key', '_stock_status')
-                    ->value('meta_value');
-                $taxID = ProductMeta::where('post_id', $product->ID)->where('meta_key', 'mm_indirect_tax_type')->value('meta_value');
-            }
+            // Assign the values based on the meta_key
+            $stockLevel = $productMeta->get('_stock', null);
+            $stockStatus = $productMeta->get('_stock_status', null);
+            $taxID = $productMeta->get('mm_indirect_tax_type', null);
+            $ml1taxID = $productMeta->get('mm_product_basis_1', null);
+            $ml2taxID = $productMeta->get('mm_product_basis_2', null);
+            $ml3taxID = $productMeta->get('mm_product_basis_3', null);
             if ($stockStatus === 'instock' && $stockLevel > 0) {
                 $stockStatus = 'instock';
             } else {
                 $stockStatus = 'outofstock';
             }
+            if($taxID){
 
+            }
             $variationAttributes = [];
             if ($variation) {
                 $attributes = DB::select("SELECT meta_value FROM wp_postmeta WHERE post_id = ? AND meta_key LIKE 'attribute_%'", [$variation->ID]);
@@ -581,6 +588,9 @@ class CartController extends Controller
                 'variation' => $variationAttributes,
                 'taxonomies' => $categoryIds,
                 'location_tax' => $taxID,
+                'ml1' => $ml1taxID,
+                'ml2' => $ml2taxID,
+                'ml3' => $ml3taxID
             ];
         }
 
@@ -594,14 +604,6 @@ class CartController extends Controller
             'location_tax' => $total[1],
             'cart_count' => $itemCount,
             'cart_items' => $cartData,
-            // 'pagination' => [
-            //     'total' => $cartItems->total(),
-            //     'per_page' => $cartItems->perPage(),
-            //     'current_page' => $cartItems->currentPage(),
-            //     'last_page' => $cartItems->lastPage(),
-            //     'next_page_url' => $cartItems->nextPageUrl(),
-            //     'prev_page_url' => $cartItems->previousPageUrl(),
-            // ]
         ], 200);
     }
 
