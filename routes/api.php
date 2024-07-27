@@ -54,7 +54,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('/cart/bulk-update',[CartController::class,'bulkUpdateCart']);
 
     //tax
-    Route::get('/cart/tax',[CartController::class,'tax']);
+    Route::get('/carttax',[CartController::class,'tax']);
 
     //checkout 
     Route::post('/checkout/address',[CheckoutController::class,'checkoutAddress']);
