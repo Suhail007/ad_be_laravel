@@ -83,18 +83,27 @@ class CheckoutController extends Controller
                 ];
                 continue;
             }
-
-            $wholesalePrice = $this->getWholesalePrice($variation, $product, $user->price_tier);
+            $tier= $user->price_tier ?? '_price' ?? '_regular_price';
+            $wholesalePrice = $this->getWholesalePrice($variation, $product, $tier);
             list($stockLevel, $stockStatus) = $this->getStockInfo($variation, $product);
 
             $adjusted = false;
             $originalQuantity = $cartItem->quantity;
+            if ($stockLevel == "0") {
+                $cartItem->delete();
+                $adjustedItems[] = [
+                    'product_id' => $product->ID,
+                    'product_name' => $product->post_title,
+                    'product_image' => $product->thumbnail_url,
+                    'message' => 'Product is out of stock and has been removed from the cart',
+                ];
+                continue;
+            }
             if ($cartItem->quantity > $stockLevel) {
                 $cartItem->quantity = $stockLevel;
                 $cartItem->save();
                 $adjusted = true;
-            }
-
+            } 
             $variationAttributes = $this->getVariationAttributes($variation);
 
             $cartData[] = [

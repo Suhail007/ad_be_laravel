@@ -157,11 +157,9 @@ class CartController extends Controller
     private function cartItemCount($cartItems)
     {
         $totalCount = 0;
-
         foreach ($cartItems as $cartItem) {
             $totalCount += $cartItem->quantity;
         }
-
         return $totalCount;
     }
 
@@ -211,8 +209,8 @@ class CartController extends Controller
             $cartItems[] = $cartItem;
         }
 
-        $perPage = $request->input('per_page', 15); // Items per page, default to 10
-        $cartItems = Cart::where('user_id', $user_id)->paginate($perPage);
+        // $perPage = $request->input('per_page', 15); // Items per page, default to 10
+        $cartItems = Cart::where('user_id', $user_id)->get();
 
         $userIp = $request->ip();
 
@@ -309,14 +307,14 @@ class CartController extends Controller
             'data' => $userIp,
             'cart' => $cartData,
             'cart_total' => $total,
-            'pagination' => [
-                'total' => $cartItems->total(),
-                'per_page' => $cartItems->perPage(),
-                'current_page' => $cartItems->currentPage(),
-                'last_page' => $cartItems->lastPage(),
-                'next_page_url' => $cartItems->nextPageUrl(),
-                'prev_page_url' => $cartItems->previousPageUrl(),
-            ]
+            // 'pagination' => [
+            //     'total' => $cartItems->total(),
+            //     'per_page' => $cartItems->perPage(),
+            //     'current_page' => $cartItems->currentPage(),
+            //     'last_page' => $cartItems->lastPage(),
+            //     'next_page_url' => $cartItems->nextPageUrl(),
+            //     'prev_page_url' => $cartItems->previousPageUrl(),
+            // ]
         ], 200);
     }
 
@@ -370,7 +368,7 @@ class CartController extends Controller
         }
 
         $perPage = $request->input('per_page', 15);
-        $cartItems = Cart::where('user_id', $user_id)->paginate($perPage);
+        $cartItems = Cart::where('user_id', $user_id)->get();
 
         $userIp = $request->ip();
 
@@ -469,14 +467,14 @@ class CartController extends Controller
             'cart_total' => $total[0],
             'location_tax' => $total[1],
             'cart_count' => $itemCount,
-            'pagination' => [
-                'total' => $cartItems->total(),
-                'per_page' => $cartItems->perPage(),
-                'current_page' => $cartItems->currentPage(),
-                'last_page' => $cartItems->lastPage(),
-                'next_page_url' => $cartItems->nextPageUrl(),
-                'prev_page_url' => $cartItems->previousPageUrl(),
-            ]
+            // 'pagination' => [
+            //     'total' => $cartItems->total(),
+            //     'per_page' => $cartItems->perPage(),
+            //     'current_page' => $cartItems->currentPage(),
+            //     'last_page' => $cartItems->lastPage(),
+            //     'next_page_url' => $cartItems->nextPageUrl(),
+            //     'prev_page_url' => $cartItems->previousPageUrl(),
+            // ]
         ], 200);
     }
 
