@@ -43,6 +43,7 @@ class CartController extends Controller
         return [round($total, 2), $taxID];
     }
 
+
     protected function reduceStock($cartItem)
     {
         $product = $cartItem->product;
@@ -466,7 +467,7 @@ class CartController extends Controller
             'data' => $userIp,
             'cart' => $cartData,
             'cart_total' => $total[0],
-            'taxIDs' => $total[1],
+            'location_tax' => $total[1],
             'cart_count' => $itemCount,
             'pagination' => [
                 'total' => $cartItems->total(),
@@ -488,7 +489,7 @@ class CartController extends Controller
         }
 
         $perPage = $request->input('per_page', 15);
-        $cartItems = Cart::where('user_id', $user->ID)->paginate($perPage);
+        $cartItems = Cart::where('user_id', $user->ID)->get();
 
 
         $userIp = $request->ip();
@@ -510,9 +511,9 @@ class CartController extends Controller
         }
         $cartData = [];
 
-        $cartTotalItems = Cart::where('user_id', $user->ID)->get();
-        $total = $this->cartTotal($cartTotalItems, $priceTier);
-        $itemCount = $this->cartItemCount($cartTotalItems);
+        // $cartItems = Cart::where('user_id', $user->ID)->get();
+        $total = $this->cartTotal($cartItems, $priceTier);
+        $itemCount = $this->cartItemCount($cartItems);
         // dd($cartItems);
         foreach ($cartItems as $cartItem) {
             $product = $cartItem->product;
@@ -581,7 +582,7 @@ class CartController extends Controller
                 'variation_id' => $variation ? $variation->ID : null,
                 'variation' => $variationAttributes,
                 'taxonomies' => $categoryIds,
-                'taxID' => $taxID,
+                'location_tax' => $taxID,
             ];
         }
 
@@ -592,17 +593,17 @@ class CartController extends Controller
             'data' => $userIp,
             'time' => now()->toDateTimeString(),
             'cart_total' => $total[0],
-            'taxIDs' => $total[1],
+            'location_tax' => $total[1],
             'cart_count' => $itemCount,
             'cart_items' => $cartData,
-            'pagination' => [
-                'total' => $cartItems->total(),
-                'per_page' => $cartItems->perPage(),
-                'current_page' => $cartItems->currentPage(),
-                'last_page' => $cartItems->lastPage(),
-                'next_page_url' => $cartItems->nextPageUrl(),
-                'prev_page_url' => $cartItems->previousPageUrl(),
-            ]
+            // 'pagination' => [
+            //     'total' => $cartItems->total(),
+            //     'per_page' => $cartItems->perPage(),
+            //     'current_page' => $cartItems->currentPage(),
+            //     'last_page' => $cartItems->lastPage(),
+            //     'next_page_url' => $cartItems->nextPageUrl(),
+            //     'prev_page_url' => $cartItems->previousPageUrl(),
+            // ]
         ], 200);
     }
 
@@ -632,7 +633,7 @@ class CartController extends Controller
         $itemCount = $this->cartItemCount($cartTotalItems);
         return response()->json([
             'status' => true, 'cart_total' => $total[0],
-            'taxIDs' => $total[1], 'cart_count' => $itemCount, 'success' => 'Product removed from cart'
+            'location_tax' => $total[1], 'cart_count' => $itemCount, 'success' => 'Product removed from cart'
         ], 200);
     }
 
@@ -672,7 +673,7 @@ class CartController extends Controller
         $itemCount = $this->cartItemCount($cartTotalItems);
         return response()->json([
             'message' => 'Item quantity updated',  'cart_total' => $total[0],
-            'taxIDs' => $total[1], 'cart_count' => $itemCount, 'status' => true
+            'location_tax' => $total[1], 'cart_count' => $itemCount, 'status' => true
         ], 200);
     }
 
