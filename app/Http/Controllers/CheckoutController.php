@@ -88,7 +88,7 @@ class CheckoutController extends Controller
                 $cartItem->delete();
                 $adjustedItems[] = [
                     'product_id' => $product->ID,
-                    'variation_id'=>$variation ?? null,
+                    'variation_id' => $variation ? $variation->ID : null,
                     'product_name' => $product->post_title,
                     'product_image' => $product->thumbnail_url,
                     'message' => 'Product is not published and has been removed from the cart',
@@ -105,7 +105,7 @@ class CheckoutController extends Controller
                 $cartItem->delete();
                 $adjustedItems[] = [
                     'product_id' => $product->ID,
-                    'variation_id'=>$variation ?? null,
+                    'variation_id' => $variation ? $variation->ID : null,
                     'product_name' => $product->post_title,
                     'product_image' => $product->thumbnail_url,
                     'message' => 'Product is out of stock and has been removed from the cart',
@@ -136,7 +136,7 @@ class CheckoutController extends Controller
             if ($adjusted) {
                 $adjustedItems[] = [
                     'product_id' => $product->ID,
-                    'variation_id'=>$variation ?? null,
+                   'variation_id' => $variation ? $variation->ID : null,
                     'product_name' => $product->post_title,
                     'product_image' => $product->thumbnail_url,
                     'requested_quantity' => $originalQuantity,
