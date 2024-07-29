@@ -268,7 +268,7 @@ class CartController extends Controller
                     ->value('meta_value');
             }
 
-            if ($stockStatus === 'instock' && $stockLevel > 0) {
+            if ($stockStatus == 'instock') {
                 $stockStatus = 'instock';
             } else {
                 $stockStatus = 'outofstock';
@@ -506,7 +506,7 @@ class CartController extends Controller
         $priceTier = $user->price_tier;
 
         $priceTier = $priceTier ?? '_regular_price';
-    
+
         $cartData = [];
         $total = $this->cartTotal($cartItems, $priceTier);
         $itemCount = $this->cartItemCount($cartItems);
@@ -525,7 +525,7 @@ class CartController extends Controller
                 $wholesalePrice = ProductMeta::where('post_id', $product->ID)
                     ->where('meta_key', $priceTier)
                     ->value('meta_value');
-                $wholesalePrice = $wholesalePrice ?? ProductMeta::where('post_id',$product->ID)
+                $wholesalePrice = $wholesalePrice ?? ProductMeta::where('post_id', $product->ID)
                     ->where('meta_key', '_price')
                     ->value('meta_value');
             }
@@ -559,8 +559,7 @@ class CartController extends Controller
             } else {
                 $stockStatus = 'outofstock';
             }
-            if($taxID){
-
+            if ($taxID) {
             }
             $variationAttributes = [];
             if ($variation) {
@@ -704,5 +703,67 @@ class CartController extends Controller
         }
 
         return response()->json(['message' => 'All items removed', 'cart_count' => 0, 'status' => true], 200);
+    }
+
+    public function bulkDeleteCart(Request $request)
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+        if (!$user) {
+            return response()->json(['message' => 'User not authenticated', 'status' => false], 401);
+        }
+
+        $user_id = $user->ID;
+        $checkout = Checkout::where('user_id', $user_id)->first();
+        $isFreeze = $checkout ? $checkout->isFreeze : false;
+
+        if ($isFreeze) {
+            return response()->json(['message' => 'Stock already reserved for 5 minutes, please order quickly','removed_items'=>0 ,'status' => true], 200);
+        }
+
+        $cartItems = Cart::where('user_id', $user_id)->get();
+        $removedItems = [];
+
+        foreach ($cartItems as $cartItem) {
+            $product = $cartItem->product;
+            $variation = $cartItem->variation;
+
+            $stockLevel = 0;
+            $stockStatus = 'outofstock';
+
+            if ($variation) {
+                $stockLevel = ProductMeta::where('post_id', $variation->ID)
+                    ->where('meta_key', '_stock')
+                    ->value('meta_value');
+
+                $stockStatus = ProductMeta::where('post_id', $variation->ID)
+                    ->where('meta_key', '_stock_status')
+                    ->value('meta_value');
+            } else {
+                $stockLevel = ProductMeta::where('post_id', $product->ID)
+                    ->where('meta_key', '_stock')
+                    ->value('meta_value');
+
+                $stockStatus = ProductMeta::where('post_id', $product->ID)
+                    ->where('meta_key', '_stock_status')
+                    ->value('meta_value');
+            }
+
+            // Check if the stock level is available
+            if ($stockStatus != 'instock' || $stockLevel == 0) {
+                // Remove out-of-stock item from the cart
+                $cartItem->delete();
+                $removedItems[] = [
+                    'product_id' => $product->ID,
+                    'variation_id' => $variation ? $variation->ID : null,
+                    'message' => 'Item removed from cart due to being out of stock',
+                ];
+            }
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Out-of-stock items removed from the cart',
+            'removed_items' => $removedItems,
+        ]);
     }
 }
