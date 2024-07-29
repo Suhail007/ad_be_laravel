@@ -541,6 +541,8 @@ class CartController extends Controller
                     '_stock',
                     '_stock_status',
                     'mm_indirect_tax_type',
+                    '_tax_class',
+                    '_sku',
                     'mm_product_basis_1',
                     'mm_product_basis_2',
                     'mm_product_basis_3'
@@ -551,6 +553,8 @@ class CartController extends Controller
             $stockLevel = $productMeta->get('_stock', null);
             $stockStatus = $productMeta->get('_stock_status', null);
             $taxID = $productMeta->get('mm_indirect_tax_type', null);
+            $taxClass = $productMeta->get('_tax_class', null);
+            $sku = $productMeta->get('_sku', null);
             $ml1taxID = $productMeta->get('mm_product_basis_1', null);
             $ml2taxID = $productMeta->get('mm_product_basis_2', null);
             $ml3taxID = $productMeta->get('mm_product_basis_3', null);
@@ -587,6 +591,8 @@ class CartController extends Controller
                 'variation' => $variationAttributes,
                 'taxonomies' => $categoryIds,
                 'location_tax' => $taxID,
+                'tax_class'=>$taxClass,
+                'sku'=>$sku,
                 'ml1' => $ml1taxID,
                 'ml2' => $ml2taxID,
                 'ml3' => $ml3taxID
