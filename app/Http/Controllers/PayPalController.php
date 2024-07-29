@@ -253,19 +253,19 @@ class PayPalController extends Controller
                         ]);
 
 
-                        if ($item['variation_id']) {
-                            $productMeta = ProductMeta::where('post_id', $item['variation_id'])->where('meta_key', '_stock')->first();
-                            if ($productMeta) {
-                                $productMeta->meta_value -= $item['quantity'];
-                                $productMeta->save();
-                            }
-                        } else {
-                            $productMeta = ProductMeta::where('post_id', $item['product_id'])->where('meta_key', '_stock')->first();
-                            if ($productMeta) {
-                                $productMeta->meta_value -= $item['quantity'];
-                                $productMeta->save();
-                            }
-                        }
+                        // if ($item['variation_id']) {
+                        //     $productMeta = ProductMeta::where('post_id', $item['variation_id'])->where('meta_key', '_stock')->first();
+                        //     if ($productMeta) {
+                        //         $productMeta->meta_value -= $item['quantity'];
+                        //         $productMeta->save();
+                        //     }
+                        // } else {
+                        //     $productMeta = ProductMeta::where('post_id', $item['product_id'])->where('meta_key', '_stock')->first();
+                        //     if ($productMeta) {
+                        //         $productMeta->meta_value -= $item['quantity'];
+                        //         $productMeta->save();
+                        //     }
+                        // }
                         Cart::where('user_id', $user->ID)
                             ->where('product_id', $item['product_id'])
                             ->where('variation_id', $item['variation_id'] ?? null)
@@ -534,6 +534,9 @@ class PayPalController extends Controller
                     }
                     $totalAmount = $shippingLines[0]['total'] + $amount; // $orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {return $carry + $item['quantity'] * $item['product_price'];}, 0);
                     $productCount = count($orderData['extra']);
+                    DB::table('wp_woocommerce_order_items')->insertGetId([
+                        'order_id'=>$orderId,
+                    ]);
                     foreach ($orderData['extra'] as $item) {
                         $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,

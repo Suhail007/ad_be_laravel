@@ -751,7 +751,7 @@ class ProductController extends Controller
                 'slug' => $relatedProduct->post_name,
                 'thumbnail' => $relatedProduct->thumbnail_url,
                 'product_visibility' => $relatedProduct->visibility,
-                ''
+                'date'=>$relatedProduct->post_modified_gmt,
                 // 'category_visibility' => $categoryVisibility
             ];
         });
