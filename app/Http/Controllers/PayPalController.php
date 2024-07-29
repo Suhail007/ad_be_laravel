@@ -534,9 +534,9 @@ class PayPalController extends Controller
                     }
                     $totalAmount = $shippingLines[0]['total'] + $amount; // $orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {return $carry + $item['quantity'] * $item['product_price'];}, 0);
                     $productCount = count($orderData['extra']);
-                    DB::table('wp_woocommerce_order_items')->insertGetId([
-                        'order_id'=>$orderId,
-                    ]);
+                    // DB::table('wp_woocommerce_order_items')->insertGetId([
+                    //     'order_id'=>$orderId,
+                    // ]);
                     foreach ($orderData['extra'] as $item) {
                         $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,
