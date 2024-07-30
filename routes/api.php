@@ -43,6 +43,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     //myaccount
     Route::get('/my-account/addresses',[MyAcccountController::class,'getUserAddresses']);
     Route::post('/my-account/addresses-add', [MyAcccountController::class, 'updateOrCreateAddresses']);
+    Route::post('/my-account/addresses-default', [MyAcccountController::class, 'defaultAddresses']);
 
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);
@@ -98,19 +99,6 @@ Route::get('/cart-products', [WooCartController::class, 'show']);
 // Route::post('/cart/add', [CartController::class, 'addToCart']);
 
 
-
-// Route::post('/create-new-order',[OrderController::class,'createNewOrder']);
-
-// Route::get('/get-all-payment-option',[WooCommerceController::class,'allPaymentGate']);
-// Route::get('/get-all-payment-option/{method}',[WooCommerceController::class,'getPaymentMethod']);
-// Route::get('/get-shipping-zone',[WooCommerceController::class,'getShippingZone']);
-
-
-// Route::post('/create-payment', [PayPalController::class, 'createPayment']);
-// Route::post('/execute-payment', [PayPalController::class, 'executePayment']);
-
-
-// Route::get('/get-all-orders',[WooCommerceController::class,'getAllOrders']);
 
 Route::get('/log', function () {
     return response()->json(['status' => 'error', 'redirect_url' => '/login']);
