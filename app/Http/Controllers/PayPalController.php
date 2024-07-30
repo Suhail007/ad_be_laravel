@@ -325,6 +325,14 @@ class PayPalController extends Controller
                             ->where('product_id', $item['product_id'])
                             ->where('variation_id', $item['variation_id'] ?? null)
                             ->delete();
+                            $Ptotal=0;
+                            $productPrice = $item['product_price'];
+                            $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0);
+                            if ($item['tax_class'] == "vapes") {
+                                $productPrice = $productPrice + ($productPrice * 0.15); //il tax   
+                            }
+                            $productPrice = $productPrice - ($item['unitDiscount'] ?? 0);
+                            $Ptotal += $item['quantity'] * $productPrice;
 
                         $itemMeta = [
                             ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
@@ -332,10 +340,10 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_reduced_stock', 'meta_value' => $item['quantity']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' =>  $Ptotal],  //$item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $Ptotal ],//$item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
                             ['order_item_id' => $orderItemId, 'meta_key' => 'flavor', 'meta_value' => implode(',', $item['variation']) ?? ''],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' => $item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' =>$Ptotal], //$item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $order_role],
@@ -671,24 +679,33 @@ class PayPalController extends Controller
                             ->where('product_id', $item['product_id'])
                             ->where('variation_id', $item['variation_id'] ?? null)
                             ->delete();
+                            
+                            $Ptotal=0;
+                            $productPrice = $item['product_price'];
+                            $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0);
+                            if ($item['tax_class'] == "vapes") {
+                                $productPrice = $productPrice + ($productPrice * 0.15); //il tax   
+                            }
+                            $productPrice = $productPrice - ($item['unitDiscount'] ?? 0);
+                            $Ptotal += $item['quantity'] * $productPrice;
 
-                            $itemMeta = [
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_reduced_stock', 'meta_value' => $item['quantity']],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
-                                ['order_item_id' => $orderItemId, 'meta_key' => 'flavor', 'meta_value' => implode(',', $item['variation']) ?? ''],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' => $item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => 0],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $order_role],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' =>  $isVape?  $item['quantity'] * ($item['product_price'] * 0.15) : 0],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' => $isVape?  $item['quantity'] * ($item['product_price'] * 0.15) : 0],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' => serialize(['total' => [($isVape?  $item['quantity'] * ($item['product_price'] * 0.15) : 0) ? $item['quantity'] * ($item['product_price'] * 0.15) : 0], 'subtotal' => [($item['tax_class'] == 'vapes' && $orderData['shipping']['state'] != "IL") ? $item['quantity'] * ($item['product_price'] * 0.15) : 0]])],
-                            ];
+                        $itemMeta = [
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_reduced_stock', 'meta_value' => $item['quantity']],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' =>  $Ptotal],  //$item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $Ptotal ],//$item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
+                            ['order_item_id' => $orderItemId, 'meta_key' => 'flavor', 'meta_value' => implode(',', $item['variation']) ?? ''],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' =>$Ptotal], //$item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $order_role],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' =>  $isVape?  $item['quantity'] * ($item['product_price'] * 0.15) : 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' => $isVape?  $item['quantity'] * ($item['product_price'] * 0.15) : 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' => serialize(['total' => [($isVape?  $item['quantity'] * ($item['product_price'] * 0.15) : 0) ? $item['quantity'] * ($item['product_price'] * 0.15) : 0], 'subtotal' => [($item['tax_class'] == 'vapes' && $orderData['shipping']['state'] != "IL") ? $item['quantity'] * ($item['product_price'] * 0.15) : 0]])],
+                        ];
 
                         foreach ($itemMeta as $meta) {
                             OrderItemMeta::insert($meta);
