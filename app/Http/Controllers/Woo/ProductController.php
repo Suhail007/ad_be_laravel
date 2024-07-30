@@ -172,6 +172,13 @@ class ProductController extends Controller
                     $query->where('slug', $slug)
                         ->where('taxonomy', 'product_cat');
                 })
+                ->whereHas('categories', function ($query) {
+                    $query->whereHas('categorymeta', function ($query) {
+                        $query->where('meta_key', 'visibility')
+                              ->where('meta_value', 'public'); // 'public' is the visibility value
+                    });
+                    
+                })
                 ->orderBy('post_modified', 'desc')
                 ->paginate($perPage);
         }
@@ -266,6 +273,13 @@ class ProductController extends Controller
                 ->whereHas('categories.taxonomies', function ($query) use ($slug) {
                     $query->where('slug', $slug)
                         ->where('taxonomy', 'product_brand');
+                })
+                ->whereHas('categories', function ($query) {
+                    $query->whereHas('categorymeta', function ($query) {
+                        $query->where('meta_key', 'visibility')
+                              ->where('meta_value', 'public'); // 'public' is the visibility value
+                    });
+                    
                 })
                 ->orderBy('post_modified', 'desc')
                 ->paginate($perPage);
