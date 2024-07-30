@@ -175,10 +175,10 @@ class PayPalController extends Controller
                 foreach ($orderData['extra'] as $item) {
                     $subtotal = $item['product_price'];
                     $subtotal = $subtotal + ($item['taxPerUnit'] ?? 0);
-                    // if ($item['tax_class'] == "vapes" && $orderData['shipping']['state'] == "IL") {
-                    //     $subtotal = $subtotal + ($subtotal * 0.15); //il tax
-                    //     $isVape= true;
-                    // }
+                    if ($item['tax_class'] == "vapes") {
+                        $subtotal = $subtotal + ($subtotal * 0.15); //il tax
+                        $isVape= true;
+                    }
                     // if ($orderData['shipping']['state'] == "IL") {
                     //     $subtotal = $subtotal + ($subtotal * 0.15); //il tax
                     // }
@@ -542,10 +542,10 @@ class PayPalController extends Controller
                 foreach ($orderData['extra'] as $item) {
                     $subtotal = $item['product_price'];
                     $subtotal = $subtotal + ($item['taxPerUnit'] ?? 0);
-                    // if ($item['tax_class'] == "vapes" && $orderData['shipping']['state'] == "IL") {
-                    //     $subtotal = $subtotal + ($subtotal * 0.15); //il tax
-                    //     $isVape= true;
-                    // }
+                    if ($item['tax_class'] == "vapes") {
+                        $subtotal = $subtotal + ($subtotal * 0.15); //il tax
+                        $isVape= true;
+                    }
                     // if ($orderData['shipping']['state'] == "IL") {
                     //     $subtotal = $subtotal + ($subtotal * 0.15); //il tax
                     // }
