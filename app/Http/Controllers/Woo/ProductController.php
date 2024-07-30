@@ -606,7 +606,14 @@ class ProductController extends Controller
                 }
             ])
                 ->select('ID', 'post_title', 'post_modified', 'post_name')
-                ->where('post_type', 'product');
+                ->where('post_type', 'product')
+                ->whereHas('categories', function ($query) {
+                    $query->whereHas('categorymeta', function ($query) {
+                        $query->where('meta_key', 'visibility')
+                              ->where('meta_value', 'public'); // 'public' is the visibility value
+                    });
+                    
+                });
         }
        
 
