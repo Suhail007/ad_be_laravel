@@ -26,6 +26,11 @@ class MyAcccountController extends Controller
 
             $customAddresses = unserialize($customAddressesMeta);
 
+            $customAddressesUnapprove = UserMeta::where('user_id', $user->ID)
+            ->where('meta_key', 'custom_requested_addresses')
+            ->value('meta_value');
+
+            $customAddressesUnapprove = unserialize($customAddressesUnapprove);
             
             $defaultAddress = [
                 'billing' => [
@@ -56,10 +61,14 @@ class MyAcccountController extends Controller
             if (empty($customAddresses)) {
                 $customAddresses=[];
             }
+            if(empty($customAddressesUnapprove)){
+                $customAddressesUnapprove=[];
+            }
             return response()->json([
                 'status' => true,
                 'username' => $user->user_login,
                 'message' => 'User addresses',
+                'unapproved'=>$customAddressesUnapprove,
                 'addresses' => $customAddresses,
                 'defaultAddress' => $defaultAddress,
             ], 200);
