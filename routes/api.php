@@ -42,6 +42,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
     //myaccount
     Route::get('/my-account/addresses',[MyAcccountController::class,'getUserAddresses']);
+    Route::post('/my-account/addresses-add', [MyAcccountController::class, 'updateOrCreateAddresses']);
+
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);
 

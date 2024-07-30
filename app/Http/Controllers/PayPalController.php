@@ -160,16 +160,34 @@ class PayPalController extends Controller
             try {
                 // $this->validateBilling($billingInfo);
                 // $this->validateShipping($shippingInfo);
-
+                $total= 0;
                 $checkout->update(
                     [
-                        'total' => $shippingLines[0]['total'] + $amount, //15 + 88.5 
+                        // 'total' => $shippingLines[0]['total'] + $amount, 
                         'extra' => $lineItems,
                         'paymentType' => $paytype,
                     ]
                 );
+                $orderData = Checkout::where('user_id', $user->ID)->first();
 
-                $saleData = $this->doSale($shippingLines[0]['total'] + $amount, $payment_token, $billingInfo, $shippingInfo);
+                //total item with unit tax with per unit discount
+                foreach ($orderData['extra'] as $item) {
+                    $subtotal = $item['product_price'];
+                    $subtotal = $subtotal + ($item['taxPerUnit'] ?? 0);
+                    $subtotal = $subtotal + ($item['unitDiscount'] ?? 0);
+                    $total += $item['quantity'] * $subtotal;
+                }
+                //any discount in subtotal
+               
+                $total =$total - $shippingLines[0]['subtotal_discount']??0; 
+                
+               
+                //shipping charges
+                $total += $shippingLines[0]['total'];
+
+                
+
+                $saleData = $this->doSale($total, $payment_token, $billingInfo, $shippingInfo);
                 $paymentResult = $this->_doRequest($saleData);
 
                 if (!$paymentResult['status']) {
@@ -225,9 +243,9 @@ class PayPalController extends Controller
                         ['post_id' => $orderId, 'meta_key' => '_shipping_postcode', 'meta_value' => $orderData['shipping']['postcode']],
                         ['post_id' => $orderId, 'meta_key' => '_shipping_country', 'meta_value' => $orderData['shipping']['country']],
                         ['post_id' => $orderId, 'meta_key' => '_payment_method', 'meta_value' => $orderData['paymentType']],
-                        ['post_id' => $orderId, 'meta_key' => '_payment_method_title', 'meta_value' => 'NMI Payment on Card'], //$orderData['payment_method_title']],
+                        ['post_id' => $orderId, 'meta_key' => '_payment_method_title', 'meta_value' => 'NMI Payment on Card'], 
                         ['post_id' => $orderId, 'meta_key' => '_transaction_id', 'meta_value' => $paymentResult['data']['transactionid']],
-                        ['post_id' => $orderId, 'meta_key' => '_order_total', 'meta_value' => $shippingLines[0]['total'] + $amount], //$orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {return $carry + $item['quantity'] * $item['product_price'];}, 0)],
+                        ['post_id' => $orderId, 'meta_key' => '_order_total', 'meta_value' => $shippingLines[0]['total'] + $amount], 
                         ['post_id' => $orderId, 'meta_key' => '_order_currency', 'meta_value' => 'USD'],
                         ['post_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? null],
                         ['post_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? null],
@@ -480,12 +498,34 @@ class PayPalController extends Controller
         } else if ($paytype == 'onaccount') {
 
             try {
+                $total= 0;
+                $checkout->update(
+                    [
+                        // 'total' => $shippingLines[0]['total'] + $amount, 
+                        'extra' => $lineItems,
+                        'paymentType' => $paytype,
+                    ]
+                );
+                $orderData = Checkout::where('user_id', $user->ID)->first();
+
+                //total item with unit tax with per unit discount
+                foreach ($orderData['extra'] as $item) {
+                    $subtotal = $item['product_price'];
+                    $subtotal = $subtotal + ($item['taxPerUnit'] ?? 0);
+                    $subtotal = $subtotal + ($item['unitDiscount'] ?? 0);
+                    $total += $item['quantity'] * $subtotal;
+                }
+                //any discount in subtotal
+                $total =$total - ($shippingLines[0]['subtotal_discount']??0); 
+
+               
+                //shipping charges
+                $total += $shippingLines[0]['total'];
+
 
                 $checkout->update(
                     [
-                        'total' => $shippingLines[0]['total'] + $amount,
-                        'extra' => $lineItems,
-                        'paymentType' => $paytype,
+                        'total' =>$total,
                     ]
                 );
                 $orderData = Checkout::where('user_id', $user->ID)->first();
@@ -539,7 +579,7 @@ class PayPalController extends Controller
                         ['post_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? null],
                         ['post_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? null],
                         ['post_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->ID ?? null],
-                        ['post_id' => $orderId, 'meta_key' => '_order_total', 'meta_value' => $shippingLines[0]['total'] + $amount], //$orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {return $carry + $item['quantity'] * $item['product_price'];}, 0)],
+                        ['post_id' => $orderId, 'meta_key' => '_order_total', 'meta_value' => $total], //$orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {return $carry + $item['quantity'] * $item['product_price'];}, 0)],
                         ['post_id' => $orderId, 'meta_key' => '_order_currency', 'meta_value' => 'USD'],
                         ['post_id' => $orderId, 'meta_key' => '_order_key', 'meta_value' => 'wc_order_' . uniqid()],
                         ['post_id' => $orderId, 'meta_key' => '_customer_user', 'meta_value' => $user->ID],

@@ -9,6 +9,54 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class MyAcccountController extends Controller
 {
+    public function updateOrCreateAddresses(Request $request)
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not found',
+                'status' => false,
+            ], 200);
+        }
+
+        $userId = $request->input('user_id');
+        $type = $request->input('type');
+        $prefix = $type === 'billing' ? 'billing_' : 'shipping_';
+        $newAddress = [
+            $prefix . 'first_name' => $request->input('first_name'),
+            $prefix . 'last_name' => $request->input('last_name'),
+            $prefix . 'company' => $request->input('company'),
+            $prefix . 'country' => $request->input('country'),
+            $prefix . 'state' => $request->input('state'),
+            $prefix . 'address_1' => $request->input('address_1'),
+            $prefix . 'address_2' => $request->input('address_2'),
+            $prefix . 'city' => $request->input('city'),
+            $prefix . 'postcode' => $request->input('postcode'),
+            $prefix . 'phone' => $request->input('phone'),
+            $prefix . 'email' => $request->input('email'),
+            'licence' => $request->input('fileurl'),
+        ];
+
+        $addresses = UserMeta::where('user_id', $userId)
+            ->where('meta_key', 'custom_requested_addresses')
+            ->pluck('meta_value', 'meta_key')
+            ->first();
+
+        $addresses = $addresses ? unserialize($addresses) : [];
+        if (!isset($addresses[$type])) {
+            $addresses[$type] = [];
+        }
+        $nextIndex = count($addresses[$type]);
+        $addresses[$type]['address_' . $nextIndex] = $newAddress;
+
+        UserMeta::updateOrCreate(
+            ['user_id' => $userId, 'meta_key' => 'custom_requested_addresses'],
+            ['meta_value' => serialize($addresses)]
+        );
+
+        return response()->json(['message' => 'Address and licence submitted successfully']);
+    }
+
     public function getUserAddresses(Request $request)
     {
         try {
@@ -27,11 +75,11 @@ class MyAcccountController extends Controller
             $customAddresses = unserialize($customAddressesMeta);
 
             $customAddressesUnapprove = UserMeta::where('user_id', $user->ID)
-            ->where('meta_key', 'custom_requested_addresses')
-            ->value('meta_value');
+                ->where('meta_key', 'custom_requested_addresses')
+                ->value('meta_value');
 
             $customAddressesUnapprove = unserialize($customAddressesUnapprove);
-            
+
             $defaultAddress = [
                 'billing' => [
                     'first_name' => $this->getUserMeta($user->ID, 'billing_first_name'),
@@ -59,16 +107,16 @@ class MyAcccountController extends Controller
                 ],
             ];
             if (empty($customAddresses)) {
-                $customAddresses=[];
+                $customAddresses = [];
             }
-            if(empty($customAddressesUnapprove)){
-                $customAddressesUnapprove=[];
+            if (empty($customAddressesUnapprove)) {
+                $customAddressesUnapprove = [];
             }
             return response()->json([
                 'status' => true,
                 'username' => $user->user_login,
                 'message' => 'User addresses',
-                'unapproved'=>$customAddressesUnapprove,
+                'unapproved' => $customAddressesUnapprove,
                 'addresses' => $customAddresses,
                 'defaultAddress' => $defaultAddress,
             ], 200);
