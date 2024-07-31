@@ -709,8 +709,10 @@ class PayPalController extends Controller
                         ['post_id' => $orderId, 'meta_key' => '_cart_discount', 'meta_value' => 0],
                         ['post_id' => $orderId, 'meta_key' => '_cart_discount_tax', 'meta_value' => 0],
                         ['post_id' => $orderId, 'meta_key' => '_order_tax', 'meta_value' => $order_tax??0],
-                        ['post_id' => $orderId, 'meta_key' => '_order_shipping', 'meta_value' => $shippingLines[0]['total']],
+                        ['post_id' => $orderId, 'meta_key' => '_order_shipping', 'meta_value' => $shppingtotal],
                     ];
+                //    dd();
+
                     foreach ($metaData as $meta) {
                         OrderMeta::insert($meta);
                     }
