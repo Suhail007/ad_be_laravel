@@ -412,12 +412,13 @@ class PayPalController extends Controller
                             'date_created' => now(),
                             'product_qty' => $item['quantity'],
                             'product_net_revenue' => $linetotal,
-                            'product_gross_revenue' =>$iLTax?$linetotal + $iLTax:$linetotal,
-                            'tax_amount' =>$iLTax??0,
-                            'coupon_amount' =>0,
-                            'shipping_amount' =>$iLTax? 7.5 : 0,
-                            'shipping_tax_amount' =>'',
+                            'product_gross_revenue' => $iLTax ? $linetotal + $iLTax : $linetotal,
+                            'tax_amount' => $iLTax ?? 0,
+                            'coupon_amount' => 0,
+                            'shipping_amount' => $iLTax ? 7.5 : 0,
+                            'shipping_tax_amount' => $iLTax ? $iLTax : null, // Use null if $iLTax is not set
                         ]);
+                        
                     }
 
                     DB::table('wp_wc_orders')->insert([
@@ -837,12 +838,13 @@ class PayPalController extends Controller
                             'date_created' => now(),
                             'product_qty' => $item['quantity'],
                             'product_net_revenue' => $linetotal,
-                            'product_gross_revenue' =>$iLTax?$linetotal + $iLTax:$linetotal,
-                            'tax_amount' =>$iLTax??0,
-                            'coupon_amount' =>0,
-                            'shipping_amount' =>$iLTax? 7.5 : 0,
-                            'shipping_tax_amount' =>'',
+                            'product_gross_revenue' => $iLTax ? $linetotal + $iLTax : $linetotal,
+                            'tax_amount' => $iLTax ?? 0,
+                            'coupon_amount' => 0,
+                            'shipping_amount' => $iLTax ? 7.5 : 0,
+                            'shipping_tax_amount' => $iLTax ? $iLTax : null, // Use null if $iLTax is not set
                         ]);
+                        
                     }
 
                     DB::table('wp_wc_orders')->insert([
