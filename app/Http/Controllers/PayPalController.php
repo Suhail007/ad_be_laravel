@@ -411,8 +411,12 @@ class PayPalController extends Controller
                             'customer_id' => $user->ID,
                             'date_created' => now(),
                             'product_qty' => $item['quantity'],
-                            'product_net_revenue' => $item['quantity'] * $item['product_price'],
-                            'product_gross_revenue' => $item['quantity'] * $item['product_price'],
+                            'product_net_revenue' => $linetotal,
+                            'product_gross_revenue' =>$iLTax?$linetotal + $iLTax:$linetotal,
+                            'tax_amount' =>$iLTax??0,
+                            'coupon_amount' =>0,
+                            'shipping_amount' =>$iLTax? 7.5 : 0,
+                            'shipping_tax_amount' =>'',
                         ]);
                     }
 
@@ -832,8 +836,12 @@ class PayPalController extends Controller
                             'customer_id' => $user->ID,
                             'date_created' => now(),
                             'product_qty' => $item['quantity'],
-                            'product_net_revenue' => $item['quantity'] * $item['product_price'],
-                            'product_gross_revenue' => $item['quantity'] * $item['product_price'],
+                            'product_net_revenue' => $linetotal,
+                            'product_gross_revenue' =>$iLTax?$linetotal + $iLTax:$linetotal,
+                            'tax_amount' =>$iLTax??0,
+                            'coupon_amount' =>0,
+                            'shipping_amount' =>$iLTax? 7.5 : 0,
+                            'shipping_tax_amount' =>'',
                         ]);
                     }
 
