@@ -305,7 +305,7 @@ class PayPalController extends Controller
                         OrderItemMeta::insert($meta);
                     }
 
-                    if ($isVape && $orderData['shipping']['state'] == "IL") {
+                    if ($isVape) {
                         $id2 = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,
                             'order_item_name' => 'IL-STATE TAX-1',
@@ -704,7 +704,7 @@ class PayPalController extends Controller
                         OrderItemMeta::insert($meta);
                     }
 
-                    if ($isVape && $orderData['shipping']['state'] == "IL") {
+                    if ($isVape) {
                         $id2 = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,
                             'order_item_name' => 'IL-STATE TAX-1',

@@ -9,7 +9,103 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class MyAcccountController extends Controller
 {
-    public function defaultAddresses(Request $request){
+
+    public function updateAddress(Request $request)
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not found',
+                'status' => false,
+            ], 200);
+        }
+
+        $validated = $request->validate([
+            'type' => 'required|string',
+            'address_key' => 'required|string',
+            'first_name' => 'required|string',
+            'last_name' => 'required|string',
+            'company' => 'nullable|string',
+            'country' => 'required|string',
+            'state' => 'required|string',
+            'address_1' => 'required|string',
+            'address_2' => 'nullable|string',
+            'city' => 'required|string',
+            'postcode' => 'required|string',
+            'phone' => 'required|string',
+            'email' => 'required|email',
+            'file' => 'required'
+        ]);
+
+        $userId = $user->ID;
+        $addressKey = $validated['address_key'];
+        $type = $validated['type'];
+        $prefix = $type === 'billing' ? 'billing_' : 'shipping_';
+
+        // Fetch the existing custom addresses
+        $userMeta = UserMeta::where('user_id', $userId)
+            ->where('meta_key', 'thwma_custom_address')
+            ->value('meta_value');
+
+        // Unserialize the existing data
+        $addresses = unserialize($userMeta) ?: [];
+
+        // Prepare the new address data
+        $newAddress = [
+            $prefix . 'first_name' => $validated['first_name'],
+            $prefix . 'last_name' => $validated['last_name'],
+            $prefix . 'company' => $validated['company'] ?? '',
+            $prefix . 'country' => $validated['country'],
+            $prefix . 'state' => $validated['state'],
+            $prefix . 'address_1' => $validated['address_1'],
+            $prefix . 'address_2' => $validated['address_2'] ?? '',
+            $prefix . 'city' => $validated['city'],
+            $prefix . 'postcode' => $validated['postcode'],
+            $prefix . 'phone' => $validated['phone'],
+            $prefix . 'email' => $validated['email'],
+            'licence' => $validated['file']
+        ];
+
+        // Check if the address exists in the approved addresses
+        if (isset($addresses[$type][$addressKey])) {
+            // Remove from approved addresses
+            $removedAddress = $addresses[$type][$addressKey];
+            unset($addresses[$type][$addressKey]);
+
+            // Add to unapproved addresses
+            $requestedAddresses = UserMeta::where('user_id', $userId)
+                ->where('meta_key', 'custom_requested_addresses')
+                ->value('meta_value');
+
+            $requestedAddresses = unserialize($requestedAddresses) ?: [];
+            if (!isset($requestedAddresses[$type])) {
+                $requestedAddresses[$type] = [];
+            }
+            $requestedAddresses[$type][$addressKey] = $newAddress;
+
+            // Save updated addresses to custom_requested_addresses
+            $serializedRequestedAddresses = serialize($requestedAddresses);
+            UserMeta::updateOrCreate(
+                ['user_id' => $userId, 'meta_key' => 'custom_requested_addresses'],
+                ['meta_value' => $serializedRequestedAddresses]
+            );
+
+            // Update approved addresses
+            $serializedAddresses = serialize($addresses);
+            UserMeta::updateOrCreate(
+                ['user_id' => $userId, 'meta_key' => 'thwma_custom_address'],
+                ['meta_value' => $serializedAddresses]
+            );
+
+            return response()->json(['message' => 'Address updated successfully.']);
+        } else {
+            return response()->json(['message' => 'Address not found.'], 404);
+        }
+    }
+
+
+    public function defaultAddresses(Request $request)
+    {
         $user = JWTAuth::parseToken()->authenticate();
         if (!$user) {
             return response()->json([
@@ -29,7 +125,6 @@ class MyAcccountController extends Controller
             'postcode' => $this->getUserMeta($user->ID, 'shipping_postcode'),
             'country' => $this->getUserMeta($user->ID, 'shipping_country'),
         ];
-
     }
     public function updateOrCreateAddresses(Request $request)
     {
