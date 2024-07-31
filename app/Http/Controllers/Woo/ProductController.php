@@ -754,10 +754,7 @@ class ProductController extends Controller
 
         $relatedProducts = Product::whereHas('categories', function ($query) use ($subcatIds) {
             $query->whereIn('term_taxonomy_id', $subcatIds);
-        })
-            // ->where('ID', '!=', $id) // Exclude the current product
-            ->take(20)
-            ->get();
+        })->orderBy('post_modified', 'desc')->take(20)->get();
 
         if ($relatedProducts->isEmpty()) {
             return response()->json(['error' => 'No related products found'], 404);
@@ -775,7 +772,6 @@ class ProductController extends Controller
                 'thumbnail' => $relatedProduct->thumbnail_url,
                 'product_visibility' => $relatedProduct->visibility,
                 'date'=>$relatedProduct->post_modified_gmt,
-                // 'category_visibility' => $categoryVisibility
             ];
         });
 

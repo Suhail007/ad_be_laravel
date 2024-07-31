@@ -81,8 +81,6 @@ Route::get('/positionLayout/{page}', [LayoutController::class, 'pageLayout']);
 Route::get('/categoryProduct/{slug}', [ProductController::class, 'categoryProduct']);
 Route::get('/brandProduct/{slug}', [ProductController::class, 'brandProducts']);
 Route::get('/searchProducts', [ProductController::class, 'searchProducts']); 
-// Route::get('/searchProductsBySKU', [ProductController::class, 'searchProductsBySKU']); //in product sku
-// Route::get('/searchProductsByCAT', [ProductController::class, 'searchProductsByCAT']); //in cat 
 Route::get('/searchProductsALL', [ProductController::class, 'searchProductsAll']); //in pro sku cat
 
 //product page
