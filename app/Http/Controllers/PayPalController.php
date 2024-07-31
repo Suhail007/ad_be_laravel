@@ -295,8 +295,8 @@ class PayPalController extends Controller
                         'order_item_type' => 'shipping'
                     ]);
                     $shippingtaxmeta = [
-                        ['order_item_id' => $id1, 'meta_key' => 'taxes', 'meta_value' =>  serialize(['total' => [($orderData['shipping']['state'] == "IL" && $shippingLines[0]['method_id'] == 'flat_rate')?$shippingLines[0]['total'] * 0.15 : 0]])],
-                        ['order_item_id' => $id1, 'meta_key' => 'total_tax', 'meta_value' =>($orderData['shipping']['state'] == "IL" && $shippingLines[0]['method_id'] == 'flat_rate')? $shippingLines[0]['total'] * 0.15 :0],
+                        ['order_item_id' => $id1, 'meta_key' => 'taxes', 'meta_value' =>  serialize(['total' => [($isVape)?$shippingLines[0]['total'] * 0.15 : 0]])],
+                        ['order_item_id' => $id1, 'meta_key' => 'total_tax', 'meta_value' =>($isVape)? $shippingLines[0]['total'] * 0.15 :0],
                         ['order_item_id' => $id1, 'meta_key' => 'cost', 'meta_value' => $shippingLines[0]['total']],
                         ['order_item_id' => $id1, 'meta_key' => 'instance_id', 'meta_value' => ($shippingLines[0]['method_id'] == 'flat_rate') ? 1 : 2],
                         ['order_item_id' => $id1, 'meta_key' => 'method_id', 'meta_value' => $shippingLines[0]['method_id']],
@@ -393,6 +393,10 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => $iLTax?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' =>$iLTax?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' => serialize(['total' => [$iLTax?? 0], 'subtotal' => [$iLTax?? 0]])],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis_j2', 'meta_value' => 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j2', 'meta_value' => 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis_j1', 'meta_value' => 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j1', 'meta_value' => 0],
                         ];
 
                         foreach ($itemMeta as $meta) {
@@ -694,8 +698,8 @@ class PayPalController extends Controller
                         'order_item_type' => 'shipping'
                     ]);
                     $shippingtaxmeta = [
-                        ['order_item_id' => $id1, 'meta_key' => 'taxes', 'meta_value' =>  serialize(['total' => [($orderData['shipping']['state'] == "IL" && $shippingLines[0]['method_id'] == 'flat_rate')?$shippingLines[0]['total'] * 0.15 : 0]])],
-                        ['order_item_id' => $id1, 'meta_key' => 'total_tax', 'meta_value' =>($orderData['shipping']['state'] == "IL" && $shippingLines[0]['method_id'] == 'flat_rate')? $shippingLines[0]['total'] * 0.15 :0],
+                        ['order_item_id' => $id1, 'meta_key' => 'taxes', 'meta_value' =>  serialize(['total' => [($isVape)?$shippingLines[0]['total'] * 0.15 : 0]])],
+                        ['order_item_id' => $id1, 'meta_key' => 'total_tax', 'meta_value' =>($isVape)? $shippingLines[0]['total'] * 0.15 :0],
                         ['order_item_id' => $id1, 'meta_key' => 'cost', 'meta_value' => $shippingLines[0]['total']],
                         ['order_item_id' => $id1, 'meta_key' => 'instance_id', 'meta_value' => ($shippingLines[0]['method_id'] == 'flat_rate') ? 1 : 2],
                         ['order_item_id' => $id1, 'meta_key' => 'method_id', 'meta_value' => $shippingLines[0]['method_id']],
@@ -792,6 +796,10 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => $iLTax?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' =>$iLTax?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' => serialize(['total' => [$iLTax?? 0], 'subtotal' => [$iLTax?? 0]])],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis_j2', 'meta_value' => 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j2', 'meta_value' => 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis_j1', 'meta_value' => 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j1', 'meta_value' => 0],
                         ];
 
                         // $itemMeta = [
