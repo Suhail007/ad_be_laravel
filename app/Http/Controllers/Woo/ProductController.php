@@ -140,6 +140,10 @@ class ProductController extends Controller
                 ])
                     ->select('ID', 'post_title', 'post_modified', 'post_name')
                     ->where('post_type', 'product')
+                    ->whereHas('meta', function ($query) {
+                        $query->where('meta_key', '_stock_status')
+                            ->where('meta_value', 'instock');
+                    })
                     ->whereHas('categories.taxonomies', function ($query) use ($slug) {
                         $query->where('slug', $slug)
                             ->where('taxonomy', 'product_cat');
@@ -168,6 +172,10 @@ class ProductController extends Controller
             ])
                 ->select('ID', 'post_title', 'post_modified', 'post_name')
                 ->where('post_type', 'product')
+                ->whereHas('meta', function ($query) {
+                    $query->where('meta_key', '_stock_status')
+                        ->where('meta_value', 'instock');
+                })
                 ->whereHas('categories.taxonomies', function ($query) use ($slug) {
                     $query->where('slug', $slug)
                         ->where('taxonomy', 'product_cat');
@@ -235,6 +243,10 @@ class ProductController extends Controller
                 ])
                     ->select('ID', 'post_title', 'post_modified', 'post_name')
                     ->where('post_type', 'product')
+                    ->whereHas('meta', function ($query) {
+                        $query->where('meta_key', '_stock_status')
+                            ->where('meta_value', 'instock');
+                    })
                     ->whereHas('categories.taxonomies', function ($query) use ($slug) {
                         $query->where('slug', $slug)
                             ->where('taxonomy', 'product_brand');
@@ -263,6 +275,10 @@ class ProductController extends Controller
             ])
                 ->select('ID', 'post_title', 'post_modified', 'post_name')
                 ->where('post_type', 'product')
+                ->whereHas('meta', function ($query) {
+                    $query->where('meta_key', '_stock_status')
+                        ->where('meta_value', 'instock');
+                })
                 ->whereHas('categories.taxonomies', function ($query) use ($slug) {
                     $query->where('slug', $slug)
                         ->where('taxonomy', 'product_brand');
