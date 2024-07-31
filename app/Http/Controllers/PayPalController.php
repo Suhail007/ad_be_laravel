@@ -634,9 +634,9 @@ class PayPalController extends Controller
                 // if ($orderData['shipping']['state'] == "IL") {
                 //     $shppingtotal = $shppingtotal + ($shppingtotal * 0.15);
                 // }
-                if ($isVape) {
-                    $shppingtotal = $shppingtotal + ($shppingtotal * 0.15);
-                }
+                // if ($isVape) {
+                //     $shppingtotal = $shppingtotal + ($shppingtotal * 0.15);
+                // }
                 $total += $shppingtotal;
 
                 
