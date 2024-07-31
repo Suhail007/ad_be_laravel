@@ -94,7 +94,6 @@ Route::get('/sidebar', [ProductController::class, 'sidebar']);
 
 Route::get('/cart', [WooCartController::class, 'index']);
 Route::get('/cart-products', [WooCartController::class, 'show']);
-// Route::post('/cart/add', [CartController::class, 'addToCart']);
 
 
 
@@ -102,3 +101,18 @@ Route::get('/log', function () {
     return response()->json(['status' => 'error', 'redirect_url' => '/login']);
 })->name('login');
 
+
+
+
+
+
+
+
+
+
+Route::fallback(function () {
+    return response()->json([
+        'message' => 'API endpoint not found.',
+        'status' => false,
+    ], 404);
+});

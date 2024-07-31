@@ -598,9 +598,11 @@ class CartController extends Controller
                 'ml3' => $ml3taxID
             ];
         }
-
+        $checkout = Checkout::where('user_id', $user->ID)->first();
+        $isFreeze = $checkout ? $checkout->isFreeze : false;
         return response()->json([
             'status' => true,
+            'freeze'=>$isFreeze,
             'username' => $user->user_login,
             'message' => 'Cart items',
             'data' => $userIp,

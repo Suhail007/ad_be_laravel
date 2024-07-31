@@ -174,10 +174,12 @@ class PayPalController extends Controller
                 $isVape = false;
                 foreach ($orderData['extra'] as $item) {
                     $subtotal = $item['product_price'];
-                    $subtotal = $subtotal + ($item['taxPerUnit'] ?? 0);
+                    // $subtotal = $subtotal + ($item['taxPerUnit'] ?? 0);
                     if ($item['tax_class'] == "vapes") {
                         $subtotal = $subtotal + ($subtotal * 0.15); //il tax
                         $isVape= true;
+                    }else {
+                        $subtotal = $subtotal + ($item['taxPerUnit'] ?? 0);
                     }
                     // if ($orderData['shipping']['state'] == "IL") {
                     //     $subtotal = $subtotal + ($subtotal * 0.15); //il tax
@@ -295,7 +297,7 @@ class PayPalController extends Controller
                         OrderItemMeta::insert($meta);
                     }
 
-                    if ($isVape) {
+                    if ($isVape && $orderData['shipping']['state'] == "IL") {
                         $id2 = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,
                             'order_item_name' => 'IL-STATE TAX-1',
@@ -314,6 +316,7 @@ class PayPalController extends Controller
                         }
                     }
 
+                    $taxAmmountWC=0;
                     foreach ($orderData['extra'] as $item) {
                         $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,
@@ -333,6 +336,7 @@ class PayPalController extends Controller
                             if($item['taxPerUnit']){
                                 $isPerUnit=true;
                                 $productTax= $item['quantity'] * $item['taxPerUnit'];
+                                $taxAmmountWC=$productTax;
                             }
                             if ($item['tax_class'] == "vapes") {
                                 $productPrice = $productPrice + ($productPrice * 0.15); //il tax   
@@ -380,7 +384,7 @@ class PayPalController extends Controller
                         'status' => 'wc-processing',
                         'currency' => 'USD',
                         'type' => 'shop_order',
-                        'tax_amount' => 0,
+                        'tax_amount' => $taxAmmountWC??0,
                         'total_amount' => $totalAmount,
                         'customer_id' => $user->ID,
                         'billing_email' => $orderData['billing']['email'],
@@ -655,7 +659,7 @@ class PayPalController extends Controller
                         OrderItemMeta::insert($meta);
                     }
 
-                    if ($isVape) {
+                    if ($isVape && $orderData['shipping']['state'] == "IL") {
                         $id2 = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,
                             'order_item_name' => 'IL-STATE TAX-1',
