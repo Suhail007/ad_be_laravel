@@ -723,8 +723,8 @@ class PayPalController extends Controller
                         'order_item_type' => 'shipping'
                     ]);
                     $shippingtaxmeta = [
-                        ['order_item_id' => $id1, 'meta_key' => 'taxes', 'meta_value' =>  serialize(['total' => [($isVape)?$shippingLines[0]['total'] * 0.15 : 0]])],
-                        ['order_item_id' => $id1, 'meta_key' => 'total_tax', 'meta_value' =>($isVape)? $shippingLines[0]['total'] * 0.15 :0],
+                        ['order_item_id' => $id1, 'meta_key' => 'taxes', 'meta_value' =>  serialize(['total' => [0]])],
+                        ['order_item_id' => $id1, 'meta_key' => 'total_tax', 'meta_value' =>0],
                         ['order_item_id' => $id1, 'meta_key' => 'cost', 'meta_value' => $shippingLines[0]['total']],
                         ['order_item_id' => $id1, 'meta_key' => 'instance_id', 'meta_value' => ($shippingLines[0]['method_id'] == 'flat_rate') ? 1 : 2],
                         ['order_item_id' => $id1, 'meta_key' => 'method_id', 'meta_value' => $shippingLines[0]['method_id']],
@@ -742,7 +742,7 @@ class PayPalController extends Controller
                         ]);
                         $metaILTax = [
                             ['order_item_id' => $id2, 'meta_key' => 'rate_percent', 'meta_value' => $shippingLines[0]['total']],
-                            ['order_item_id' => $id2, 'meta_key' => 'shipping_tax_amount', 'meta_value' => $isVape ? $shippingLines[0]['total'] * 0.15  : 0],
+                            ['order_item_id' => $id2, 'meta_key' => 'shipping_tax_amount', 'meta_value' => 0],
                             ['order_item_id' => $id2, 'meta_key' => 'tax_amount', 'meta_value' => $order_tax??0],//$amount * 0.15],
                             ['order_item_id' => $id2, 'meta_key' => 'label', 'meta_value' => 'State Tax'],
                             ['order_item_id' => $id2, 'meta_key' => 'compound', 'meta_value' => ''],
@@ -840,9 +840,9 @@ class PayPalController extends Controller
                                 'order_id' => $orderId,
                                 'tax_rate_id' => 1,
                                 'date_created' => now(),
-                                'shipping_tax' => $shippingLines[0]['total'] * 0.15 ??0,
+                                'shipping_tax' =>0,
                                 'order_tax' => $item['variation_id'] ?? 0,
-                                'total_tax' => $tax + ($shippingLines[0]['total'] * 0.15),
+                                'total_tax' => $tax,
                             ]);
                         }
 
@@ -866,7 +866,7 @@ class PayPalController extends Controller
                             'tax_amount' => $iLTax?? 0,
                             'coupon_amount' => 0,
                             'shipping_amount' => $shippingLines[0]['total']??0,
-                            'shipping_tax_amount' => $shippingLines[0]['total']* 0.15??0, 
+                            'shipping_tax_amount' => 0, 
                         ]);
 
                         
