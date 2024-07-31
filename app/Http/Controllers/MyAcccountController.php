@@ -97,35 +97,36 @@ class MyAcccountController extends Controller
                 ['meta_value' => $serializedAddresses]
             );
 
-            return response()->json(['message' => 'Address updated successfully.']);
+            return response()->json(['message' => 'Address updated successfully. Wait For Admin Approval!']);
         } else {
             return response()->json(['message' => 'Address not found.'], 404);
         }
     }
 
 
-    public function defaultAddresses(Request $request)
-    {
-        $user = JWTAuth::parseToken()->authenticate();
-        if (!$user) {
-            return response()->json([
-                'message' => 'User not found',
-                'status' => false,
-            ], 200);
-        }
-        $prefix =  'shipping_';
-        $shipping = [
-            'first_name' => $this->getUserMeta($user->ID, 'shipping_first_name'),
-            'last_name' => $this->getUserMeta($user->ID, 'shipping_last_name'),
-            'company' => $this->getUserMeta($user->ID, 'shipping_company'),
-            'address_1' => $this->getUserMeta($user->ID, 'shipping_address_1'),
-            'address_2' => $this->getUserMeta($user->ID, 'shipping_address_2'),
-            'city' => $this->getUserMeta($user->ID, 'shipping_city'),
-            'state' => $this->getUserMeta($user->ID, 'shipping_state'),
-            'postcode' => $this->getUserMeta($user->ID, 'shipping_postcode'),
-            'country' => $this->getUserMeta($user->ID, 'shipping_country'),
-        ];
-    }
+    // public function defaultAddresses(Request $request)
+    // {
+    //     $user = JWTAuth::parseToken()->authenticate();
+    //     if (!$user) {
+    //         return response()->json([
+    //             'message' => 'User not found',
+    //             'status' => false,
+    //         ], 200);
+    //     }
+    //     $prefix =  'shipping_';
+    //     $shipping = [
+    //         'first_name' => $this->getUserMeta($user->ID, 'shipping_first_name'),
+    //         'last_name' => $this->getUserMeta($user->ID, 'shipping_last_name'),
+    //         'company' => $this->getUserMeta($user->ID, 'shipping_company'),
+    //         'address_1' => $this->getUserMeta($user->ID, 'shipping_address_1'),
+    //         'address_2' => $this->getUserMeta($user->ID, 'shipping_address_2'),
+    //         'city' => $this->getUserMeta($user->ID, 'shipping_city'),
+    //         'state' => $this->getUserMeta($user->ID, 'shipping_state'),
+    //         'postcode' => $this->getUserMeta($user->ID, 'shipping_postcode'),
+    //         'country' => $this->getUserMeta($user->ID, 'shipping_country'),
+    //     ];
+    // }
+    
     public function updateOrCreateAddresses(Request $request)
     {
         $user = JWTAuth::parseToken()->authenticate();

@@ -42,9 +42,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
     //myaccount
     Route::get('/my-account/addresses',[MyAcccountController::class,'getUserAddresses']);
-    Route::post('/my-account/addresses-add', [MyAcccountController::class, 'updateOrCreateAddresses']);
-    Route::post('/my-account/addresses-default', [MyAcccountController::class, 'defaultAddresses']);
-    Route::post('/my-account/address-update', [MyAcccountController::class, 'updateAddress']);
+    Route::post('/my-account/addresses-add', [MyAcccountController::class, 'updateOrCreateAddresses']); //new add
+    Route::post('/my-account/address-update', [MyAcccountController::class, 'updateAddress']); //single add update
 
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);
