@@ -399,6 +399,16 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j1', 'meta_value' => 0],
                         ];
 
+                        if($iLTax){
+                            DB::table('wp_wc_order_tax_lookup')->insert([
+                                'order_id' => $orderId,
+                                'tax_rate_id' => 1,
+                                'date_created' => now(),
+                                'shipping_tax' => $shippingLines[0]['total'] * 0.15,
+                                'order_tax' => $item['variation_id'] ?? 0,
+                                'total_tax' => $iLTax + ($shippingLines[0]['total'] * 0.15),
+                            ]);
+                        }
                         foreach ($itemMeta as $meta) {
                             OrderItemMeta::insert($meta);
                         }
@@ -415,7 +425,7 @@ class PayPalController extends Controller
                             'product_gross_revenue' => $iLTax ? $linetotal + $iLTax : $linetotal,
                             'tax_amount' => $iLTax ?? 0,
                             'coupon_amount' => 0,
-                            'shipping_amount' => $iLTax ? 7.5 : 0,
+                            'shipping_amount' => $iLTax ? 0 : 0,
                             'shipping_tax_amount' => $iLTax ? $iLTax : null, // Use null if $iLTax is not set
                         ]);
                         
@@ -443,6 +453,7 @@ class PayPalController extends Controller
 
                     $wp_wc_order_meta = [
                         ['order_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
+                        ['order_id' => $orderId, 'meta_key' => '_order_tax', 'meta_value' => $order_tax??0],
                         ['order_id' => $orderId, 'meta_key' => '_wwpp_order_type', 'meta_value' => $order_type],
                         ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => $order_wholesale_role],
                         ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => $order_wholesale_role],
@@ -807,6 +818,17 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j1', 'meta_value' => 0],
                         ];
 
+                        if($iLTax){
+                            DB::table('wp_wc_order_tax_lookup')->insert([
+                                'order_id' => $orderId,
+                                'tax_rate_id' => 1,
+                                'date_created' => now(),
+                                'shipping_tax' => $shippingLines[0]['total'] * 0.15,
+                                'order_tax' => $item['variation_id'] ?? 0,
+                                'total_tax' => $iLTax + ($shippingLines[0]['total'] * 0.15),
+                            ]);
+                        }
+
                         // $itemMeta = [
                         //     ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
                         //     ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
@@ -852,7 +874,7 @@ class PayPalController extends Controller
                         'status' => 'wc-processing',
                         'currency' => 'USD',
                         'type' => 'shop_order',
-                        'tax_amount' => $order_tax,
+                        'tax_amount' => $order_tax??0,
                         'total_amount' => $totalAmount,
                         'customer_id' => $user->ID,
                         'billing_email' => $orderData['billing']['email'],
@@ -869,6 +891,7 @@ class PayPalController extends Controller
 
                     $wp_wc_order_meta = [
                         ['order_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
+                        ['order_id' => $orderId, 'meta_key' => '_order_tax', 'meta_value' => $order_tax??0],
                         ['order_id' => $orderId, 'meta_key' => '_wwpp_order_type', 'meta_value' => $order_type],
                         ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => $order_wholesale_role],
                         ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => $order_wholesale_role],
