@@ -24,7 +24,7 @@ class MyAcccountController extends Controller
             'type' => 'required|string',
             'address_key' => 'required|string',
             'first_name' => 'required|string',
-            'last_name' => 'required|string',
+            'last_name' => 'string',
             'company' => 'nullable|string',
             'country' => 'required|string',
             'state' => 'required|string',
@@ -126,7 +126,7 @@ class MyAcccountController extends Controller
     //         'country' => $this->getUserMeta($user->ID, 'shipping_country'),
     //     ];
     // }
-    
+
     public function updateOrCreateAddresses(Request $request)
     {
         $user = JWTAuth::parseToken()->authenticate();
@@ -137,7 +137,7 @@ class MyAcccountController extends Controller
             ], 200);
         }
 
-        $userId = $request->input('user_id');
+        $userId =$user->ID; // $request->input('user_id');
         $type = $request->input('type');
         $prefix = $type === 'billing' ? 'billing_' : 'shipping_';
         $newAddress = [
@@ -152,7 +152,7 @@ class MyAcccountController extends Controller
             $prefix . 'postcode' => $request->input('postcode'),
             $prefix . 'phone' => $request->input('phone'),
             $prefix . 'email' => $request->input('email'),
-            'licence' => $request->input('fileurl'),
+            'licence' => $request->input('file'),
         ];
 
         $addresses = UserMeta::where('user_id', $userId)

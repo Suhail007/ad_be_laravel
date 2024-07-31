@@ -426,7 +426,7 @@ class PayPalController extends Controller
                             'tax_amount' => $iLTax ?? 0,
                             'coupon_amount' => 0,
                             'shipping_amount' => $iLTax ? 0 : 0,
-                            'shipping_tax_amount' => $iLTax ? $iLTax : 0, // Use null if $iLTax is not set
+                            'shipping_tax_amount' => $iLTax ? $iLTax : 0, 
                         ]);
                         
                     }
@@ -864,7 +864,7 @@ class PayPalController extends Controller
                             'tax_amount' => $iLTax ?? 0,
                             'coupon_amount' => 0,
                             'shipping_amount' => $iLTax ? 7.5 : 0,
-                            'shipping_tax_amount' => $iLTax ? $iLTax : 0, // Use null if $iLTax is not set
+                            'shipping_tax_amount' => $iLTax ? $iLTax : 0, 
                         ]);
                         
                     }
