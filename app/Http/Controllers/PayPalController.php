@@ -383,10 +383,10 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_reduced_stock', 'meta_value' => $item['quantity']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' =>$linetotal??0 ],//$item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' =>$linetotal?? 0],  //$item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' =>$linetotal??0 ],//
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' =>$linetotal?? 0],  //
                             ['order_item_id' => $orderItemId, 'meta_key' => 'flavor', 'meta_value' => implode(',', $item['variation']) ?? ''],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' =>$linetotal??0], //$item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' =>$linetotal??0], //
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $order_role],
@@ -426,7 +426,7 @@ class PayPalController extends Controller
                             'tax_amount' => $iLTax ?? 0,
                             'coupon_amount' => 0,
                             'shipping_amount' => $iLTax ? 0 : 0,
-                            'shipping_tax_amount' => $iLTax ? $iLTax : null, // Use null if $iLTax is not set
+                            'shipping_tax_amount' => $iLTax ? $iLTax : 0, // Use null if $iLTax is not set
                         ]);
                         
                     }
@@ -802,10 +802,10 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_reduced_stock', 'meta_value' => $item['quantity']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' =>$linetotal??0 ],//$item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' =>$linetotal?? 0],  //$item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' =>$linetotal??0 ],//
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' =>$linetotal?? 0],  //
                             ['order_item_id' => $orderItemId, 'meta_key' => 'flavor', 'meta_value' => implode(',', $item['variation']) ?? ''],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' =>$linetotal??0], //$item['quantity'] * (($item['product_price'] + ($item['taxPerUnit'] ?? 0) + ($orderData['shipping']['state'] == 'IL' ? ($item['product_price'] + ($item['taxPerUnit'] ?? 0)) * 0.15 : 0) - ($item['unitDiscount'] ?? 0)))],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' =>$linetotal??0], //
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $order_role],
@@ -823,7 +823,7 @@ class PayPalController extends Controller
                                 'order_id' => $orderId,
                                 'tax_rate_id' => 1,
                                 'date_created' => now(),
-                                'shipping_tax' => $shippingLines[0]['total'] * 0.15,
+                                'shipping_tax' => $shippingLines[0]['total'] * 0.15 ??0,
                                 'order_tax' => $item['variation_id'] ?? 0,
                                 'total_tax' => $iLTax + ($shippingLines[0]['total'] * 0.15),
                             ]);
@@ -864,7 +864,7 @@ class PayPalController extends Controller
                             'tax_amount' => $iLTax ?? 0,
                             'coupon_amount' => 0,
                             'shipping_amount' => $iLTax ? 7.5 : 0,
-                            'shipping_tax_amount' => $iLTax ? $iLTax : null, // Use null if $iLTax is not set
+                            'shipping_tax_amount' => $iLTax ? $iLTax : 0, // Use null if $iLTax is not set
                         ]);
                         
                     }
