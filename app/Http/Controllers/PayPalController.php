@@ -400,20 +400,24 @@ class PayPalController extends Controller
                         ];
 
                         if($iLTax){
+                            $tax= $iLTax;
                             DB::table('wp_wc_order_tax_lookup')->insert([
                                 'order_id' => $orderId,
                                 'tax_rate_id' => 1,
                                 'date_created' => now(),
-                                'shipping_tax' => $shippingLines[0]['total'] * 0.15,
+                                'shipping_tax' => $shippingLines[0]['total'] * 0.15 ??0,
                                 'order_tax' => $item['variation_id'] ?? 0,
-                                'total_tax' => $iLTax + ($shippingLines[0]['total'] * 0.15),
+                                'total_tax' => $tax + ($shippingLines[0]['total'] * 0.15),
                             ]);
                         }
+
+                    
+
                         foreach ($itemMeta as $meta) {
                             OrderItemMeta::insert($meta);
                         }
-
-                        DB::table('wp_wc_order_product_lookup')->insert([
+                        
+                        $done=DB::table('wp_wc_order_product_lookup')->insert([
                             'order_item_id' => $orderItemId,
                             'order_id' => $orderId,
                             'product_id' => $item['product_id'],
@@ -422,12 +426,13 @@ class PayPalController extends Controller
                             'date_created' => now(),
                             'product_qty' => $item['quantity'],
                             'product_net_revenue' => $linetotal,
-                            'product_gross_revenue' => $iLTax ? $linetotal + $iLTax : $linetotal,
-                            'tax_amount' => $iLTax ?? 0,
+                            'product_gross_revenue' => $isVape? $totalAmount :0,
+                            'tax_amount' => $iLTax?? 0,
                             'coupon_amount' => 0,
-                            'shipping_amount' => $iLTax ? 0 : 0,
-                            'shipping_tax_amount' => $iLTax ? $iLTax : 0, 
+                            'shipping_amount' => $shippingLines[0]['total']??0,
+                            'shipping_tax_amount' => $shippingLines[0]['total']* 0.15??0, 
                         ]);
+
                         
                     }
 
@@ -451,16 +456,18 @@ class PayPalController extends Controller
                         'customer_note' => ''
                     ]);
 
+
+                    //pending
                     $wp_wc_order_meta = [
                         ['order_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
                         ['order_id' => $orderId, 'meta_key' => '_order_tax', 'meta_value' => $order_tax??0],
                         ['order_id' => $orderId, 'meta_key' => '_wwpp_order_type', 'meta_value' => $order_type],
                         ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => $order_wholesale_role],
                         ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => $order_wholesale_role],
-                        ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => $order_wholesale_role],
                         ['order_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? null],
+                        ['order_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $isVape ? 'IL': null],
+                        ['order_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => $isVape ? 0: null],
                         ['order_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? null],
-                        ['order_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->ID ?? null],
                         [
                             'order_id' => $orderId,
                             'meta_key' => '_shipping_address_index',
@@ -632,7 +639,7 @@ class PayPalController extends Controller
                 }
                 $total += $shppingtotal;
 
-
+                
                 $checkout->update(
                     [
                         'total' => $total,
@@ -687,8 +694,9 @@ class PayPalController extends Controller
                         ['post_id' => $orderId, 'meta_key' => '_payment_method_title', 'meta_value' => '(*** PLEASE DONT USE THIS PAYMENT METHOD UNTIL WE ASK YOU TO DO IT. YOUR ORDER WILL AUTOMATICALLY GET CANCELLED.)'], //$orderData['payment_method_title']],
                         ['post_id' => $orderId, 'meta_key' => '_transaction_id', 'meta_value' => uniqid()],
                         ['post_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? null],
+                        ['post_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $isVape ? 'IL': null],
+                        ['post_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => $isVape ? 0: null],
                         ['post_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? null],
-                        ['post_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->ID ?? null],
                         ['post_id' => $orderId, 'meta_key' => '_order_total', 'meta_value' => $total], //$orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {return $carry + $item['quantity'] * $item['product_price'];}, 0)],
                         ['post_id' => $orderId, 'meta_key' => '_order_currency', 'meta_value' => 'USD'],
                         ['post_id' => $orderId, 'meta_key' => '_order_key', 'meta_value' => 'wc_order_' . uniqid()],
@@ -706,6 +714,7 @@ class PayPalController extends Controller
                     foreach ($metaData as $meta) {
                         OrderMeta::insert($meta);
                     }
+                    
                     $totalAmount = $total; // $orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {return $carry + $item['quantity'] * $item['product_price'];}, 0);
                     $productCount = count($orderData['extra']);
                     $id1 = DB::table('wp_woocommerce_order_items')->insertGetId([
@@ -720,6 +729,7 @@ class PayPalController extends Controller
                         ['order_item_id' => $id1, 'meta_key' => 'instance_id', 'meta_value' => ($shippingLines[0]['method_id'] == 'flat_rate') ? 1 : 2],
                         ['order_item_id' => $id1, 'meta_key' => 'method_id', 'meta_value' => $shippingLines[0]['method_id']],
                     ];
+                    
                     foreach ($shippingtaxmeta as $meta) {
                         OrderItemMeta::insert($meta);
                     }
@@ -738,6 +748,7 @@ class PayPalController extends Controller
                             ['order_item_id' => $id2, 'meta_key' => 'compound', 'meta_value' => ''],
                             ['order_item_id' => $id2, 'meta_key' => 'rate_id', 'meta_value' => 1],
                         ];
+                        
                         foreach ($metaILTax as $meta) {
                             OrderItemMeta::insert($meta);
                         }
@@ -793,9 +804,14 @@ class PayPalController extends Controller
                             // }
                            
                             // $Ptotal += $item['quantity'] * $productPrice;
-
                             
-
+                            $taxAmount = (float) ($iLTax ?? 0);
+                            
+                            $serializedData = sprintf(
+                                'a:2:{s:5:"total";a:1:{i:1;s:6:"%.2f";}s:8:"subtotal";a:1:{i:1;s:6:"%.2f";}}',
+                                $taxAmount,
+                                $taxAmount
+                            );
                         $itemMeta = [
                             ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
@@ -811,31 +827,33 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $order_role],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => $iLTax?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' =>$iLTax?? 0],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' => serialize(['total' => [$iLTax?? 0], 'subtotal' => [$iLTax?? 0]])],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' =>  $serializedData],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis_j2', 'meta_value' => 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j2', 'meta_value' => 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis_j1', 'meta_value' => 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j1', 'meta_value' => 0],
                         ];
-
+                       
                         if($iLTax){
-                            DB::table('wp_wc_order_tax_lookup')->insert([
+                            $tax= $iLTax;
+                             DB::table('wp_wc_order_tax_lookup')->insert([
                                 'order_id' => $orderId,
                                 'tax_rate_id' => 1,
                                 'date_created' => now(),
                                 'shipping_tax' => $shippingLines[0]['total'] * 0.15 ??0,
                                 'order_tax' => $item['variation_id'] ?? 0,
-                                'total_tax' => $iLTax + ($shippingLines[0]['total'] * 0.15),
+                                'total_tax' => $tax + ($shippingLines[0]['total'] * 0.15),
                             ]);
                         }
 
-                    
+                      
 
                         foreach ($itemMeta as $meta) {
                             OrderItemMeta::insert($meta);
                         }
-
-                        DB::table('wp_wc_order_product_lookup')->insert([
+                        
+                       
+                        $done=DB::table('wp_wc_order_product_lookup')->insert([
                             'order_item_id' => $orderItemId,
                             'order_id' => $orderId,
                             'product_id' => $item['product_id'],
@@ -844,12 +862,14 @@ class PayPalController extends Controller
                             'date_created' => now(),
                             'product_qty' => $item['quantity'],
                             'product_net_revenue' => $linetotal,
-                            'product_gross_revenue' => $iLTax ? $linetotal + $iLTax : $linetotal,
-                            'tax_amount' => $iLTax ?? 0,
+                            'product_gross_revenue' => $isVape? $totalAmount :0,
+                            'tax_amount' => $iLTax?? 0,
                             'coupon_amount' => 0,
-                            'shipping_amount' => $iLTax ? 7.5 : 0,
-                            'shipping_tax_amount' => $iLTax ? $iLTax : 0, 
+                            'shipping_amount' => $shippingLines[0]['total']??0,
+                            'shipping_tax_amount' => $shippingLines[0]['total']* 0.15??0, 
                         ]);
+
+                        
                         
                     }
 
@@ -880,8 +900,9 @@ class PayPalController extends Controller
                         ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => $order_wholesale_role],
                         ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => $order_wholesale_role],
                         ['order_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? null],
+                        ['order_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $isVape ? 'IL': null],
+                        ['order_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => $isVape ? 0: null],
                         ['order_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? null],
-                        ['order_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->ID ?? null],
                         [
                             'order_id' => $orderId,
                             'meta_key' => '_shipping_address_index',
@@ -892,7 +913,7 @@ class PayPalController extends Controller
                                 (isset($orderData['shipping']['postcode']) ? $orderData['shipping']['postcode'] : '')
                         ],
                     ];
-
+                    
                     DB::table('wp_wc_orders_meta')->insert($wp_wc_order_meta);
 
                     DB::table('wp_wc_order_addresses')->insert([
