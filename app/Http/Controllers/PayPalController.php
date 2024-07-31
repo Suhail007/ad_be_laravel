@@ -178,7 +178,7 @@ class PayPalController extends Controller
                     // $subtotal = $subtotal + ($item['taxPerUnit'] ?? 0);
                     if ($item['isVape'] == true) {
                         // if($orderData['shipping']['state'] == "IL"){
-                            $order_tax=$item['quantity'] * $item['taxPerUnit'];
+                            $order_tax+=$item['quantity'] * $item['taxPerUnit'];
                         // }
                         // $subtotal = $subtotal + ($subtotal * 0.15); //il tax
                         $isVape= true;
@@ -193,7 +193,7 @@ class PayPalController extends Controller
                     $total += $item['quantity'] * $subtotal;
                 }
                 //any discount in subtotal
-                $total = $total - ($shippingLines[0]['subtotal_discount'] ?? 0);
+                $total = $total - ($shippingLines[0]['subtotal_discount'] ?? 0) + $order_tax;
                 
                 //for meta
                 $subtotal = $total;
@@ -574,15 +574,16 @@ class PayPalController extends Controller
                     ]
                 );
                 $orderData = Checkout::where('user_id', $user->ID)->first();
+
+                //total item with unit tax with per unit discount
                 $isVape = false;
                 $order_tax=0;
-                //total item with unit tax with per unit discount
                 foreach ($orderData['extra'] as $item) {
                     $subtotal = $item['product_price'];
                     // $subtotal = $subtotal + ($item['taxPerUnit'] ?? 0);
                     if ($item['isVape'] == true) {
                         // if($orderData['shipping']['state'] == "IL"){
-                            $order_tax=$item['quantity'] * $item['taxPerUnit'];
+                            $order_tax+=$item['quantity'] * $item['taxPerUnit'];
                         // }
                         // $subtotal = $subtotal + ($subtotal * 0.15); //il tax
                         $isVape= true;
@@ -597,10 +598,10 @@ class PayPalController extends Controller
                     $total += $item['quantity'] * $subtotal;
                 }
                 //any discount in subtotal
-                $total = $total - ($shippingLines[0]['subtotal_discount'] ?? 0);
-
-                 //for meta
-                 $subtotal = $total;
+                $total = $total - ($shippingLines[0]['subtotal_discount'] ?? 0) + $order_tax;
+                
+                //for meta
+                $subtotal = $total;
                 //shipping charges
                 $shppingtotal=$shippingLines[0]['total'];
                 // if ($orderData['shipping']['state'] == "IL") {
