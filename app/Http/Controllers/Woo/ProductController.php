@@ -116,7 +116,9 @@ class ProductController extends Controller
     }
     public function categoryProduct(Request $request, string $slug)
     {
-        $perPage = $request->input('per_page', 20);
+        $perPage = $request->query('perPage', 15); 
+        $sortBy = $request->query('sort', 'default'); 
+        $page = $request->query('page', 1);
         try {
             $user = JWTAuth::parseToken()->authenticate();
             if ($user->ID) {
@@ -149,7 +151,7 @@ class ProductController extends Controller
                             ->where('taxonomy', 'product_cat');
                     })
                     ->orderBy('post_modified', 'desc')
-                    ->paginate($perPage);
+                    ->paginate($perPage, ['*'], 'page', $page);
             }
         } catch (\Throwable $th) {
             $products = Product::with([
@@ -181,7 +183,7 @@ class ProductController extends Controller
                         ->where('taxonomy', 'product_cat');
                 })
                 ->orderBy('post_modified', 'desc')
-                ->paginate($perPage);
+                ->paginate($perPage, ['*'], 'page', $page);
         }
 
 
@@ -219,7 +221,9 @@ class ProductController extends Controller
     }
     public function brandProducts(Request $request,string $slug)
     {
-        $perPage = $request->input('per_page', 20);
+        $perPage = $request->query('perPage', 15); 
+        $sortBy = $request->query('sort', 'default'); 
+        $page = $request->query('page', 1);
         try {
             $user = JWTAuth::parseToken()->authenticate();
             if($user->ID){
@@ -252,7 +256,7 @@ class ProductController extends Controller
                             ->where('taxonomy', 'product_brand');
                     })
                     ->orderBy('post_modified', 'desc')
-                    ->paginate($perPage);
+                    ->paginate($perPage, ['*'], 'page', $page);
             }
         } catch (\Throwable $th) {
             $products = Product::with([
@@ -284,7 +288,7 @@ class ProductController extends Controller
                         ->where('taxonomy', 'product_brand');
                 })
                 ->orderBy('post_modified', 'desc')
-                ->paginate($perPage);
+                ->paginate($perPage, ['*'], 'page', $page);
         }
 
         $products->getCollection()->transform(function ($product) {
@@ -322,8 +326,10 @@ class ProductController extends Controller
 
     public function searchProducts(Request $request)
     {
+        $perPage = $request->query('perPage', 15); 
+        $sortBy = $request->query('sort', 'default'); 
+        $page = $request->query('page', 1);
         $searchTerm = $request->input('searchTerm', '');
-        $perPage = $request->input('per_page', 20);
         try {
             $user = JWTAuth::parseToken()->authenticate();
             if($user->ID){
@@ -377,7 +383,7 @@ class ProductController extends Controller
                     ->orWhere('post_name', 'REGEXP', $regexPattern);
             });
         }
-        $products = $query->orderBy('post_modified', 'desc')->paginate($perPage);
+        $products = $query->orderBy('post_modified', 'desc')->paginate($perPage, ['*'], 'page', $page);
 
         try {
             $user = JWTAuth::parseToken()->authenticate();
@@ -582,8 +588,9 @@ class ProductController extends Controller
     public function searchProductsAll(Request $request)
     {
         $searchTerm = $request->input('searchTerm', '');
-        $perPage = $request->input('per_page', 20);
-
+        $perPage = $request->query('perPage', 15); 
+        $sortBy = $request->query('sort', 'default'); 
+        $page = $request->query('page', 1);
         try {
             $user = JWTAuth::parseToken()->authenticate();
             if ($user->ID) {
@@ -652,7 +659,7 @@ class ProductController extends Controller
             });
         }
 
-        $products = $query->orderBy('post_modified', 'desc')->paginate($perPage);
+        $products = $query->orderBy('post_modified', 'desc')->paginate($perPage, ['*'], 'page', $page);
 
         try {
             $user = JWTAuth::parseToken()->authenticate();
