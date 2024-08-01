@@ -694,7 +694,7 @@ class PayPalController extends Controller
                         ['post_id' => $orderId, 'meta_key' => '_payment_method_title', 'meta_value' => '(*** PLEASE DONT USE THIS PAYMENT METHOD UNTIL WE ASK YOU TO DO IT. YOUR ORDER WILL AUTOMATICALLY GET CANCELLED.)'], //$orderData['payment_method_title']],
                         ['post_id' => $orderId, 'meta_key' => '_transaction_id', 'meta_value' => uniqid()],
                         ['post_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? null],
-                        ['post_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $isVape ? 'IL': null],
+                        ['post_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $isVape ? 'IL': 'OS'],
                         ['post_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => $isVape ? 0: null],
                         ['post_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? null],
                         ['post_id' => $orderId, 'meta_key' => '_order_total', 'meta_value' => $total], //$orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {return $carry + $item['quantity'] * $item['product_price'];}, 0)],
@@ -717,7 +717,7 @@ class PayPalController extends Controller
                         OrderMeta::insert($meta);
                     }
                     
-                    $totalAmount = $total; // $orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {return $carry + $item['quantity'] * $item['product_price'];}, 0);
+                    $totalAmount = $total; 
                     $productCount = count($orderData['extra']);
                     $id1 = DB::table('wp_woocommerce_order_items')->insertGetId([
                         'order_id' => $orderId,
@@ -743,7 +743,7 @@ class PayPalController extends Controller
                             'order_item_type' => 'tax'
                         ]);
                         $metaILTax = [
-                            ['order_item_id' => $id2, 'meta_key' => 'rate_percent', 'meta_value' => $shippingLines[0]['total']],
+                            ['order_item_id' => $id2, 'meta_key' => 'rate_percent', 'meta_value' => $shppingtotal],
                             ['order_item_id' => $id2, 'meta_key' => 'shipping_tax_amount', 'meta_value' => 0],
                             ['order_item_id' => $id2, 'meta_key' => 'tax_amount', 'meta_value' => $order_tax??0],//$amount * 0.15],
                             ['order_item_id' => $id2, 'meta_key' => 'label', 'meta_value' => 'State Tax'],
