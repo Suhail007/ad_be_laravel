@@ -141,8 +141,8 @@ class MyAcccountController extends Controller
         $type = $request->input('type');
         $prefix = $type === 'billing' ? 'billing_' : 'shipping_';
         $newAddress = [
-            $prefix . 'first_name' => $request->input('first_name'),
-            $prefix . 'last_name' => $request->input('last_name'),
+            $prefix . 'first_name' => $this->getUserMeta($user->ID, 'billing_first_name'),
+            $prefix . 'last_name' => $this->getUserMeta($user->ID, 'billing_last_name'),
             $prefix . 'company' => $request->input('company'),
             $prefix . 'country' => $request->input('country'),
             $prefix . 'state' => $request->input('state'),
@@ -151,7 +151,7 @@ class MyAcccountController extends Controller
             $prefix . 'city' => $request->input('city'),
             $prefix . 'postcode' => $request->input('postcode'),
             $prefix . 'phone' => $request->input('phone'),
-            $prefix . 'email' => $request->input('email'),
+            $prefix .  'email' => $this->getUserMeta($user->ID, 'billing_email'),
             'licence' => $request->input('fileurl'),
         ];
 
