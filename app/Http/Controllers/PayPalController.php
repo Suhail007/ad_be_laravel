@@ -856,8 +856,7 @@ class PayPalController extends Controller
                         foreach ($itemMeta as $meta) {
                             OrderItemMeta::insert($meta);
                         }
-                        $unitshippingCharge= ($shppingtotal / $ordertotalQTY)*$item['quantity'];
-                       
+                        $unitshippingCharge = (float) ($shppingtotal / max($ordertotalQTY, 1)) * $item['quantity'];
                         $done=DB::table('wp_wc_order_product_lookup')->insert([
                             'order_item_id' => $orderItemId,
                             'order_id' => $orderId,
