@@ -137,7 +137,7 @@ class MyAcccountController extends Controller
             ], 200);
         }
 
-        $userId =$user->ID; // $request->input('user_id');
+        $userId =$user->ID; 
         $type = $request->input('type');
         $prefix = $type === 'billing' ? 'billing_' : 'shipping_';
         $newAddress = [
@@ -152,7 +152,7 @@ class MyAcccountController extends Controller
             $prefix . 'postcode' => $request->input('postcode'),
             $prefix . 'phone' => $request->input('phone'),
             $prefix . 'email' => $request->input('email'),
-            'licence' => $request->input('file'),
+            'licence' => $request->input('fileurl'),
         ];
 
         $addresses = UserMeta::where('user_id', $userId)
