@@ -839,17 +839,17 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j1', 'meta_value' => 0],
                         ];
                        
-                        if($iLTax){
-                            $tax= $iLTax;
-                             DB::table('wp_wc_order_tax_lookup')->insert([
-                                'order_id' => $orderId,
-                                'tax_rate_id' => 1,
-                                'date_created' => now(),
-                                'shipping_tax' =>0,
-                                'order_tax' => $item['variation_id'] ?? 0,
-                                'total_tax' => $tax,
-                            ]);
-                        }
+                        // if($iLTax){
+                        //     $tax= $iLTax;
+                        //      DB::table('wp_wc_order_tax_lookup')->insert([
+                        //         'order_id' => $orderId,
+                        //         'tax_rate_id' => 1,
+                        //         'date_created' => now(),
+                        //         'shipping_tax' =>0,
+                        //         'order_tax' => $item['variation_id'] ?? 0,
+                        //         'total_tax' => $tax,
+                        //     ]);
+                        // }
 
                       
 
