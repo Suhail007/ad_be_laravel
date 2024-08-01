@@ -52,8 +52,8 @@ class MyAcccountController extends Controller
 
         // Prepare the new address data
         $newAddress = [
-            $prefix . 'first_name' => $validated['first_name'],
-            $prefix . 'last_name' => $validated['last_name'],
+            $prefix . 'first_name' => $this->getUserMeta($user->ID, 'billing_first_name'),
+            $prefix . 'last_name' =>$this->getUserMeta($user->ID, 'billing_last_name'),
             $prefix . 'company' => $validated['company'] ?? '',
             $prefix . 'country' => $validated['country'],
             $prefix . 'state' => $validated['state'],
@@ -62,7 +62,7 @@ class MyAcccountController extends Controller
             $prefix . 'city' => $validated['city'],
             $prefix . 'postcode' => $validated['postcode'],
             $prefix . 'phone' => $validated['phone'],
-            $prefix . 'email' => $validated['email'],
+            $prefix . 'email' => $this->getUserMeta($user->ID, 'billing_email'),
             'licence' => $validated['fileurl']
         ];
 
