@@ -605,7 +605,9 @@ class PayPalController extends Controller
                 //total item with unit tax with per unit discount
                 $isVape = false;
                 $order_tax=0;
+                $ordertotalQTY=0;
                 foreach ($orderData['extra'] as $item) {
+                    $ordertotalQTY += $item['quantity'];
                     $subtotal = $item['product_price'];
                     // $subtotal = $subtotal + ($item['taxPerUnit'] ?? 0);
                     if ($item['isVape'] == true) {
@@ -854,7 +856,7 @@ class PayPalController extends Controller
                         foreach ($itemMeta as $meta) {
                             OrderItemMeta::insert($meta);
                         }
-                        
+                        $unitshippingCharge= ($shppingtotal / $ordertotalQTY)*$item['quantity'];
                        
                         $done=DB::table('wp_wc_order_product_lookup')->insert([
                             'order_item_id' => $orderItemId,
@@ -868,7 +870,7 @@ class PayPalController extends Controller
                             'product_gross_revenue' => $isVape? $totalAmount :0,
                             'tax_amount' => $iLTax?? 0,
                             'coupon_amount' => 0,
-                            'shipping_amount' => $shippingLines[0]['total']??0,
+                            'shipping_amount' => $unitshippingCharge??0,
                             'shipping_tax_amount' => 0, 
                         ]);
 
