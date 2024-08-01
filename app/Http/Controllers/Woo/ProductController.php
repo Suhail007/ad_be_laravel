@@ -117,8 +117,20 @@ class ProductController extends Controller
     public function categoryProduct(Request $request, string $slug)
     {
         $perPage = $request->query('perPage', 15); 
-        $sortBy = $request->query('sort', 'default'); 
+        $sortBy = $request->query('sort', 'latest'); 
         $page = $request->query('page', 1);
+
+        // $orderBy = 'latest';
+        // if($orderBy == "min"){
+        //     $orderBy = "low to high";
+        // }
+        // if($orderBy == "max"){
+        //     $orderBy = "low to high";
+        // }
+        // if($orderBy == "popular"){
+        //     $orderBy = "popular";
+        // }
+
         try {
             $user = JWTAuth::parseToken()->authenticate();
             if ($user->ID) {

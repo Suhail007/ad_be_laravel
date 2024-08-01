@@ -23,8 +23,8 @@ class MyAcccountController extends Controller
         $validated = $request->validate([
             'type' => 'required|string',
             'address_key' => 'required|string',
-            'first_name' => 'required|string',
-            'last_name' => 'string',
+            
+            
             'company' => 'nullable|string',
             'country' => 'required|string',
             'state' => 'required|string',
@@ -33,8 +33,8 @@ class MyAcccountController extends Controller
             'city' => 'required|string',
             'postcode' => 'required|string',
             'phone' => 'required|string',
-            'email' => 'required|email',
-            'file' => 'required'
+            
+            'fileurl' => 'required'
         ]);
 
         $userId = $user->ID;
@@ -63,7 +63,7 @@ class MyAcccountController extends Controller
             $prefix . 'postcode' => $validated['postcode'],
             $prefix . 'phone' => $validated['phone'],
             $prefix . 'email' => $validated['email'],
-            'licence' => $validated['file']
+            'licence' => $validated['fileurl']
         ];
 
         // Check if the address exists in the approved addresses

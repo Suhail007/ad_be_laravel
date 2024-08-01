@@ -691,6 +691,7 @@ class PayPalController extends Controller
                         ['post_id' => $orderId, 'meta_key' => '_shipping_postcode', 'meta_value' => $orderData['shipping']['postcode']],
                         ['post_id' => $orderId, 'meta_key' => '_shipping_country', 'meta_value' => $orderData['shipping']['country']],
                         ['post_id' => $orderId, 'meta_key' => '_order_shipping', 'meta_value' => $shppingtotal],
+                        ['post_id' => $orderId, 'meta_key' => '_order_shipping_tax', 'meta_value' => 0],
                         ['post_id' => $orderId, 'meta_key' => '_payment_method', 'meta_value' => 'managemore_onaccount'],
                         ['post_id' => $orderId, 'meta_key' => '_payment_method_title', 'meta_value' => '(*** PLEASE DONT USE THIS PAYMENT METHOD UNTIL WE ASK YOU TO DO IT. YOUR ORDER WILL AUTOMATICALLY GET CANCELLED.)'], //$orderData['payment_method_title']],
                         ['post_id' => $orderId, 'meta_key' => '_transaction_id', 'meta_value' => uniqid()],
