@@ -11,10 +11,141 @@ use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Jobs\UnfreezeCart;
 use Carbon\Carbon;
-
+use Exception;
+use GuzzleHttp\Client;
 
 class CheckoutController extends Controller
 {
+    private $security_key;
+    public function __construct()
+    {
+        $this->security_key = config('services.nmi.security');
+    }
+
+    private function validateBilling($billingInformation)
+    {
+        $validBillingKeys = [
+            "first_name",
+            "last_name",
+            "company",
+            "address1",
+            "address2",
+            "city",
+            "state",
+            "zip",
+            "country",
+            "phone",
+            "fax",
+            "email"
+        ];
+
+        foreach ($billingInformation as $key => $value) {
+            if (!in_array($key, $validBillingKeys)) {
+                throw new Exception("Invalid key provided in billingInformation. '{$key}' is not a valid billing parameter.");
+            }
+        }
+    }
+
+
+    private function validateShipping($shippingInformation)
+    {
+        $validShippingKeys = [
+            "shipping_first_name",
+            "shipping_last_name",
+            "shipping_company",
+            "shipping_address1",
+            "address2",
+            "shipping_city",
+            "shipping_state",
+            "shipping_zip",
+            "shipping_country",
+            "shipping_email"
+        ];
+
+        foreach ($shippingInformation as $key => $value) {
+            if (!in_array($key, $validShippingKeys)) {
+                throw new Exception("Invalid key provided in shippingInformation. '{$key}' is not a valid shipping parameter.");
+            }
+        }
+    }
+
+    private function doSale($amount, $payment_token, $billing, $shipping)
+    {
+        $requestOptions = [
+            'type' => 'sale',
+            'amount' => $amount,
+            'payment_token' => $payment_token
+        ];
+        $requestOptions = array_merge($requestOptions, $billing, $shipping);
+
+        return $requestOptions;
+    }
+
+    private function _doRequest($postData)
+    {
+        $hostName = "secure.nmi.com";
+        $path = "/api/transact.php";
+        $client = new Client();
+
+        $postData['security_key'] = config('services.nmi.security');
+        $postUrl = "https://{$hostName}{$path}";
+
+        try {
+            $response = $client->post($postUrl, [
+                'form_params' => $postData,
+                'headers' => [
+                    'Content-Type' => 'application/x-www-form-urlencoded'
+                ]
+            ]);
+
+            parse_str($response->getBody(), $responseArray);
+
+            $parsedResponseCode = (int)$responseArray['response_code'];
+            $status = in_array($parsedResponseCode, [100, 200]);
+
+            $paydata = [
+                'status' => $status,
+                'date' => $response->getHeaderLine('Date'),
+                'responsetext' => $responseArray['responsetext'],
+                'authcode' => $responseArray['authcode'] ?? '',
+                'transactionid' => $responseArray['transactionid'] ?? 'failed',
+                'avsresponse' => $responseArray['avsresponse'] ?? 'N',
+                'cvvresponse' => $responseArray['cvvresponse'] ?? 'N',
+                'description' => $response->getBody()->getContents(),
+                'response_code' => $parsedResponseCode,
+                'type' => $responseArray['type'] ?? ''
+            ];
+
+            return $paydata;
+        } catch (Exception $e) {
+            throw new Exception("Error: " . $e->getMessage());
+        }
+    }
+
+    public function processPayment(Request $request)
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+        if (!$user) {
+            return response()->json(['message' => 'User not authenticated', 'status' => false], 401);
+        }
+        $billingInfo = $request->input('billing');
+        $shippingInfo = $request->input('shipping');
+        $payment_token = $request->input('payment_token');
+        $total = $request->input('total');
+        $saleData = $this->doSale($total, $payment_token, $billingInfo, $shippingInfo);
+        $paymentResult = $this->_doRequest($saleData);
+
+        if (!$paymentResult['status']) {
+            return response()->json([
+                'status' => false,
+                'message' => $paymentResult,
+            ], 200);
+        }
+        return response()->json([
+            'status' => true,
+            'message' => $paymentResult,
+        ], 200);
+    }
     public function checkoutAddress(Request $request)
     {
         try {
@@ -136,7 +267,7 @@ class CheckoutController extends Controller
             if ($adjusted) {
                 $adjustedItems[] = [
                     'product_id' => $product->ID,
-                   'variation_id' => $variation ? $variation->ID : null,
+                    'variation_id' => $variation ? $variation->ID : null,
                     'product_name' => $product->post_title,
                     'product_image' => $product->thumbnail_url,
                     'requested_quantity' => $originalQuantity,
@@ -147,15 +278,15 @@ class CheckoutController extends Controller
             if (empty($adjustedItems)) {
                 // $check = Checkout::where('user_id', $user->ID)->firstOrFail();
                 // if (!$check->isFreeze) {
-                    // if(!$check->isFreeze){
-                        $check->update([
-                            'isFreeze' => true,
-                        ]);
-                    // }
-                    $this->reduceStock($cartItem);
-                    UnfreezeCart::dispatch($user->ID)->delay(now()->addMinutes(5));
+                // if(!$check->isFreeze){
+                $check->update([
+                    'isFreeze' => true,
+                ]);
                 // }
-                
+                $this->reduceStock($cartItem);
+                UnfreezeCart::dispatch($user->ID)->delay(now()->addMinutes(5));
+                // }
+
             }
         }
 
