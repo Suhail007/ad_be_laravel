@@ -718,12 +718,17 @@ class PayPalController extends Controller
                     foreach ($metaData as $meta) {
                         OrderMeta::insert($meta);
                     }
-                    $metaValue = $orderData['shipping']['state'] == 'IL' ? 'IL' : 'OS';
+                    if ($orderData['shipping']['state'] == 'IL') {
+                        $metaValue =  'IL';
+                    } else {
+                        $metaValue =  'OS';
+                    }
+
                     OrderMeta::insert([
-                                'post_id' => $orderId,
-                                'meta_key' => 'mm_field_TXC',
-                                'meta_value' => $metaValue,
-                            ]);
+                        'post_id' => $orderId,
+                        'meta_key' => 'mm_field_TXC',
+                        'meta_value' => $metaValue,
+                    ]);
                     $totalAmount = $total;
                     $productCount = count($orderData['extra']);
                     $id1 = DB::table('wp_woocommerce_order_items')->insertGetId([
