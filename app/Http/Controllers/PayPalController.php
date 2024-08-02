@@ -739,6 +739,7 @@ class PayPalController extends Controller
                         'order_item_name' => $shippingLines[0]['method_title'],
                         'order_item_type' => 'shipping'
                     ]);
+
                     $productnamesString = implode(',', $productnames);
 
                     $shippingtaxmeta = [
@@ -790,6 +791,7 @@ class PayPalController extends Controller
                         $productPrice = $item['product_price'];
                         $linetotal = 0;
                         $iLTax = 0;
+
                         // if($item['taxPerUnit']){
                         //     $isPerUnit=true;
                         //     $productTax= $item['quantity'] * $item['taxPerUnit'];
@@ -831,6 +833,7 @@ class PayPalController extends Controller
                             $taxAmount,
                             $taxAmount
                         );
+                       $indirect_tax_amount= $item['quantity'] * $item['taxPerUnit'];
                         $itemMeta = [
                             ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
@@ -841,7 +844,7 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $linetotal ?? 0],  //
                             ['order_item_id' => $orderItemId, 'meta_key' => 'flavor', 'meta_value' => implode(',', $item['variation']) ?? ''],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' => $item['ml1']??$item['ml2']??$linetotal ?? 0], //
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => $iLTax??0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => $indirect_tax_amount??0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $order_role],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => $iLTax ?? 0],
