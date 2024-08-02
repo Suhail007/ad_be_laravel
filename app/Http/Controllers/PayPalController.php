@@ -674,6 +674,11 @@ class PayPalController extends Controller
                         'guid' => 'https://ad.phantasm.solutions/?post_type=shop_order&p=' . uniqid(),
                     ]);
                     $state = $orderData['shipping']['state'];
+                    if($shippingLines[0]['total']){
+                        $floattotal=15.00;
+                    } else{
+                        $floattotal=0.00;
+                    }
                     $metaData = [
                         ['post_id' => $orderId, 'meta_key' => '_billing_first_name', 'meta_value' => $orderData['billing']['first_name']],
                         ['post_id' => $orderId, 'meta_key' => '_billing_last_name', 'meta_value' => $orderData['billing']['last_name']],
@@ -693,7 +698,7 @@ class PayPalController extends Controller
                         ['post_id' => $orderId, 'meta_key' => '_shipping_state', 'meta_value' => $orderData['shipping']['state']],
                         ['post_id' => $orderId, 'meta_key' => '_shipping_postcode', 'meta_value' => $orderData['shipping']['postcode']],
                         ['post_id' => $orderId, 'meta_key' => '_shipping_country', 'meta_value' => $orderData['shipping']['country']],
-                        ['post_id' => $orderId, 'meta_key' => '_order_shipping', 'meta_value' => $shppingtotal],
+                        ['post_id' => $orderId, 'meta_key' => '_order_shipping', 'meta_value' => $floattotal],
                         ['post_id' => $orderId, 'meta_key' => '_order_shipping_tax', 'meta_value' => 0],
                         ['post_id' => $orderId, 'meta_key' => '_payment_method', 'meta_value' => 'managemore_onaccount'],
                         ['post_id' => $orderId, 'meta_key' => '_payment_method_title', 'meta_value' => '(*** PLEASE DONT USE THIS PAYMENT METHOD UNTIL WE ASK YOU TO DO IT. YOUR ORDER WILL AUTOMATICALLY GET CANCELLED.)'], //$orderData['payment_method_title']],
@@ -741,11 +746,7 @@ class PayPalController extends Controller
                     ]);
 
                     $productnamesString = implode(',', $productnames);
-                    if($shippingLines[0]['total']){
-                        $floattotal=15.00;
-                    } else{
-                        $floattotal=0.00;
-                    }
+                   
                     // $floattotal=(float) $shippingLines[0]['total']+0.00;
                     $shippingtaxmeta = [
                         ['order_item_id' => $id1, 'meta_key' => 'taxes', 'meta_value' =>  serialize(['total' => [0]])],
