@@ -696,7 +696,7 @@ class PayPalController extends Controller
                         ['post_id' => $orderId, 'meta_key' => '_payment_method_title', 'meta_value' => '(*** PLEASE DONT USE THIS PAYMENT METHOD UNTIL WE ASK YOU TO DO IT. YOUR ORDER WILL AUTOMATICALLY GET CANCELLED.)'], //$orderData['payment_method_title']],
                         ['post_id' => $orderId, 'meta_key' => '_transaction_id', 'meta_value' => uniqid()],
                         ['post_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? null],
-                        ['post_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $state == 'IL' ? 'IL' : 'OS'],
+                        // ['post_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $state == 'IL' ? 'IL' : 'OS'],
                         ['post_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => $isVape ? 0 : null],
                         ['post_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? null],
                         ['post_id' => $orderId, 'meta_key' => '_order_total', 'meta_value' => $total], //$orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {return $carry + $item['quantity'] * $item['product_price'];}, 0)],
@@ -714,10 +714,16 @@ class PayPalController extends Controller
                     ];
                     //    dd();
 
+
                     foreach ($metaData as $meta) {
                         OrderMeta::insert($meta);
                     }
-
+                    $metaValue = $orderData['shipping']['state'] == 'IL' ? 'IL' : 'OS';
+                    OrderMeta::insert([
+                                'post_id' => $orderId,
+                                'meta_key' => 'mm_field_TXC',
+                                'meta_value' => $metaValue,
+                            ]);
                     $totalAmount = $total;
                     $productCount = count($orderData['extra']);
                     $id1 = DB::table('wp_woocommerce_order_items')->insertGetId([
