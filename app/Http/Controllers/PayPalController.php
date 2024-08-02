@@ -741,12 +741,12 @@ class PayPalController extends Controller
                     ]);
 
                     $productnamesString = implode(',', $productnames);
-
+                    $floattotal=(float) $shippingLines[0]['total']+0.00;
                     $shippingtaxmeta = [
                         ['order_item_id' => $id1, 'meta_key' => 'taxes', 'meta_value' =>  serialize(['total' => [0]])],
                         ['order_item_id' => $id1, 'meta_key' => 'total_tax', 'meta_value' => 0],
                         ['order_item_id' => $id1, 'meta_key' => 'Items', 'meta_value' => $productnamesString??' '],
-                        ['order_item_id' => $id1, 'meta_key' => 'cost', 'meta_value' =>(float) $shippingLines[0]['total']],
+                        ['order_item_id' => $id1, 'meta_key' => 'cost', 'meta_value' =>$floattotal??0.00],
                         ['order_item_id' => $id1, 'meta_key' => 'instance_id', 'meta_value' => ($shippingLines[0]['method_id'] == 'flat_rate') ? 1 : 2],
                         ['order_item_id' => $id1, 'meta_key' => 'method_id', 'meta_value' => $shippingLines[0]['method_id']],
                     ];
