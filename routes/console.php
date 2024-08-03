@@ -39,7 +39,7 @@ Schedule::call(function () {
         Log::error('Error processing buffers: ' . $th->getMessage());
     }
         
-})->everyThirtySeconds();
+})->everyFiveSeconds();
 // use Illuminate\Foundation\Inspiring;
 // use Illuminate\Support\Facades\Artisan;
 // use Illuminate\Console\Command;
