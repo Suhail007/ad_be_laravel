@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\BufferJob;
 use App\Models\Buffer;
 use App\Models\Cart;
 use App\Models\Checkout;
@@ -757,12 +758,13 @@ class PayPalController extends Controller
                         ['order_item_id' => $id1, 'meta_key' => 'instance_id', 'meta_value' => ($shippingLines[0]['method_id'] == 'flat_rate') ? 1 : 2],
                         ['order_item_id' => $id1, 'meta_key' => 'method_id', 'meta_value' => $shippingLines[0]['method_id']],
                     ];
-                    
+
                     if($floattotal>0){
                         Buffer::create([
                             'order_id'=>$orderId,
                             'shipping'=>$shippingLines[0]['method_title'],
                         ]);
+                        BufferJob::dispatch()->delay(now()->addMinutes(1));
                     }
                     
                     foreach ($shippingtaxmeta as $meta) {

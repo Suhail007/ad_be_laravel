@@ -29,7 +29,6 @@ class ShippingBuffer extends Command
      */
     public function handle()
     {
-        Artisan::call('schedule:run');
         $buffers = DB::table('buffers')->get();
 
         foreach ($buffers as $buffer) {
