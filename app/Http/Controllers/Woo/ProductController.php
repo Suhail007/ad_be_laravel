@@ -154,7 +154,7 @@ class ProductController extends Controller
                                 ]);
                         }
                     ])
-                        ->select('ID', 'post_title', 'post_modified', 'post_name')
+                        ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                         ->where('post_type', 'product')
                         ->whereHas('meta', function ($query) {
                             $query->where('meta_key', '_stock_status')
@@ -164,9 +164,9 @@ class ProductController extends Controller
                             $query->where('slug', $slug)
                                 ->where('taxonomy', 'product_cat');
                         })
-                        ->orderBy('date_created', 'desc')
+                        ->orderBy('post_date', 'desc')
                         ->paginate($perPage, ['*'], 'page', $page);
-                }else {
+                } else {
                 $products = Product::with([
                     'meta' => function ($query) {
                         $query->select('post_id', 'meta_key', 'meta_value')
