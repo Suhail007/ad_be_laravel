@@ -51,7 +51,7 @@ class ShippingBuffer extends Command
                     DB::table('buffers')
                         ->where('id', $buffer->id)
                         ->delete();
-                    Log::info($buffer->id.' shipping charges updated');
+                    Log::info($buffer->order_id.' shipping charges updated');
                 }
             }
         }
