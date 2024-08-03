@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -28,6 +29,7 @@ class ShippingBuffer extends Command
      */
     public function handle()
     {
+        Artisan::call('schedule:run');
         $buffers = DB::table('buffers')->get();
 
         foreach ($buffers as $buffer) {
