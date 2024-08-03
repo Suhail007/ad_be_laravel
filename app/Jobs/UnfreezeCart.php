@@ -36,32 +36,37 @@ class UnfreezeCart implements ShouldQueue
     public function handle()
     {
         // unfreezed
-        Log::info('unfreeze queue');
-        $cartItems = Cart::where('user_id', $this->userId)->get();
+        $data = Checkout::where('user_id', $this->userId)->first();
+        if ($data && $data->isFreeze) {
+            $cartItems = Cart::where('user_id', $this->userId)->get();
 
-        foreach ($cartItems as $cartItem) {
-            $product = $cartItem->product;
-            $variation = $cartItem->variation;
+            foreach ($cartItems as $cartItem) {
+                $product = $cartItem->product;
+                $variation = $cartItem->variation;
 
-            if ($variation) {
-                $stockLevel = ProductMeta::where('post_id', $variation->ID)
-                    ->where('meta_key', '_stock')
-                    ->first();
-                if ($stockLevel) {
-                    $stockLevel->meta_value += $cartItem->quantity;
-                    $stockLevel->save();
-                }
-            } else {
-                $stockLevel = ProductMeta::where('post_id', $product->ID)
-                    ->where('meta_key', '_stock')
-                    ->first();
-                if ($stockLevel) {
-                    $stockLevel->meta_value += $cartItem->quantity;
-                    $stockLevel->save();
+                if ($variation) {
+                    $stockLevel = ProductMeta::where('post_id', $variation->ID)
+                        ->where('meta_key', '_stock')
+                        ->first();
+                    if ($stockLevel) {
+                        $stockLevel->meta_value += $cartItem->quantity;
+                        $stockLevel->save();
+                    }
+                } else {
+                    $stockLevel = ProductMeta::where('post_id', $product->ID)
+                        ->where('meta_key', '_stock')
+                        ->first();
+                    if ($stockLevel) {
+                        $stockLevel->meta_value += $cartItem->quantity;
+                        $stockLevel->save();
+                    }
                 }
             }
-        }
 
-        Checkout::where('user_id', $this->userId)->update(['isFreeze' => false]);
+            Checkout::where('user_id', $this->userId)->update(['isFreeze' => false]);
+            Log::info('unfreeze queue-> ' . $this->userId);
+        }else {
+            Log::info('Not freezed-> ' .$this->userId);
+        }
     }
 }
