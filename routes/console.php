@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Schedule;
 Schedule::command('app:freeze-job')->everyFiveMinutes();
+Schedule::command('shipping:update')->everyThirtySeconds();
 
 // use Illuminate\Foundation\Inspiring;
 // use Illuminate\Support\Facades\Artisan;
