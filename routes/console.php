@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 Schedule::command('app:freeze-job')->everyFiveMinutes();
-Schedule::command('shipping:update')->everyMinute();
+Schedule::command('shipping:update')->everyTwentySeconds();
 
 
 // Schedule::call(function () {

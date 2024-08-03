@@ -764,7 +764,7 @@ class PayPalController extends Controller
                             'order_id'=>$orderId,
                             'shipping'=>$shippingLines[0]['method_title'],
                         ]);
-                        BufferJob::dispatch()->delay(now()->addMinutes(1));
+                        BufferJob::dispatch();
                     }
                     
                     foreach ($shippingtaxmeta as $meta) {
