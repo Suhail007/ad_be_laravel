@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class UnfreezeCart implements ShouldQueue
 {
@@ -34,6 +35,8 @@ class UnfreezeCart implements ShouldQueue
      */
     public function handle()
     {
+        // unfreezed
+        Log::info('unfreeze queue');
         $cartItems = Cart::where('user_id', $this->userId)->get();
 
         foreach ($cartItems as $cartItem) {

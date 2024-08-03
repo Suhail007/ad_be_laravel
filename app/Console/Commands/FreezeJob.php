@@ -28,8 +28,9 @@ class FreezeJob extends Command
      */
     public function handle()
     {
-        Log::info('Utkarsh Jobs');
-        Artisan::call('queue:work');
-        
+        Log::info('Feeze Jobs');
+        // Artisan::call('queue:work');
+
     }
+    
 }

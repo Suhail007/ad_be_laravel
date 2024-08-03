@@ -5,11 +5,19 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
-Schedule::command('app:freeze-job')->everyFiveMinutes();
-// Schedule::command('shipping:update')->everyTwentySeconds();
-Schedule::job(new BufferJob)->everySecond();
-// Schedule::command('schedule:run')->everySecond();
-// Schedule::command('queue:work')->everySecond();
+
+
+// $flag=0;
+// if($flag){
+
+//     Schedule::command('app:freeze-job')->everyTenSeconds();
+//     $flag=0;
+// } else {
+
+    Schedule::command('app:shipping-job')->everyFiveSeconds();
+    // $flag=1;
+// }
+
 
 
 // Schedule::call(function () {
@@ -46,6 +54,14 @@ Schedule::job(new BufferJob)->everySecond();
 //     }
         
 // })->everyFiveSeconds();
+
+
+// Schedule::command('shipping:update')->everyTwentySeconds();
+// Schedule::job(new BufferJob)->everyFiveSeconds();
+// Schedule::command('schedule:run')->everySecond();
+// Schedule::command('queue:work')->everySecond();
+
+
 // use Illuminate\Foundation\Inspiring;
 // use Illuminate\Support\Facades\Artisan;
 // use Illuminate\Console\Command;
