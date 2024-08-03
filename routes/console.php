@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('app:freeze-job')->everyFiveMinutes();
 // Schedule::command('shipping:update')->everyTwentySeconds();
 Schedule::job(new BufferJob)->everySecond();
-Schedule::command('schedule:run')->everySecond();
-Schedule::command('queue:work')->everySecond();
+// Schedule::command('schedule:run')->everySecond();
+// Schedule::command('queue:work')->everySecond();
 
 
 // Schedule::call(function () {

@@ -27,7 +27,12 @@ class BufferJob implements ShouldQueue
      */
     public function handle(): void
     {
-        Log::info('buffer started' . now());
+        Log::info('buffer started');
+        $this->loopChecking();
+        
+    }
+
+    private function loopChecking(){
         try {
             $buffers = DB::table('buffers')->get();
     
@@ -60,5 +65,7 @@ class BufferJob implements ShouldQueue
             Log::error('Error processing buffers: ' . $th->getMessage());
         }
         Log::info('buffer ended' . now());
+        sleep(15);
+        $this->loopChecking();
     }
 }
