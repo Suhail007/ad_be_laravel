@@ -27,6 +27,7 @@ class BufferJob implements ShouldQueue
      */
     public function handle(): void
     {
+        Log::error('buffer started' . now());
         try {
             $buffers = DB::table('buffers')->get();
     
@@ -58,5 +59,6 @@ class BufferJob implements ShouldQueue
         } catch (\Throwable $th) {
             Log::error('Error processing buffers: ' . $th->getMessage());
         }
+        Log::error('buffer ended' . now());
     }
 }

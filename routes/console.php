@@ -1,11 +1,13 @@
 <?php
 
+use App\Jobs\BufferJob;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 Schedule::command('app:freeze-job')->everyFiveMinutes();
-Schedule::command('shipping:update')->everyTwentySeconds();
+// Schedule::command('shipping:update')->everyTwentySeconds();
+Schedule::job(new BufferJob)->everySecond();
 
 
 // Schedule::call(function () {
