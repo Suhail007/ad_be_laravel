@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('app:freeze-job')->everyFiveMinutes();
 // Schedule::command('shipping:update')->everyThirtySeconds();
 Schedule::call(function () {
-    Artisan::call('schedule:run');
+    try {
         $buffers = DB::table('buffers')->get();
 
         foreach ($buffers as $buffer) {
@@ -35,6 +35,10 @@ Schedule::call(function () {
                 }
             }
         }
+    } catch (\Throwable $th) {
+        Log::error('Error processing buffers: ' . $th->getMessage());
+    }
+        
 })->everyThirtySeconds();
 // use Illuminate\Foundation\Inspiring;
 // use Illuminate\Support\Facades\Artisan;
