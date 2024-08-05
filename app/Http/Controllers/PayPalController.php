@@ -466,20 +466,32 @@ class PayPalController extends Controller
                         $is_free_product = $item['is_free_product'] ?? false;
                         if ($is_free_product) {
                             $discountId = $item['discount_id'];
-                            $discountUpdate =  DB::table('wp_wdr_rules')->where('id', $discountId)->first();
-                            if ($discountUpdate && $discountUpdate->usage_limits) {
-                                $currentUsageLimits = $discountUpdate->usage_limits;
-                                if ($currentUsageLimits > 0) {
-                                    $discountUpdate->update([
-                                        'usage_limits' => $currentUsageLimits - 1
-                                    ]);
+                            // $discountUpdate =  DB::table('wp_wdr_rules')->where('id', $discountId)->first();
+                            $discountRule = DB::table('wp_wdr_rules')->where('id', $discountId)->first();
+
+                            if ($discountRule) {
+                                $currentUsageLimits = $discountRule->usage_limits;
+
+                                if ($currentUsageLimits && $currentUsageLimits > 0) {
+                                    // Update the usage_limits field
+                                    DB::table('wp_wdr_rules')
+                                        ->where('id', $discountId)
+                                        ->update([
+                                            'usage_limits' => $currentUsageLimits - 1
+                                        ]);
                                 } else {
                                     return response()->json([
                                         'status' => false,
-                                        'message' => 'limited coupon usabilty exceeded !',
+                                        'message' => 'Limited coupon usability exceeded!',
                                     ]);
                                 }
+                            } else {
+                                return response()->json([
+                                    'status' => false,
+                                    'message' => 'Discount rule not found!',
+                                ]);
                             }
+
 
 
 
@@ -968,7 +980,7 @@ class PayPalController extends Controller
                         $is_free_product = $item['is_free_product'] ?? false;
                         if ($is_free_product) {
                             $discountId = $item['discount_id'];
-                            $discountUpdate =  DB::table('wp_wdr_rules')->where('id', $discountId)->first();
+                            // $discountUpdate =  DB::table('wp_wdr_rules')->where('id', $discountId)->first();
                             $discountRule = DB::table('wp_wdr_rules')->where('id', $discountId)->first();
 
                             if ($discountRule) {
