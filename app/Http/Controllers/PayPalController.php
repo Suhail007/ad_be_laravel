@@ -183,6 +183,7 @@ class PayPalController extends Controller
 
                     $productnames[] = $item['product_name'];
                     // $subtotal = $subtotal + ($item['taxPerUnit'] ?? 0);
+                    // $item['taxPerUnit']= 
                     if ($item['isVape'] == true) {
                         // if($orderData['shipping']['state'] == "IL"){
                         $order_tax += $item['quantity'] * $item['taxPerUnit'];
@@ -221,9 +222,20 @@ class PayPalController extends Controller
                     ]
                 );
 
-
+                if (isset($billingInfo['postcode'])) {
+                    $billingInfo['zipcode'] =$billingInfo['postcode'];
+                    unset($billingInfo['postcode']);
+                }
+                if (isset($shippingInfo['postcode'])) {
+                    $orderData['zipcode'] =$shippingInfo['postcode'];
+                    unset($shippingInfo['postcode']);
+                }
+                
+                                
                 $saleData = $this->doSale($total, $payment_token, $billingInfo, $shippingInfo);
                 $paymentResult = $this->_doRequest($saleData);
+
+                
 
                 if (!$paymentResult['status']) {
                     return response()->json([

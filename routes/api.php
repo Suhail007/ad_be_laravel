@@ -12,6 +12,7 @@ use App\Http\Controllers\WooCommerceController;
 // routes/web.php or routes/api.php
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\CleanupController;
 use App\Http\Controllers\DiscountRuleController;
 use App\Http\Controllers\MyAcccountController;
 use App\Http\Controllers\OrderController;
@@ -32,6 +33,9 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::put('/layout/{id}', [LayoutController::class, 'update']);
     Route::delete('/layout/{id}', [LayoutController::class, 'destroy']);
     Route::post('/mediafile', [LayoutController::class, 'uploadFile']);
+
+    //menu cleanup 
+    Route::get('/cleanup',[CleanupController::class,'menuCleanUp']);
     //media 
     Route::post('/media/upload', [MediaController::class, 'uploadFile']);
     Route::get('/media', [MediaController::class, 'index']);
@@ -71,7 +75,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     //discount api
     Route::get('/cart-discount',[DiscountRuleController::class,'index']);
 });
-
+Route::get('/cleanup',[CleanupController::class,'menuCleanUp']);
 //Layouts Public
 Route::get('/layout', [LayoutController::class, 'layouts']);
 Route::get('/position/{layout}', [LayoutController::class, 'position']);
