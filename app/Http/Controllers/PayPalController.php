@@ -435,6 +435,7 @@ class PayPalController extends Controller
                         $productPrice = $item['product_price'];
                         $linetotal = 0;
                         $iLTax = 0;
+                        $initialPrice=0;
                         // if($item['taxPerUnit']){
                         //     $isPerUnit=true;
                         //     $productTax= $item['quantity'] * $item['taxPerUnit'];
@@ -447,9 +448,10 @@ class PayPalController extends Controller
                             // $productPrice = $productPrice + ($productPrice * 0.15); //140
                             $iLTax = $item['quantity'] * $item['taxPerUnit'];
                         } else {
-                            $productPrice1 = $productPrice + ($item['taxPerUnit'] ?? 0);
+                            $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0);
+                            $initialPrice = $productPrice;
                         }
-                        $productPrice = $productPrice1 - ($item['unitDiscount'] ?? 0);
+                        $productPrice = $productPrice - ($item['unitDiscount'] ?? 0);
                         $linetotal += $item['quantity'] * $productPrice;
 
                         $taxAmount = (float) ($iLTax ?? 0);
@@ -479,9 +481,9 @@ class PayPalController extends Controller
                             }
 
 
-                            $initialPrice = $productPrice1;
+                            
                             $discounted_price = $productPrice;
-                            $initial_price_based_on_tax_settings = $productPrice1;
+                            $initial_price_based_on_tax_settings = $initialPrice;
                             $discounted_price_based_on_tax_settings = $productPrice;
                             $saved_amount = $initialPrice - $discounted_price;
                             $saved_amount_based_on_tax_settings = $saved_amount;
@@ -936,6 +938,7 @@ class PayPalController extends Controller
                         $productPrice = $item['product_price'];
                         $linetotal = 0;
                         $iLTax = 0;
+                        $initialPrice=0;
 
                         // if($item['taxPerUnit']){
                         //     $isPerUnit=true;
@@ -947,9 +950,10 @@ class PayPalController extends Controller
 
                             $iLTax = $item['quantity'] * $item['taxPerUnit'];
                         } else {
-                            $productPrice1 = $productPrice + ($item['taxPerUnit'] ?? 0);
+                            $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0);
+                            $initialPrice=$productPrice;
                         }
-                        $productPrice = $productPrice1 - ($item['unitDiscount'] ?? 0);
+                        $productPrice = $productPrice - ($item['unitDiscount'] ?? 0);
                         $linetotal += $item['quantity'] * $productPrice;
 
                         $taxAmount = (float) ($iLTax ?? 0);
@@ -979,9 +983,9 @@ class PayPalController extends Controller
                             }
 
 
-                            $initialPrice = $productPrice1;
+                            
                             $discounted_price = $productPrice;
-                            $initial_price_based_on_tax_settings = $productPrice1;
+                            $initial_price_based_on_tax_settings = $initialPrice;
                             $discounted_price_based_on_tax_settings = $productPrice;
                             $saved_amount = $initialPrice - $discounted_price;
                             $saved_amount_based_on_tax_settings = $saved_amount;
