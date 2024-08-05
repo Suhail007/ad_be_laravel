@@ -465,8 +465,8 @@ class PayPalController extends Controller
                         $itemMeta=[];
                         $is_free_product= $item['is_free_product']??false;
                         if ($is_free_product) {
-
-                            $discountUpdate = DiscountRule::first($item['discount_id']);
+                            $discountId = $item['discount_id'];
+                            $discountUpdate =  DB::table('wp_wdr_rules')->where('id', $discountId)->first();
                             if ($discountUpdate && $discountUpdate->usage_limits) {
                                 $currentUsageLimits = $discountUpdate->usage_limits;
                                 if ($currentUsageLimits > 0) {
@@ -968,7 +968,8 @@ class PayPalController extends Controller
                         $itemMeta=[];
                         $is_free_product= $item['is_free_product']??false;
                         if ($is_free_product) {
-                            $discountUpdate = DiscountRule::first($item['discount_id']);
+                            $discountId = $item['discount_id'];
+                            $discountUpdate =  DB::table('wp_wdr_rules')->where('id', $discountId)->first();
                             if ($discountUpdate && $discountUpdate->usage_limits) {
                                 $currentUsageLimits = $discountUpdate->usage_limits;
                                 if ($currentUsageLimits > 0) {
