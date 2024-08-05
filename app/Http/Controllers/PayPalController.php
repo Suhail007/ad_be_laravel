@@ -1117,6 +1117,17 @@ class PayPalController extends Controller
                         'customer_note' => ''
                     ]);
 
+
+                    $shippingFields = [
+                        isset($orderData['shipping']['first_name']) ? $orderData['shipping']['first_name'] : '',
+                        isset($orderData['shipping']['address_1']) ? $orderData['shipping']['address_1'] : '',
+                        isset($orderData['shipping']['city']) ? $orderData['shipping']['city'] : '',
+                        isset($orderData['shipping']['state']) ? $orderData['shipping']['state'] : '',
+                        isset($orderData['shipping']['postcode']) ? $orderData['shipping']['postcode'] : ''
+                    ];
+                    
+                    $meta_value1 = trim(implode(' ', $shippingFields));
+
                     $wp_wc_order_meta = [
                         ['order_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
                         ['order_id' => $orderId, 'meta_key' => '_order_tax', 'meta_value' => $order_tax ?? 0],
@@ -1130,14 +1141,7 @@ class PayPalController extends Controller
                         [
                             'order_id' => $orderId,
                             'meta_key' => '_shipping_address_index',
-                            'meta_value' => trim(
-                                (isset($orderData['shipping']['first_name']) ? $orderData['shipping']['first_name'] . ' ' : '') .
-                                    (isset($orderData['shipping']['address_1']) ? $orderData['shipping']['address_1'] . ' ' : '') .
-                                    (isset($orderData['shipping']['city']) ? $orderData['shipping']['city'] . ' ' : '') .
-                                    (isset($orderData['shipping']['state']) ? $orderData['shipping']['state'] . ' ' : '') .
-                                    (isset($orderData['shipping']['postcode']) ? $orderData['shipping']['postcode'] : '')
-                            )
-
+                            'meta_value' => $meta_value1
                         ],
                     ];
 
