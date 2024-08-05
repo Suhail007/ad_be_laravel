@@ -29,7 +29,7 @@ class ShippingBuffer extends Command
      */
     public function handle()
     {
-        Log::info('buffer started');
+        // Log::info('buffer started');
        
         try {
             $buffers = DB::table('buffers')->get();

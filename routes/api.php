@@ -70,7 +70,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     //payment 
     Route::get('/payment-price',[PayPalController::class, 'me']);
     Route::post('/process-payment', [PayPalController::class, 'processPayment']);
-    Route::post('/payment-process', [CheckoutController::class, 'processPayment']);
+    // Route::post('/payment-process', [CheckoutController::class, 'processPayment']);
     
     //discount api
     Route::get('/cart-discount',[DiscountRuleController::class,'index']);

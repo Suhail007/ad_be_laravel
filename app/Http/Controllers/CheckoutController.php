@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Jobs\UnfreezeCart;
+use App\Models\UserMeta;
 use Carbon\Carbon;
 use Exception;
 use GuzzleHttp\Client;
@@ -165,7 +166,7 @@ class CheckoutController extends Controller
 
         $data = $request->all();
 
-
+        $data['billing']['email']=$data['billing']['email']??$this->getUserMeta($user->ID, 'billing_email');
         $checkout = Checkout::updateOrCreate(
             ['user_id' => $user->ID],
             [
@@ -186,6 +187,12 @@ class CheckoutController extends Controller
 
 
         return response()->json(['status' => true, 'message' => 'Address Selected Successfully', 'data' => 'cart already Freezed'], 201);
+    }
+    private function getUserMeta($userId, $key)
+    {
+        return UserMeta::where('user_id', $userId)
+            ->where('meta_key', $key)
+            ->value('meta_value');
     }
     public function freezeCart(Request $request, $check)
     {
