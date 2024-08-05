@@ -1120,18 +1120,20 @@ class PayPalController extends Controller
                         ['order_id' => $orderId, 'meta_key' => '_wwpp_order_type', 'meta_value' => $order_type],
                         ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => $order_wholesale_role],
                         ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => $order_wholesale_role],
-                        ['order_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? null],
+                        ['order_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? ''],
                         ['order_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $metaValue ?? 'OS'],
                         ['order_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => 0],
-                        ['order_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? null],
+                        ['order_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? ''],
                         [
                             'order_id' => $orderId,
                             'meta_key' => '_shipping_address_index',
-                            'meta_value' => (isset($orderData['shipping']['first_name']) ? $orderData['shipping']['first_name'] . ' ' : '') .
+                            'meta_value' => (
+                                (isset($orderData['shipping']['first_name']) ? $orderData['shipping']['first_name'] . ' ' : '') .
                                 (isset($orderData['shipping']['address_1']) ? $orderData['shipping']['address_1'] . ' ' : '') .
                                 (isset($orderData['shipping']['city']) ? $orderData['shipping']['city'] . ' ' : '') .
                                 (isset($orderData['shipping']['state']) ? $orderData['shipping']['state'] . ' ' : '') .
                                 (isset($orderData['shipping']['postcode']) ? $orderData['shipping']['postcode'] : '')
+                            ),
                         ],
                     ];
 
