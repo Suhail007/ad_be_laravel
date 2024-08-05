@@ -435,7 +435,7 @@ class PayPalController extends Controller
                         $productPrice = $item['product_price'];
                         $linetotal = 0;
                         $iLTax = 0;
-                        $initialPrice=0;
+                        $initialPrice = 0;
                         // if($item['taxPerUnit']){
                         //     $isPerUnit=true;
                         //     $productTax= $item['quantity'] * $item['taxPerUnit'];
@@ -462,8 +462,8 @@ class PayPalController extends Controller
                             $taxAmount
                         );
                         $indirect_tax_amount = $item['quantity'] * $item['taxPerUnit'];
-                        $itemMeta=[];
-                        $is_free_product= $item['is_free_product']??false;
+                        $itemMeta = [];
+                        $is_free_product = $item['is_free_product'] ?? false;
                         if ($is_free_product) {
                             $discountId = $item['discount_id'];
                             $discountUpdate =  DB::table('wp_wdr_rules')->where('id', $discountId)->first();
@@ -482,13 +482,13 @@ class PayPalController extends Controller
                             }
 
 
-                            
+
                             $discounted_price = $productPrice;
                             $initial_price_based_on_tax_settings = $initialPrice;
                             $discounted_price_based_on_tax_settings = $productPrice;
                             $saved_amount = $initialPrice - $discounted_price;
                             $saved_amount_based_on_tax_settings = $saved_amount;
-                            
+
 
                             $metaValue = [
                                 'initial_price' => $initialPrice,
@@ -498,14 +498,13 @@ class PayPalController extends Controller
                                 'applied_rules' => [],
                                 'saved_amount' => $saved_amount,
                                 'saved_amount_based_on_tax_settings' => $saved_amount_based_on_tax_settings,
-                                'is_free_product' =>$is_free_product
+                                'is_free_product' => $is_free_product
                             ];
 
                             $serializedMetaValue = serialize($metaValue);
 
                             $itemMeta[] = ['order_item_id' => $orderItemId, 'meta_key' => '_wdr_discounts', 'meta_value' => $serializedMetaValue];
                         } else {
-                        
                         }
                         $itemMeta = [
                             ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
@@ -939,7 +938,7 @@ class PayPalController extends Controller
                         $productPrice = $item['product_price'];
                         $linetotal = 0;
                         $iLTax = 0;
-                        $initialPrice=0;
+                        $initialPrice = 0;
 
                         // if($item['taxPerUnit']){
                         //     $isPerUnit=true;
@@ -952,7 +951,7 @@ class PayPalController extends Controller
                             $iLTax = $item['quantity'] * $item['taxPerUnit'];
                         } else {
                             $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0);
-                            $initialPrice=$productPrice;
+                            $initialPrice = $productPrice;
                         }
                         $productPrice = $productPrice - ($item['unitDiscount'] ?? 0);
                         $linetotal += $item['quantity'] * $productPrice;
@@ -965,33 +964,44 @@ class PayPalController extends Controller
                             $taxAmount
                         );
                         $indirect_tax_amount = $item['quantity'] * $item['taxPerUnit'];
-                        $itemMeta=[];
-                        $is_free_product= $item['is_free_product']??false;
+                        $itemMeta = [];
+                        $is_free_product = $item['is_free_product'] ?? false;
                         if ($is_free_product) {
                             $discountId = $item['discount_id'];
                             $discountUpdate =  DB::table('wp_wdr_rules')->where('id', $discountId)->first();
-                            if ($discountUpdate && $discountUpdate->usage_limits) {
-                                $currentUsageLimits = $discountUpdate->usage_limits;
-                                if ($currentUsageLimits > 0) {
-                                    $discountUpdate->update([
-                                        'usage_limits' => $currentUsageLimits - 1
-                                    ]);
+                            $discountRule = DB::table('wp_wdr_rules')->where('id', $discountId)->first();
+
+                            if ($discountRule) {
+                                $currentUsageLimits = $discountRule->usage_limits;
+
+                                if ($currentUsageLimits && $currentUsageLimits > 0) {
+                                    // Update the usage_limits field
+                                    DB::table('wp_wdr_rules')
+                                        ->where('id', $discountId)
+                                        ->update([
+                                            'usage_limits' => $currentUsageLimits - 1
+                                        ]);
                                 } else {
                                     return response()->json([
                                         'status' => false,
-                                        'message' => 'limited coupon usabilty exceeded !',
+                                        'message' => 'Limited coupon usability exceeded!',
                                     ]);
                                 }
+                            } else {
+                                return response()->json([
+                                    'status' => false,
+                                    'message' => 'Discount rule not found!',
+                                ]);
                             }
 
 
-                            
+
                             $discounted_price = $productPrice;
                             $initial_price_based_on_tax_settings = $initialPrice;
                             $discounted_price_based_on_tax_settings = $productPrice;
                             $saved_amount = $initialPrice - $discounted_price;
                             $saved_amount_based_on_tax_settings = $saved_amount;
-                            
+
 
                             $metaValue = [
                                 'initial_price' => $initialPrice,
@@ -1001,14 +1011,13 @@ class PayPalController extends Controller
                                 'applied_rules' => [],
                                 'saved_amount' => $saved_amount,
                                 'saved_amount_based_on_tax_settings' => $saved_amount_based_on_tax_settings,
-                                'is_free_product' =>$is_free_product
+                                'is_free_product' => $is_free_product
                             ];
 
                             $serializedMetaValue = serialize($metaValue);
 
                             $itemMeta[] = ['order_item_id' => $orderItemId, 'meta_key' => '_wdr_discounts', 'meta_value' => $serializedMetaValue];
                         } else {
-                        
                         }
 
                         $itemMeta = [
