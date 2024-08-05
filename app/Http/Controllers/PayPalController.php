@@ -227,11 +227,52 @@ class PayPalController extends Controller
                     unset($billingInfo['postcode']);
                 }
                 if (isset($shippingInfo['postcode'])) {
-                    $orderData['zipcode'] =$shippingInfo['postcode'];
+                    $shippingInfo['zipcode'] =$shippingInfo['postcode'];
                     unset($shippingInfo['postcode']);
                 }
+                $validShippingKeys = [
+                    "shipping_first_name" => "first_name",
+                    "shipping_last_name" => "last_name",
+                    "shipping_company" => "company",
+                    "shipping_address1" => "address_1",
+                    "address2" => "address_2",
+                    "shipping_city" => "city",
+                    "shipping_state" => "state",
+                    "shipping_zip" => "zipcode",
+                    "shipping_country" => "country",
+                    "shipping_email" => null 
+                ];
                 
-                                
+                $validBillingKeys = [
+                    "first_name" => "first_name",
+                    "last_name" => "last_name",
+                    "company" => "company",
+                    "address1" => "address_1",
+                    "address2" => "address_2",
+                    "city" => "city",
+                    "state" => "state",
+                    "zip" => "zipcode",
+                    "country" => "country",
+                    "phone" => "phone",
+                    "fax" => null,  
+                    "email" => "email"
+                ];
+                
+                // Restructure shipping info
+                $restructuredShipping = [];
+                foreach ($validShippingKeys as $newKey => $oldKey) {
+                    $restructuredShipping[$newKey] = $oldKey !== null && isset($shippingInfo[$oldKey]) ? $shippingInfo[$oldKey] : null;
+                }
+                
+                // Restructure billing info
+                $restructuredBilling = [];
+                foreach ($validBillingKeys as $newKey => $oldKey) {
+                    $restructuredBilling[$newKey] = $oldKey !== null && isset($billingInfo[$oldKey]) ? $billingInfo[$oldKey] : null;
+                }
+                
+                // Output the restructured arrays
+                $shippingInfo=$restructuredShipping;
+                $billingInfo=$restructuredBilling;
                 $saleData = $this->doSale($total, $payment_token, $billingInfo, $shippingInfo);
                 $paymentResult = $this->_doRequest($saleData);
 
