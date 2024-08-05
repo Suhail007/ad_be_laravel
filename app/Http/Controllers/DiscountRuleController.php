@@ -14,7 +14,7 @@ class DiscountRuleController extends Controller
         try {
             $user = JWTAuth::parseToken()->authenticate();
             if($user){
-                $discountRules = DiscountRule::where('enabled',1)->get();
+                $discountRules = DiscountRule::where('id',220)->where('enabled',1)->get();
                 return response()->json($discountRules);
             }else {
                 return response()->json(['status'=>'failure','message'=>'You don\'t have any discount'],401);
