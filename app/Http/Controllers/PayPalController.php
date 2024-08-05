@@ -6,6 +6,7 @@ use App\Jobs\BufferJob;
 use App\Models\Buffer;
 use App\Models\Cart;
 use App\Models\Checkout;
+use App\Models\DiscountRule;
 use App\Models\OrderItemMeta;
 use App\Models\OrderMeta;
 use App\Models\ProductMeta;
@@ -176,7 +177,7 @@ class PayPalController extends Controller
                 $isVape = false;
                 $order_tax = 0;
                 $ordertotalQTY = 0;
-                $productnames=[];
+                $productnames = [];
                 foreach ($orderData['extra'] as $item) {
                     $ordertotalQTY += $item['quantity'];
                     $subtotal = $item['product_price'];
@@ -223,11 +224,11 @@ class PayPalController extends Controller
                 );
 
                 if (isset($billingInfo['postcode'])) {
-                    $billingInfo['zipcode'] =$billingInfo['postcode'];
+                    $billingInfo['zipcode'] = $billingInfo['postcode'];
                     unset($billingInfo['postcode']);
                 }
                 if (isset($shippingInfo['postcode'])) {
-                    $shippingInfo['zipcode'] =$shippingInfo['postcode'];
+                    $shippingInfo['zipcode'] = $shippingInfo['postcode'];
                     unset($shippingInfo['postcode']);
                 }
                 $validShippingKeys = [
@@ -240,9 +241,9 @@ class PayPalController extends Controller
                     "shipping_state" => "state",
                     "shipping_zip" => "zipcode",
                     "shipping_country" => "country",
-                    "shipping_email" => null 
+                    "shipping_email" => null
                 ];
-                
+
                 $validBillingKeys = [
                     "first_name" => "first_name",
                     "last_name" => "last_name",
@@ -254,29 +255,29 @@ class PayPalController extends Controller
                     "zip" => "zipcode",
                     "country" => "country",
                     "phone" => "phone",
-                    "fax" => null,  
+                    "fax" => null,
                     "email" => "email"
                 ];
-                
+
                 // Restructure shipping info
                 $restructuredShipping = [];
                 foreach ($validShippingKeys as $newKey => $oldKey) {
                     $restructuredShipping[$newKey] = $oldKey !== null && isset($shippingInfo[$oldKey]) ? $shippingInfo[$oldKey] : null;
                 }
-                
+
                 // Restructure billing info
                 $restructuredBilling = [];
                 foreach ($validBillingKeys as $newKey => $oldKey) {
                     $restructuredBilling[$newKey] = $oldKey !== null && isset($billingInfo[$oldKey]) ? $billingInfo[$oldKey] : null;
                 }
-                
+
                 // Output the restructured arrays
-                $shippingInfo=$restructuredShipping;
-                $billingInfo=$restructuredBilling;
+                $shippingInfo = $restructuredShipping;
+                $billingInfo = $restructuredBilling;
                 $saleData = $this->doSale($total, $payment_token, $billingInfo, $shippingInfo);
                 $paymentResult = $this->_doRequest($saleData);
 
-                
+
 
                 if (!$paymentResult['status']) {
                     return response()->json([
@@ -312,10 +313,10 @@ class PayPalController extends Controller
                         'guid' => 'https://ad.phantasm.solutions/?post_type=shop_order&p=' . uniqid(),
                     ]);
                     $state = $orderData['shipping']['state'];
-                    if($shippingLines[0]['total']){
-                        $floattotal=15.00;
-                    } else{
-                        $floattotal=0.00;
+                    if ($shippingLines[0]['total']) {
+                        $floattotal = 15.00;
+                    } else {
+                        $floattotal = 0.00;
                     }
                     $metaData = [
                         ['post_id' => $orderId, 'meta_key' => '_billing_first_name', 'meta_value' => $orderData['billing']['first_name']],
@@ -337,8 +338,8 @@ class PayPalController extends Controller
                         ['post_id' => $orderId, 'meta_key' => '_shipping_postcode', 'meta_value' => $orderData['shipping']['postcode']],
                         ['post_id' => $orderId, 'meta_key' => '_shipping_country', 'meta_value' => $orderData['shipping']['country']],
                         ['post_id' => $orderId, 'meta_key' => '_payment_method', 'meta_value' => $orderData['paymentType']],
-                        ['post_id' => $orderId, 'meta_key' => '_payment_method_title', 'meta_value' => 'NMI Payment on Card'],
-                        ['post_id' => $orderId, 'meta_key' => '_transaction_id', 'meta_value' => $orderId ], //$paymentResult['data']['transactionid']],
+                        ['post_id' => $orderId, 'meta_key' => '_payment_method_title', 'meta_value' => 'Credit-Debit Card'],
+                        ['post_id' => $orderId, 'meta_key' => '_transaction_id', 'meta_value' => $orderId], //$paymentResult['data']['transactionid']],
                         ['post_id' => $orderId, 'meta_key' => '_order_total', 'meta_value' => $total],
                         ['post_id' => $orderId, 'meta_key' => '_order_currency', 'meta_value' => 'USD'],
                         ['post_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => $isVape ? 0 : null],
@@ -378,20 +379,20 @@ class PayPalController extends Controller
                         'order_item_name' => $shippingLines[0]['method_title'],
                         'order_item_type' => 'shipping'
                     ]);
-                    
+
                     $productnamesString = implode(',', $productnames);
                     $shippingtaxmeta = [
                         ['order_item_id' => $id1, 'meta_key' => 'taxes', 'meta_value' =>  serialize(['total' => [0]])],
                         ['order_item_id' => $id1, 'meta_key' => 'total_tax', 'meta_value' => 0],
-                        ['order_item_id' => $id1, 'meta_key' => 'Items', 'meta_value' => $productnamesString??' '],
-                        ['order_item_id' => $id1, 'meta_key' => 'cost', 'meta_value' =>$floattotal],
+                        ['order_item_id' => $id1, 'meta_key' => 'Items', 'meta_value' => $productnamesString ?? ' '],
+                        ['order_item_id' => $id1, 'meta_key' => 'cost', 'meta_value' => $floattotal],
                         ['order_item_id' => $id1, 'meta_key' => 'instance_id', 'meta_value' => ($shippingLines[0]['method_id'] == 'flat_rate') ? 1 : 2],
                         ['order_item_id' => $id1, 'meta_key' => 'method_id', 'meta_value' => $shippingLines[0]['method_id']],
                     ];
-                    if($floattotal>0){
+                    if ($floattotal > 0) {
                         Buffer::create([
-                            'order_id'=>$orderId,
-                            'shipping'=>$shippingLines[0]['method_title'],
+                            'order_id' => $orderId,
+                            'shipping' => $shippingLines[0]['method_title'],
                         ]);
                         // BufferJob::dispatch();
                     }
@@ -446,29 +447,10 @@ class PayPalController extends Controller
                             // $productPrice = $productPrice + ($productPrice * 0.15); //140
                             $iLTax = $item['quantity'] * $item['taxPerUnit'];
                         } else {
-                            $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0);
+                            $productPrice1 = $productPrice + ($item['taxPerUnit'] ?? 0);
                         }
-                        $productPrice = $productPrice - ($item['unitDiscount'] ?? 0);
+                        $productPrice = $productPrice1 - ($item['unitDiscount'] ?? 0);
                         $linetotal += $item['quantity'] * $productPrice;
-
-
-
-
-                        // if ($item['isVape'] == true) {
-                        //     $iLTax=$item['quantity'] * $productPrice * 0.15;
-                        //     $linetotal =$item['quantity'] * $productPrice ;
-                        //     $productPrice = $productPrice + ($productPrice * 0.15);  
-                        // } else {
-                        //     $isPerUnit=true;
-                        //     $productTax= $item['quantity'] * $item['taxPerUnit'];
-                        //     $taxAmmountWC=$productTax;
-                        //     $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0); //with tax per unit
-                        //     $linetotal = $item['quantity'] * $productPrice;
-                        // }
-
-                        // $Ptotal += $item['quantity'] * $productPrice;
-
-
 
                         $taxAmount = (float) ($iLTax ?? 0);
 
@@ -477,7 +459,51 @@ class PayPalController extends Controller
                             $taxAmount,
                             $taxAmount
                         );
-                       $indirect_tax_amount= $item['quantity'] * $item['taxPerUnit'];
+                        $indirect_tax_amount = $item['quantity'] * $item['taxPerUnit'];
+                        $itemMeta=[];
+                        if ($item['is_free_product']) {
+
+                            $discountUpdate = DiscountRule::first($item['discount_id']);
+                            if ($discountUpdate && $discountUpdate->usage_limits) {
+                                $currentUsageLimits = $discountUpdate->usage_limits;
+                                if ($currentUsageLimits > 0) {
+                                    $discountUpdate->update([
+                                        'usage_limits' => $currentUsageLimits - 1
+                                    ]);
+                                } else {
+                                    return response()->json([
+                                        'status' => false,
+                                        'message' => 'limited coupon usabilty exceeded !',
+                                    ]);
+                                }
+                            }
+
+
+                            $initialPrice = $productPrice1;
+                            $discounted_price = $productPrice;
+                            $initial_price_based_on_tax_settings = $productPrice1;
+                            $discounted_price_based_on_tax_settings = $productPrice;
+                            $saved_amount = $initialPrice - $discounted_price;
+                            $saved_amount_based_on_tax_settings = $saved_amount;
+                            $is_free_product = $item['is_free_product'];
+
+                            $metaValue = [
+                                'initial_price' => $initialPrice,
+                                'discounted_price' => $discounted_price,
+                                'initial_price_based_on_tax_settings' => $initial_price_based_on_tax_settings,
+                                'discounted_price_based_on_tax_settings' => $discounted_price_based_on_tax_settings,
+                                'applied_rules' => [],
+                                'saved_amount' => $saved_amount,
+                                'saved_amount_based_on_tax_settings' => $saved_amount_based_on_tax_settings,
+                                'is_free_product' => (bool)$is_free_product
+                            ];
+
+                            $serializedMetaValue = serialize($metaValue);
+
+                            $itemMeta[] = ['order_item_id' => $orderItemId, 'meta_key' => '_wdr_discounts', 'meta_value' => $serializedMetaValue];
+                        } else {
+                        
+                        }
                         $itemMeta = [
                             ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
@@ -487,8 +513,8 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $linetotal ?? 0], //
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $linetotal ?? 0],  //
                             ['order_item_id' => $orderItemId, 'meta_key' => 'flavor', 'meta_value' => implode(',', $item['variation']) ?? ''],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' => $item['ml1']*$item['quantity']??$item['ml2']*$item['quantity']?? 0], //
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => $indirect_tax_amount??0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' => $item['ml1'] * $item['quantity'] ?? $item['ml2'] * $item['quantity'] ?? 0], //
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => $indirect_tax_amount ?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $order_role],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => $iLTax ?? 0],
@@ -566,7 +592,7 @@ class PayPalController extends Controller
                         ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => $order_wholesale_role],
                         ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => $order_wholesale_role],
                         ['order_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? null],
-                        ['order_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $metaValue??'OS'],
+                        ['order_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $metaValue ?? 'OS'],
                         ['order_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => 0],
                         ['order_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? null],
                         [
@@ -658,7 +684,7 @@ class PayPalController extends Controller
                             'comment_author_IP' => $ip,
                             'comment_date' => now(),
                             'comment_date_gmt' => now(),
-                            'comment_content' => 'NMI charge complete' , // (Charge ID: ' . $paymentResult['data']['transactionid'],
+                            'comment_content' => 'Credit-Debit Card complete', // (Charge ID: ' . $paymentResult['data']['transactionid'],
                             'comment_karma' => 0,
                             'comment_approved' => 1,
                             'comment_agent' => $agent,
@@ -708,7 +734,7 @@ class PayPalController extends Controller
                 $isVape = false;
                 $order_tax = 0;
                 $ordertotalQTY = 0;
-                $productnames=[];
+                $productnames = [];
                 foreach ($orderData['extra'] as $item) {
                     $ordertotalQTY += $item['quantity'];
                     $subtotal = $item['product_price'];
@@ -779,10 +805,10 @@ class PayPalController extends Controller
                         'guid' => 'https://ad.phantasm.solutions/?post_type=shop_order&p=' . uniqid(),
                     ]);
                     $state = $orderData['shipping']['state'];
-                    if($shippingLines[0]['total']){
-                        $floattotal=15.00;
-                    } else{
-                        $floattotal=0.00;
+                    if ($shippingLines[0]['total']) {
+                        $floattotal = 15.00;
+                    } else {
+                        $floattotal = 0.00;
                     }
                     $metaData = [
                         ['post_id' => $orderId, 'meta_key' => '_billing_first_name', 'meta_value' => $orderData['billing']['first_name']],
@@ -851,25 +877,25 @@ class PayPalController extends Controller
                     ]);
 
                     $productnamesString = implode(',', $productnames);
-                   
+
                     // $floattotal=(float) $shippingLines[0]['total']+0.00;
                     $shippingtaxmeta = [
                         ['order_item_id' => $id1, 'meta_key' => 'taxes', 'meta_value' =>  serialize(['total' => [0]])],
                         ['order_item_id' => $id1, 'meta_key' => 'total_tax', 'meta_value' => 0],
-                        ['order_item_id' => $id1, 'meta_key' => 'Items', 'meta_value' => $productnamesString??' '],
-                        ['order_item_id' => $id1, 'meta_key' => 'cost', 'meta_value' =>$floattotal],
+                        ['order_item_id' => $id1, 'meta_key' => 'Items', 'meta_value' => $productnamesString ?? ' '],
+                        ['order_item_id' => $id1, 'meta_key' => 'cost', 'meta_value' => $floattotal],
                         ['order_item_id' => $id1, 'meta_key' => 'instance_id', 'meta_value' => ($shippingLines[0]['method_id'] == 'flat_rate') ? 1 : 2],
                         ['order_item_id' => $id1, 'meta_key' => 'method_id', 'meta_value' => $shippingLines[0]['method_id']],
                     ];
 
-                    if($floattotal>0){
+                    if ($floattotal > 0) {
                         Buffer::create([
-                            'order_id'=>$orderId,
-                            'shipping'=>$shippingLines[0]['method_title'],
+                            'order_id' => $orderId,
+                            'shipping' => $shippingLines[0]['method_title'],
                         ]);
                         // BufferJob::dispatch();
                     }
-                    
+
                     foreach ($shippingtaxmeta as $meta) {
                         OrderItemMeta::insert($meta);
                     }
@@ -918,32 +944,13 @@ class PayPalController extends Controller
                         // }
 
                         if ($item['isVape'] == true) {
-                            // $iLTax=$item['quantity'] * $productPrice * 0.15; //18.56
-                            // $linetotal =$item['quantity'] * $productPrice ; //123.75
-                            // $productPrice = $productPrice + ($productPrice * 0.15); //140
+
                             $iLTax = $item['quantity'] * $item['taxPerUnit'];
                         } else {
-                            $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0);
+                            $productPrice1 = $productPrice + ($item['taxPerUnit'] ?? 0);
                         }
-                        $productPrice = $productPrice - ($item['unitDiscount'] ?? 0);
+                        $productPrice = $productPrice1 - ($item['unitDiscount'] ?? 0);
                         $linetotal += $item['quantity'] * $productPrice;
-
-
-
-
-                        // if ($item['isVape'] == true) {
-                        //     $iLTax=$item['quantity'] * $productPrice * 0.15;
-                        //     $linetotal =$item['quantity'] * $productPrice ;
-                        //     $productPrice = $productPrice + ($productPrice * 0.15);  
-                        // } else {
-                        //     $isPerUnit=true;
-                        //     $productTax= $item['quantity'] * $item['taxPerUnit'];
-                        //     $taxAmmountWC=$productTax;
-                        //     $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0); //with tax per unit
-                        //     $linetotal = $item['quantity'] * $productPrice;
-                        // }
-
-                        // $Ptotal += $item['quantity'] * $productPrice;
 
                         $taxAmount = (float) ($iLTax ?? 0);
 
@@ -952,20 +959,67 @@ class PayPalController extends Controller
                             $taxAmount,
                             $taxAmount
                         );
-                       $indirect_tax_amount= $item['quantity'] * $item['taxPerUnit'];
+                        $indirect_tax_amount = $item['quantity'] * $item['taxPerUnit'];
+                        $itemMeta=[];
+                        if ($item['is_free_product']) {
+
+                            $discountUpdate = DiscountRule::first($item['discount_id']);
+                            if ($discountUpdate && $discountUpdate->usage_limits) {
+                                $currentUsageLimits = $discountUpdate->usage_limits;
+                                if ($currentUsageLimits > 0) {
+                                    $discountUpdate->update([
+                                        'usage_limits' => $currentUsageLimits - 1
+                                    ]);
+                                } else {
+                                    return response()->json([
+                                        'status' => false,
+                                        'message' => 'limited coupon usabilty exceeded !',
+                                    ]);
+                                }
+                            }
+
+
+                            $initialPrice = $productPrice1;
+                            $discounted_price = $productPrice;
+                            $initial_price_based_on_tax_settings = $productPrice1;
+                            $discounted_price_based_on_tax_settings = $productPrice;
+                            $saved_amount = $initialPrice - $discounted_price;
+                            $saved_amount_based_on_tax_settings = $saved_amount;
+                            $is_free_product = $item['is_free_product'];
+
+                            $metaValue = [
+                                'initial_price' => $initialPrice,
+                                'discounted_price' => $discounted_price,
+                                'initial_price_based_on_tax_settings' => $initial_price_based_on_tax_settings,
+                                'discounted_price_based_on_tax_settings' => $discounted_price_based_on_tax_settings,
+                                'applied_rules' => [],
+                                'saved_amount' => $saved_amount,
+                                'saved_amount_based_on_tax_settings' => $saved_amount_based_on_tax_settings,
+                                'is_free_product' => (bool)$is_free_product
+                            ];
+
+                            $serializedMetaValue = serialize($metaValue);
+
+                            $itemMeta[] = ['order_item_id' => $orderItemId, 'meta_key' => '_wdr_discounts', 'meta_value' => $serializedMetaValue];
+                        } else {
+                        
+                        }
+
                         $itemMeta = [
                             ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_reduced_stock', 'meta_value' => $item['quantity']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $linetotal ?? 0], //
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $linetotal ?? 0],  //
                             ['order_item_id' => $orderItemId, 'meta_key' => 'flavor', 'meta_value' => implode(',', $item['variation']) ?? ''],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' => $item['ml1']*$item['quantity']??$item['ml2']*$item['quantity']?? 0], //
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => $indirect_tax_amount??0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' => $item['ml1'] * $item['quantity'] ?? $item['ml2'] * $item['quantity'] ?? 0], //
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => $indirect_tax_amount ?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $order_role],
+
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $linetotal ?? 0], //
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $linetotal ?? 0], //
+                            //
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => $iLTax ?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' => $iLTax ?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' =>  $serializedData],
@@ -973,7 +1027,10 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j2', 'meta_value' => 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis_j1', 'meta_value' => 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j1', 'meta_value' => 0],
+
                         ];
+
+
 
                         // if($iLTax){
                         //     $tax= $iLTax;
@@ -1037,7 +1094,7 @@ class PayPalController extends Controller
                         ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => $order_wholesale_role],
                         ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => $order_wholesale_role],
                         ['order_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? null],
-                        ['order_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $metaValue??'OS'],
+                        ['order_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $metaValue ?? 'OS'],
                         ['order_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => 0],
                         ['order_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? null],
                         [
@@ -1142,7 +1199,7 @@ class PayPalController extends Controller
                     }
 
                     $checkout->delete();
-                    
+
                     DB::commit();
                 } catch (\Exception $e) {
                     DB::rollBack();
