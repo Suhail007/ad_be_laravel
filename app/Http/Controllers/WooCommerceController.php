@@ -208,6 +208,11 @@ class WooCommerceController extends Controller
     {
         $variations = Product::where('post_parent', $productId)
             ->where('post_type', 'product_variation')
+            ->whereHas('meta', function ($query) {
+                // Filter variations to include only those in stock
+                $query->where('meta_key', '_stock_status')
+                    ->where('meta_value', 'instock');
+            })
             ->with('meta')
             ->get()
             ->map(function ($variation) use ($priceTier) {

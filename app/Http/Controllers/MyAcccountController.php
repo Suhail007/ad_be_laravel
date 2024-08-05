@@ -23,8 +23,6 @@ class MyAcccountController extends Controller
         $validated = $request->validate([
             'type' => 'required|string',
             'address_key' => 'required|string',
-            
-            
             'company' => 'nullable|string',
             'country' => 'required|string',
             'state' => 'required|string',
@@ -42,12 +40,10 @@ class MyAcccountController extends Controller
         $type = $validated['type'];
         $prefix = $type === 'billing' ? 'billing_' : 'shipping_';
 
-        // Fetch the existing custom addresses
         $userMeta = UserMeta::where('user_id', $userId)
             ->where('meta_key', 'thwma_custom_address')
             ->value('meta_value');
 
-        // Unserialize the existing data
         $addresses = unserialize($userMeta) ?: [];
 
         // Prepare the new address data
@@ -136,7 +132,19 @@ class MyAcccountController extends Controller
                 'status' => false,
             ], 200);
         }
-
+        $request->validate([
+            'type' => 'required|string',
+            'address_key' => 'required|string',
+            'company' => 'nullable|string',
+            'country' => 'required|string',
+            'state' => 'required|string',
+            'address_1' => 'required|string',
+            'address_2' => 'nullable|string',
+            'city' => 'required|string',
+            'postcode' => 'required|string',
+            'phone' => 'required|string',
+            'fileurl' => 'required'
+        ]);
         $userId =$user->ID; 
         $type = $request->input('type');
         $prefix = $type === 'billing' ? 'billing_' : 'shipping_';
