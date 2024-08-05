@@ -463,7 +463,8 @@ class PayPalController extends Controller
                         );
                         $indirect_tax_amount = $item['quantity'] * $item['taxPerUnit'];
                         $itemMeta=[];
-                        if ($item['is_free_product']) {
+                        $is_free_product= $item['is_free_product']??false;
+                        if ($is_free_product) {
 
                             $discountUpdate = DiscountRule::first($item['discount_id']);
                             if ($discountUpdate && $discountUpdate->usage_limits) {
@@ -487,7 +488,7 @@ class PayPalController extends Controller
                             $discounted_price_based_on_tax_settings = $productPrice;
                             $saved_amount = $initialPrice - $discounted_price;
                             $saved_amount_based_on_tax_settings = $saved_amount;
-                            $is_free_product = $item['is_free_product'];
+                            
 
                             $metaValue = [
                                 'initial_price' => $initialPrice,
@@ -497,7 +498,7 @@ class PayPalController extends Controller
                                 'applied_rules' => [],
                                 'saved_amount' => $saved_amount,
                                 'saved_amount_based_on_tax_settings' => $saved_amount_based_on_tax_settings,
-                                'is_free_product' => (bool)$is_free_product
+                                'is_free_product' =>$is_free_product
                             ];
 
                             $serializedMetaValue = serialize($metaValue);
@@ -965,8 +966,8 @@ class PayPalController extends Controller
                         );
                         $indirect_tax_amount = $item['quantity'] * $item['taxPerUnit'];
                         $itemMeta=[];
-                        if ($item['is_free_product']) {
-
+                        $is_free_product= $item['is_free_product']??false;
+                        if ($is_free_product) {
                             $discountUpdate = DiscountRule::first($item['discount_id']);
                             if ($discountUpdate && $discountUpdate->usage_limits) {
                                 $currentUsageLimits = $discountUpdate->usage_limits;
@@ -989,7 +990,7 @@ class PayPalController extends Controller
                             $discounted_price_based_on_tax_settings = $productPrice;
                             $saved_amount = $initialPrice - $discounted_price;
                             $saved_amount_based_on_tax_settings = $saved_amount;
-                            $is_free_product = $item['is_free_product'];
+                            
 
                             $metaValue = [
                                 'initial_price' => $initialPrice,
@@ -999,7 +1000,7 @@ class PayPalController extends Controller
                                 'applied_rules' => [],
                                 'saved_amount' => $saved_amount,
                                 'saved_amount_based_on_tax_settings' => $saved_amount_based_on_tax_settings,
-                                'is_free_product' => (bool)$is_free_product
+                                'is_free_product' =>$is_free_product
                             ];
 
                             $serializedMetaValue = serialize($metaValue);
