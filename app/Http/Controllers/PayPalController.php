@@ -599,32 +599,32 @@ class PayPalController extends Controller
 
 
                     //pending
-                    $wp_wc_order_meta = [
-                        ['order_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
-                        ['order_id' => $orderId, 'meta_key' => '_order_tax', 'meta_value' => $order_tax ?? 0],
-                        ['order_id' => $orderId, 'meta_key' => '_wwpp_order_type', 'meta_value' => $order_type],
-                        ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => $order_wholesale_role],
-                        ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => $order_wholesale_role],
-                        ['order_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? null],
-                        ['order_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $metaValue ?? 'OS'],
-                        ['order_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => 0],
-                        ['order_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? null],
-                        [
-                            'order_id' => $orderId,
-                            'meta_key' => '_shipping_address_index',
-                            'meta_value' => trim(
-                                (isset($orderData['shipping']['first_name']) ? $orderData['shipping']['first_name'] . ' ' : '') .
-                                    (isset($orderData['shipping']['address_1']) ? $orderData['shipping']['address_1'] . ' ' : '') .
-                                    (isset($orderData['shipping']['city']) ? $orderData['shipping']['city'] . ' ' : '') .
-                                    (isset($orderData['shipping']['state']) ? $orderData['shipping']['state'] . ' ' : '') .
-                                    (isset($orderData['shipping']['postcode']) ? $orderData['shipping']['postcode'] : '')
-                            )
+                    // $wp_wc_order_meta = [
+                    //     ['order_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
+                    //     ['order_id' => $orderId, 'meta_key' => '_order_tax', 'meta_value' => $order_tax ?? 0],
+                    //     ['order_id' => $orderId, 'meta_key' => '_wwpp_order_type', 'meta_value' => $order_type],
+                    //     ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => $order_wholesale_role],
+                    //     ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => $order_wholesale_role],
+                    //     ['order_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? null],
+                    //     ['order_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $metaValue ?? 'OS'],
+                    //     ['order_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => 0],
+                    //     ['order_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? null],
+                    //     [
+                    //         'order_id' => $orderId,
+                    //         'meta_key' => '_shipping_address_index',
+                    //         'meta_value' => trim(
+                    //             (isset($orderData['shipping']['first_name']) ? $orderData['shipping']['first_name'] . ' ' : '') .
+                    //                 (isset($orderData['shipping']['address_1']) ? $orderData['shipping']['address_1'] . ' ' : '') .
+                    //                 (isset($orderData['shipping']['city']) ? $orderData['shipping']['city'] . ' ' : '') .
+                    //                 (isset($orderData['shipping']['state']) ? $orderData['shipping']['state'] . ' ' : '') .
+                    //                 (isset($orderData['shipping']['postcode']) ? $orderData['shipping']['postcode'] : '')
+                    //         )
 
-                        ],
-                    ];
+                    //     ],
+                    // ];
 
 
-                    DB::table('wp_wc_orders_meta')->insert($wp_wc_order_meta);
+                    // DB::table('wp_wc_orders_meta')->insert($wp_wc_order_meta);
 
                     DB::table('wp_wc_order_addresses')->insert([
                         [
@@ -1118,34 +1118,34 @@ class PayPalController extends Controller
                     ]);
 
 
-                    $shippingFields = [
-                        isset($orderData['shipping']['first_name']) ? $orderData['shipping']['first_name'] : '',
-                        isset($orderData['shipping']['address_1']) ? $orderData['shipping']['address_1'] : '',
-                        isset($orderData['shipping']['city']) ? $orderData['shipping']['city'] : '',
-                        isset($orderData['shipping']['state']) ? $orderData['shipping']['state'] : '',
-                        isset($orderData['shipping']['postcode']) ? $orderData['shipping']['postcode'] : ''
-                    ];
+                    // $shippingFields = [
+                    //     isset($orderData['shipping']['first_name']) ? $orderData['shipping']['first_name'] : '',
+                    //     isset($orderData['shipping']['address_1']) ? $orderData['shipping']['address_1'] : '',
+                    //     isset($orderData['shipping']['city']) ? $orderData['shipping']['city'] : '',
+                    //     isset($orderData['shipping']['state']) ? $orderData['shipping']['state'] : '',
+                    //     isset($orderData['shipping']['postcode']) ? $orderData['shipping']['postcode'] : ''
+                    // ];
                     
-                    $meta_value1 = trim(implode(' ', $shippingFields));
+                    // $meta_value1 = trim(implode(' ', $shippingFields));
 
-                    $wp_wc_order_meta = [
-                        ['order_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
-                        ['order_id' => $orderId, 'meta_key' => '_order_tax', 'meta_value' => $order_tax ?? 0],
-                        ['order_id' => $orderId, 'meta_key' => '_wwpp_order_type', 'meta_value' => $order_type],
-                        ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => $order_wholesale_role],
-                        ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => $order_wholesale_role],
-                        ['order_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? ''],
-                        ['order_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $metaValue ?? 'OS'],
-                        ['order_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => 0],
-                        ['order_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? ''],
-                        [
-                            'order_id' => $orderId,
-                            'meta_key' => '_shipping_address_index',
-                            'meta_value' => $meta_value1
-                        ],
-                    ];
+                    // $wp_wc_order_meta = [
+                    //     ['order_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
+                    //     ['order_id' => $orderId, 'meta_key' => '_order_tax', 'meta_value' => $order_tax ?? 0],
+                    //     ['order_id' => $orderId, 'meta_key' => '_wwpp_order_type', 'meta_value' => $order_type],
+                    //     ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => $order_wholesale_role],
+                    //     ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => $order_wholesale_role],
+                    //     ['order_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? ''],
+                    //     ['order_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $metaValue ?? 'OS'],
+                    //     ['order_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => 0],
+                    //     ['order_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? ''],
+                    //     [
+                    //         'order_id' => $orderId,
+                    //         'meta_key' => '_shipping_address_index',
+                    //         'meta_value' => $meta_value1
+                    //     ],
+                    // ];
 
-                    DB::table('wp_wc_orders_meta')->insert($wp_wc_order_meta);
+                    // DB::table('wp_wc_orders_meta')->insert($wp_wc_order_meta);
 
                     DB::table('wp_wc_order_addresses')->insert([
                         [
