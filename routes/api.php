@@ -74,6 +74,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     
     //discount api
     Route::get('/cart-discount',[DiscountRuleController::class,'index']);
+    Route::get('/discount-product/{id}', [DiscountRuleController::class, 'show']);
 });
 Route::get('/cleanup',[CleanupController::class,'menuCleanUp']);
 //Layouts Public
