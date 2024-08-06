@@ -573,7 +573,7 @@ class PayPalController extends Controller
                         'date_updated_gmt' => now(),
                         'parent_order_id' => 0,
                         'payment_method' => $orderData['paymentType'],
-                        'payment_method_title' => 'NMI on Card Express Transaction ID:', //. $paymentResult['data']['transactionid'],
+                        'payment_method_title' => 'Credit-Debit Card', //. $paymentResult['data']['transactionid'],
                         'transaction_id' => uniqid(),
                         'ip_address' => $ip,
                         'user_agent' => $agent,
