@@ -14,6 +14,8 @@
         "laravel/tinker": "^2.9",
         "mikemclin/laravel-wp-password": "~2.0.1",
         "paypal/rest-api-sdk-php": "^1.6",
+        "symfony/http-client": "^7.1",
+        "symfony/mailgun-mailer": "^7.1",
         "tymon/jwt-auth": "^2.1"
     },
     "require-dev": {

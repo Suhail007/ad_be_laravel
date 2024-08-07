@@ -18,6 +18,7 @@ use App\Http\Controllers\MyAcccountController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\Woo\PublicController;
 use App\Http\Controllers\Woo\WishlistController;
+use Illuminate\Support\Facades\Mail;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -126,6 +127,12 @@ Route::get('/log', function () {
 
 
 Route::get('/best-product/{slug}', [PublicController::class, 'show']);
+
+Route::get('/send-test-email', function () {
+    Mail::to('utkarshuklacse@gmail.com')->send(new \App\Mail\OrderSuccess());
+    return 'Test email sent!';
+});
+
 
 
 Route::fallback(function () {

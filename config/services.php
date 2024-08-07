@@ -18,6 +18,13 @@ return [
         'token' => env('POSTMARK_TOKEN'),
     ],
 
+    'mailgun' => [
+        'domain' => env('MAILGUN_DOMAIN'),
+        'secret' => env('MAILGUN_SECRET'),
+        'endpoint' => env('MAILGUN_ENDPOINT', 'api.eu.mailgun.net'),
+        'scheme' => 'https',
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
@@ -30,7 +37,7 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-// config/services.php
+    // config/services.php
 
     // Other services...
     'woocommerce' => [
@@ -39,14 +46,14 @@ return [
         'consumer_secret' => env('WOOCOMMERCE_CONSUMER_SECRET'),
     ],
 
-    'paypal' =>[
-        'clientID'=>env('PAYPAL_CLIENT_ID'),
-        'clientSecret'=>env('PAYPAL_CLIENT_SECRET'),
-        'paypalMode'=>env('PAYPAL_MODE')
+    'paypal' => [
+        'clientID' => env('PAYPAL_CLIENT_ID'),
+        'clientSecret' => env('PAYPAL_CLIENT_SECRET'),
+        'paypalMode' => env('PAYPAL_MODE')
     ],
-    'nmi' =>[
-        'security'=>env('NMI_SECURITY_KEY'),
-        'transactionkey'=>env('NMI_TOKENIZATION_KEY'),
+    'nmi' => [
+        'security' => env('NMI_SECURITY_KEY'),
+        'transactionkey' => env('NMI_TOKENIZATION_KEY'),
     ]
 
 
