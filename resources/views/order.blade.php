@@ -23,13 +23,13 @@
           <div style="text-align: end; flex-grow: 1;">
             <h4 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins, sans-serif; font-size: 22.75px; font-style: normal; font-weight: 500; line-height: normal;">Order Confirmed</h4>
 
-            <h4 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins; font-size: 22.75px; font-style: normal; font-weight: 600; line-height: normal;">Order # {{orderNumber}}<span style="color: var(--Text-blue, #119AD5); font-family: Poppins; font-size: 22.75px; font-style: normal; font-weight: 600; line-height: normal;">{{orderNumber}}</span></h4>
+            <h4 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins; font-size: 22.75px; font-style: normal; font-weight: 600; line-height: normal;">Order # {{ $orderNumber}}<span style="color: var(--Text-blue, #119AD5); font-family: Poppins; font-size: 22.75px; font-style: normal; font-weight: 600; line-height: normal;">{{ $orderNumber}}</span></h4>
 
           </div>
         </div>
         <div style="padding: 10px; margin-top: 10px;">
           <h5 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins, sans-serif; font-size: 22.75px; font-style: normal; font-weight: 500; line-height: normal;">
-            Hello {{username}},
+            Hello {{ $username}},
           </h5>
           <h6 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins; font-size: 14px; font-style: normal; font-weight: 400; line-height: normal;">
             Thank you for shopping with us. We’d like to let you know that American Distributors has received your order, and is preparing it for shipment. Your estimated delivery date is below. If you would like to view the status of your order or make any changes to it, please visit Your Orders on American Distributors. LLC
@@ -44,13 +44,13 @@
           <div style="display: flex; gap: 20px;">
             <div style="flex: 1;">
               <h5 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins; font-size: 14px; font-style: normal; font-weight: 400; line-height: normal;">Your estimated delivery date is:</h5>
-              <h5 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins; font-size: 14px; font-style: normal; font-weight: 400; line-height: normal;"><b>{{date}}</b></h5>
+              <h5 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins; font-size: 14px; font-style: normal; font-weight: 400; line-height: normal;"><b>{{ $date}}</b></h5>
               <h5 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins; font-size: 14px; font-style: normal; font-weight: 400; line-height: normal;">Your shipping speed</h5>
               <h5 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins; font-size: 14px; font-style: normal; font-weight: 400; line-height: normal;">Standard Shipping</h5>
             </div>
             <div style="flex: 1;">
               <h5 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins; font-size: 14px; font-style: normal; font-weight: 400; line-height: normal;">Your order will be sent to</h5>
-              <h5 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins; font-size: 14px; font-style: normal; font-weight: 400; line-height: normal;"> <b>{{orderaddress}}</b></h5>
+              <h5 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins; font-size: 14px; font-style: normal; font-weight: 400; line-height: normal;"> <b>{{ $orderaddress}}</b></h5>
             </div>
           </div>
          <a href="https://express.americandistributorsllc.com/myaccount?tab=Orders">
