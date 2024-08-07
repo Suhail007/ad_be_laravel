@@ -86,7 +86,7 @@ Route::get('/positionLayout/{page}', [LayoutController::class, 'pageLayout']);
 //Pages
 Route::get('/categoryProduct/{slug}', [ProductController::class, 'categoryProduct']);
 Route::get('/brandProduct/{slug}', [ProductController::class, 'brandProducts']);
-Route::get('/searchProducts', [ProductController::class, 'searchProducts']); 
+Route::get('/searchProducts', [ProductController::class,'searchProductsAll']);  //'searchProducts']); 
 Route::get('/searchProductsALL', [ProductController::class, 'searchProductsAll']); //in pro sku cat
 
 //product page
