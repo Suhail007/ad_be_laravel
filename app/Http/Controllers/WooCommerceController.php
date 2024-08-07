@@ -220,7 +220,7 @@ class WooCommerceController extends Controller
                 $metaData = $variation->meta->pluck('meta_value', 'meta_key')->toArray();
     
                 // Construct the regex pattern to include the price tier
-                $pattern = '/^(_sku|attribute_.*|_stock|_regular_price|_price|_stock_status|max_quantity|min_quantity' . preg_quote($priceTier, '/') . '|_thumbnail_id)$/';
+                $pattern = '/^(_sku|attribute_.*|_stock|_regular_price|_price|_stock_status|max_quantity|min_quantity|max_quantity_var|min_quantity_var' . preg_quote($priceTier, '/') . '|_thumbnail_id)$/';
     
                 // Filter meta data to include only the selected fields
                 $filteredMetaData = array_filter($metaData, function($key) use ($pattern) {
