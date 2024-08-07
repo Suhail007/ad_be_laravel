@@ -59,6 +59,16 @@ class PublicController extends Controller
         
         $priceTier ='';
         $variations = $this->getVariations($product->ID, $priceTier);
+        $descriptionHtml = $product->post_content;
+
+// Strip HTML tags to get plain text
+$descriptionPlainText = strip_tags($descriptionHtml);
+
+// Optionally, you might want to replace multiple new lines with a single line break
+$descriptionPlainText = preg_replace('/\s+/', ' ', $descriptionPlainText);
+
+// You can also trim the content to remove extra spaces at the beginning and end
+$descriptionPlainText = trim($descriptionPlainText);
         $response = [
             'id' => $product->ID,
             'name' => $product->post_title,
@@ -68,7 +78,7 @@ class PublicController extends Controller
             'status' => $product->post_status,
             'min_quantity' => $metaData->where('key', 'min_quantity')->first()['value'] ?? false,
             'max_quantity' => $metaData->where('key', 'max_quantity')->first()['value'] ?? false,
-            'description' => $product->post_content,
+            'description' => $descriptionPlainText,
             'short_description' => $product->post_excerpt,
             'sku' => $metaData->where('key', '_sku')->first()['value'] ?? '',
             'ad_price' => $wholesalePrice = ProductMeta::where('post_id', $product->ID)->where('meta_key', $priceTier)->value('meta_value') ?? $metaData->where('key', '_price')->first()['value']  ?? $metaData->where('key', '_regular_price')->first()['value'] ?? $variations->ad_price ?? null,
