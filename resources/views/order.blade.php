@@ -18,12 +18,12 @@
       <div style="margin-left: 5px;">
         <div style="display: flex; align-items: center;">
           <div>
-            <img src="https://ad-fe-admin.s3.us-east-2.amazonaws.com/Admin-Invoice/AD-logo.svg" class="img-fluid p-3" />
+            <img src="https://ad.phantasm.solutions/wp-content/uploads/2024/03/ad_logo.png" class="img-fluid p-3" />
           </div>
           <div style="text-align: end; flex-grow: 1;">
             <h4 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins, sans-serif; font-size: 22.75px; font-style: normal; font-weight: 500; line-height: normal;">Order Confirmed</h4>
 
-            <h4 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins; font-size: 22.75px; font-style: normal; font-weight: 600; line-height: normal;">Order # {{ $orderNumber}}<span style="color: var(--Text-blue, #119AD5); font-family: Poppins; font-size: 22.75px; font-style: normal; font-weight: 600; line-height: normal;">{{ $orderNumber}}</span></h4>
+            <h4 style="color: var(--theme-color-dark-blue, #2D3845); font-family: Poppins; font-size: 22.75px; font-style: normal; font-weight: 600; line-height: normal;">Order # <span style="color: var(--Text-blue, #119AD5); font-family: Poppins; font-size: 22.75px; font-style: normal; font-weight: 600; line-height: normal;">{{ $orderNumber}}</span></h4>
 
           </div>
         </div>
