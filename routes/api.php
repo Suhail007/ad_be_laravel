@@ -16,6 +16,7 @@ use App\Http\Controllers\CleanupController;
 use App\Http\Controllers\DiscountRuleController;
 use App\Http\Controllers\MyAcccountController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\Woo\PublicController;
 use App\Http\Controllers\Woo\WishlistController;
 
 Route::get('/user', function (Request $request) {
@@ -84,6 +85,9 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('/wishlist/remove', [WishlistController::class, 'removeFromWishlist']);
     Route::post('/wishlist/remove-all', [WishlistController::class, 'removeAllFromWishlist']);
 });
+
+
+
 Route::get('/cleanup',[CleanupController::class,'menuCleanUp']);
 //Layouts Public
 Route::get('/layout', [LayoutController::class, 'layouts']);
@@ -121,7 +125,7 @@ Route::get('/log', function () {
 
 
 
-
+Route::get('/best-product/{slug}', [PublicController::class, 'show']);
 
 
 Route::fallback(function () {
