@@ -16,6 +16,7 @@ use App\Http\Controllers\CleanupController;
 use App\Http\Controllers\DiscountRuleController;
 use App\Http\Controllers\MyAcccountController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\Woo\WishlistController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -75,6 +76,13 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     //discount api
     Route::get('/cart-discount',[DiscountRuleController::class,'index']);
     Route::get('/discount-product/{id}', [DiscountRuleController::class, 'show']);
+
+
+    //wishlist
+    Route::get('/wishlist', [WishlistController::class, 'getWishlist']);
+    Route::post('/wishlist/add', [WishlistController::class, 'addToWishlist']);
+    Route::post('/wishlist/remove', [WishlistController::class, 'removeFromWishlist']);
+    Route::post('/wishlist/remove-all', [WishlistController::class, 'removeAllFromWishlist']);
 });
 Route::get('/cleanup',[CleanupController::class,'menuCleanUp']);
 //Layouts Public
@@ -98,7 +106,7 @@ Route::get('/sidebar', [ProductController::class, 'sidebar']);
 
 
 
-Route::get('/cart', [WooCartController::class, 'index']);
+// Route::get('/cart', [WooCartController::class, 'index']);
 Route::get('/cart-products', [WooCartController::class, 'show']);
 
 
