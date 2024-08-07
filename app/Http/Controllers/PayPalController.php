@@ -691,6 +691,17 @@ class PayPalController extends Controller
 
                     $checkout->delete();
                     DB::commit();
+                    $email= $orderData['billing']['email'];
+                    $username = $orderData['billing']['first_name']. ' '. $orderData['billing']['last_name'];
+                    $deliveryDate= '3 working Days';
+                    $businessAddress= implode(' ', $orderData['shipping']);
+                    SendOrderConfirmationEmail::dispatch(
+                        $email, 
+                        $newValue,
+                        $username,
+                        $deliveryDate,
+                        $businessAddress
+                    );
                 } catch (\Exception $e) {
                     DB::rollBack();
                     return response()->json(['error' => 'Order creation failed: ' . $e->getMessage()], 500);
