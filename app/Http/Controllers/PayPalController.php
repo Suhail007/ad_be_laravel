@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\BufferJob;
+use App\Jobs\SendOrderConfirmationEmail;
 use App\Models\Buffer;
 use App\Models\Cart;
 use App\Models\Checkout;
@@ -15,15 +16,6 @@ use Exception;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use PayPal\Api\Amount;
-use PayPal\Api\Payer;
-use PayPal\Api\Payment;
-use PayPal\Api\PaymentExecution;
-use PayPal\Api\RedirectUrls;
-use PayPal\Api\Transaction;
-use PayPal\Auth\OAuthTokenCredential;
-use PayPal\Rest\ApiContext;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class PayPalController extends Controller
@@ -1217,8 +1209,19 @@ class PayPalController extends Controller
                     }
 
                     $checkout->delete();
-
+                    
                     DB::commit();
+                    $email= $orderData['billing']['email'];
+                    $username = $orderData['billing']['first_name']. ' '. $orderData['billing']['last_name'];
+                    $deliveryDate= '3 working Days';
+                    $businessAddress= implode(' ', $orderData['shipping']);
+                    SendOrderConfirmationEmail::dispatch(
+                        $email, 
+                        $newValue,
+                        $username,
+                        $deliveryDate,
+                        $businessAddress
+                    );
                 } catch (\Exception $e) {
                     DB::rollBack();
                     return response()->json(['error' => 'Order creation failed: ' . $e->getMessage()], 500);

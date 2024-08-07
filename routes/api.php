@@ -129,7 +129,7 @@ Route::get('/log', function () {
 Route::get('/best-product/{slug}', [PublicController::class, 'show']);
 
 Route::get('/send-test-email', function () {
-    Mail::to('utkarshuklacse@gmail.com')->send(new \App\Mail\OrderSuccess());
+    // Mail::to('utkarshuklacse@gmail.com')->send(new \App\Mail\OrderSuccess());
     return 'Test email sent!';
 });
 

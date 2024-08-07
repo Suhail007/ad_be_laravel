@@ -13,12 +13,20 @@ class OrderSuccess extends Mailable
 {
     use Queueable, SerializesModels;
 
+    protected $orderNumber;
+    protected $name;
+    protected $deliveryDate;
+    protected $businessAddress;
+    protected $email;
     /**
      * Create a new message instance.
      */
-    public function __construct()
+    public function __construct($orderNumber,$name,$deliveryDate,$businessAddress)
     {
-        //
+        $this->orderNumber = $orderNumber;
+        $this->name = $name;
+        $this->deliveryDate = $deliveryDate;
+        $this->businessAddress = $businessAddress;
     }
 
     /**
@@ -27,7 +35,7 @@ class OrderSuccess extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Order Success',
+            subject: 'Order Confirmation',
         );
     }
 
@@ -38,6 +46,12 @@ class OrderSuccess extends Mailable
     {
         return new Content(
             view: 'order',
+            with: [
+                'orderNumber' => $this->orderNumber,
+                'username' => $this->name,
+                'date' => $this->deliveryDate,
+                'orderaddress' => $this->businessAddress,
+            ],
         );
     }
 
