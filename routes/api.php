@@ -120,7 +120,7 @@ Route::get('/log', function () {
     return response()->json(['status' => 'error', 'redirect_url' => '/login']);
 })->name('login');
 
-
+Route::get('/cart-sync',[CleanupController::class,'cartSync']);
 
 
 
