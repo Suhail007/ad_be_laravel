@@ -528,6 +528,17 @@ class PayPalController extends Controller
                                 $serializedMetaValue = serialize($metaValue);
                                    
                                 $itemMeta[] = ['order_item_id' => $orderItemId, 'meta_key' => '_wdr_discounts', 'meta_value' => $serializedMetaValue];
+                                $variation_id = $item['variation_id']??0;
+                                $product_id = $item['product_id'] ;
+                                if ($variation_id) {
+                                    $stockLevel = ProductMeta::where('post_id', $variation_id)->where('meta_key', '_stock')->value('meta_value');
+                                    $newStockLevel = max(0, $stockLevel - $item['quantity']);
+                                    ProductMeta::where('post_id', $variation_id)->where('meta_key', '_stock')->update(['meta_value' => $newStockLevel]);
+                                } else {
+                                    $stockLevel = ProductMeta::where('post_id', $product_id)->where('meta_key', '_stock')->value('meta_value');
+                                    $newStockLevel = max(0, $stockLevel - $item['quantity']);
+                                    ProductMeta::where('post_id', $product_id)->where('meta_key', '_stock')->update(['meta_value' => $newStockLevel]);
+                                }
                             }
                             // $dd[]=$itemMeta;
                             foreach ($itemMeta as $meta) {
@@ -1042,8 +1053,18 @@ class PayPalController extends Controller
                             $serializedMetaValue = serialize($metaValue);
                               
                             $itemMeta[] = ['order_item_id' => $orderItemId, 'meta_key' => '_wdr_discounts', 'meta_value' => $serializedMetaValue];
+                            $variation_id = $item['variation_id']??0;
+                            $product_id = $item['product_id'] ;
+                            if ($variation_id) {
+                                $stockLevel = ProductMeta::where('post_id', $variation_id)->where('meta_key', '_stock')->value('meta_value');
+                                $newStockLevel = max(0, $stockLevel - $item['quantity']);
+                                ProductMeta::where('post_id', $variation_id)->where('meta_key', '_stock')->update(['meta_value' => $newStockLevel]);
+                            } else {
+                                $stockLevel = ProductMeta::where('post_id', $product_id)->where('meta_key', '_stock')->value('meta_value');
+                                $newStockLevel = max(0, $stockLevel - $item['quantity']);
+                                ProductMeta::where('post_id', $product_id)->where('meta_key', '_stock')->update(['meta_value' => $newStockLevel]);
+                            }
                         } 
-                        // $dd[]=$itemMeta;
                         foreach ($itemMeta as $meta) {
                             OrderItemMeta::insert($meta);
                         }
