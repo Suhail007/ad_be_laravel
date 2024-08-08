@@ -10,6 +10,127 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class CleanupController extends Controller
 {
+
+    private function getThumbnailUrl($thumbnailId)
+    {
+        if (!$thumbnailId) {
+            return null;
+        }
+        $attachment = DB::table('wp_posts')->where('ID', $thumbnailId)->first();
+        if ($attachment) {
+            return $attachment->guid;
+        }
+        return null;
+    }
+    public function brandProducts(Request $request, string $slugs)
+{
+    $perPage = $request->query('perPage', 15);
+    $sortBy = $request->query('sort', 'default');
+    $page = $request->query('page', 1);
+    
+    $slugArray = explode(',', $slugs);
+    
+
+    try {
+        $user = JWTAuth::parseToken()->authenticate();
+        if ($user->ID) {
+            $products = Product::with([
+                'meta' => function ($query) {
+                    $query->select('post_id', 'meta_key', 'meta_value')
+                        ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id']);
+                },
+                'categories' => function ($query) {
+                    $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                        ->with([
+                            'categorymeta' => function ($query) {
+                                $query->select('term_id', 'meta_key', 'meta_value')
+                                    ->where('meta_key', 'visibility');
+                            },
+                            'taxonomies' => function ($query) {
+                                $query->select('term_id', 'taxonomy');
+                            }
+                        ]);
+                }
+            ])
+            ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+            ->where('post_type', 'product')
+            ->whereHas('meta', function ($query) {
+                $query->where('meta_key', '_stock_status')
+                    ->where('meta_value', 'instock');
+            })
+            ->whereHas('categories.taxonomies', function ($query) use ($slugArray) {
+                $query->whereIn('slug', $slugArray)
+                    ->where('taxonomy', 'product_brand');
+            })
+            ->orderBy('post_date', 'desc')
+            ->paginate($perPage, ['*'], 'page', $page);
+        }
+    } catch (\Throwable $th) {
+        $products = Product::with([
+            'meta' => function ($query) {
+                $query->select('post_id', 'meta_key', 'meta_value')
+                    ->whereIn('meta_key', ['_stock_status', '_sku', '_thumbnail_id']);
+            },
+            'categories' => function ($query) {
+                $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                    ->with([
+                        'categorymeta' => function ($query) {
+                            $query->select('term_id', 'meta_key', 'meta_value')
+                                ->where('meta_key', 'visibility');
+                        },
+                        'taxonomies' => function ($query) {
+                            $query->select('term_id', 'taxonomy');
+                        }
+                    ]);
+            }
+        ])
+        ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+        ->where('post_type', 'product')
+        ->whereHas('meta', function ($query) {
+            $query->where('meta_key', '_stock_status')
+                ->where('meta_value', 'instock');
+        })
+        ->whereHas('categories.taxonomies', function ($query) use ($slugArray) {
+            $query->whereIn('slug', $slugArray)
+                ->where('taxonomy', 'product_brand');
+        })
+        ->orderBy('post_date', 'desc')
+        ->paginate($perPage, ['*'], 'page', $page);
+    }
+
+    $products->getCollection()->transform(function ($product) {
+        $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
+        $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
+
+        return [
+            'ID' => $product->ID,
+            'title' => $product->post_title,
+            'slug' => $product->post_name,
+            'thumbnail_url' => $thumbnailUrl,
+            'categories' => $product->categories->map(function ($category) {
+                $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                $taxonomy = $category->taxonomies->taxonomy;
+                return [
+                    'term_id' => $category->term_id,
+                    'name' => $category->name,
+                    'slug' => $category->slug,
+                    'visibility' => $visibility ? $visibility : 'public',
+                    'taxonomy' => $taxonomy ? $taxonomy : 'public',
+                ];
+            }),
+            'meta' => $product->meta->map(function ($meta) {
+                return [
+                    'meta_key' => $meta->meta_key,
+                    'meta_value' => $meta->meta_value
+                ];
+            }),
+            'post_modified' => $product->post_modified
+        ];
+    });
+
+    return response()->json($products);
+}
+
     public function menuCleanUp()
     {
 

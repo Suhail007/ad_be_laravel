@@ -90,6 +90,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
 
 Route::get('/cleanup',[CleanupController::class,'menuCleanUp']);
+Route::get('/mail-brand/{slugs}',[CleanupController::class,'brandProducts']);
 //Layouts Public
 Route::get('/layout', [LayoutController::class, 'layouts']);
 Route::get('/position/{layout}', [LayoutController::class, 'position']);
