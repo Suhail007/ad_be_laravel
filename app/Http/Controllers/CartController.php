@@ -545,7 +545,9 @@ class CartController extends Controller
                     '_sku',
                     'mm_product_basis_1',
                     'mm_product_basis_2',
-                    'mm_product_basis_3'
+                    'mm_product_basis_3',
+                    'max_quantity_var',
+                    'min_quantity_var'
                 ])
                 ->pluck('meta_value', 'meta_key');
 
@@ -558,6 +560,8 @@ class CartController extends Controller
             $ml1taxID = $productMeta->get('mm_product_basis_1', null);
             $ml2taxID = $productMeta->get('mm_product_basis_2', null);
             $ml3taxID = $productMeta->get('mm_product_basis_3', null);
+            $max_quantity_var = $productMeta->get('max_quantity_var', null);
+            $min_quantity_var = $productMeta->get('min_quantity_var', null);
             if ($stockStatus === 'instock' && $stockLevel > 0) {
                 $stockStatus = 'instock';
             } else {
@@ -595,7 +599,9 @@ class CartController extends Controller
                 'sku'=>$sku,
                 'ml1' => $ml1taxID,
                 'ml2' => $ml2taxID,
-                'ml3' => $ml3taxID
+                'ml3' => $ml3taxID,
+                'max_quantity_var'=>$max_quantity_var,
+                'min_quantity_var'=>$min_quantity_var
             ];
         }
         $checkout = Checkout::where('user_id', $user->ID)->first();
