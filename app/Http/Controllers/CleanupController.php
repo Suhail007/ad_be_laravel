@@ -72,20 +72,17 @@ class CleanupController extends Controller
             return response()->json(['message' => 'User are not allowed', 'status' => false], 200);
         }
         
-        // Define the number of users to process per chunk
-        $chunkSize = 100; // Adjust as needed
+      
+        $chunkSize = 100; 
     
-        // Fetch users in chunks
         DB::table('wp_users')->orderBy('ID')->chunk($chunkSize, function ($users) {
             foreach ($users as $user) {
-                // Get cart data for the user
                 $carts = DB::table('wp_usermeta')
                     ->where('user_id', $user->ID)
                     ->where('meta_key', 'LIKE', '%_woocommerce_persistent_cart_%')
                     ->get();
     
                 foreach ($carts as $cart) {
-                    // Unserialize cart data
                     $cart_data = unserialize($cart->meta_value);
     
                     if ($cart_data && isset($cart_data['cart'])) {
@@ -94,36 +91,34 @@ class CleanupController extends Controller
                             $variation_id = $item['variation_id'] ?? null;
                             $quantity = $item['quantity'] ?? 0;
     
-                            // Validate product ID
                             if ($product_id && !DB::table('wp_posts')->where('ID', $product_id)->exists()) {
                                 echo "Product ID $product_id does not exist. Skipping...<br>";
                                 continue;
                             }
     
-                            // Validate variation ID
                             if ($variation_id !== null && $variation_id !== '' && !DB::table('wp_posts')->where('ID', $variation_id)->exists()) {
                                 echo "Variation ID $variation_id does not exist. Skipping...<br>";
                                 continue;
                             }
     
-                            // Handle the case where variation_id is 0 (which is typically invalid)
+                           
                             if ($variation_id === 0) {
                                 echo "Variation ID is 0. Skipping...<br>";
                                 continue;
                             }
     
-                            // Find or create the cart item
+                          
                             $cartItem = Cart::where('user_id', $user->ID)
                                 ->where('product_id', $product_id)
                                 ->where('variation_id', $variation_id)
                                 ->first();
     
                             if ($cartItem) {
-                                // Update quantity if item exists
+                              
                                 $cartItem->quantity += $quantity;
                                 $cartItem->save();
                             } else {
-                                // Create new cart item if it doesn't exist
+                               
                                 Cart::create([
                                     'user_id' => $user->ID,
                                     'product_id' => $product_id,
