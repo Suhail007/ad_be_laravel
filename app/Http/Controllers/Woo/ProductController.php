@@ -553,7 +553,7 @@ class ProductController extends Controller
         $page = $request->query('page', 1);
 
         $cacheKey = 'products_' . md5($searchTerm . $perPage . $sortBy . $page);
-        $cacheDuration = 10080;
+        $cacheDuration = 4320;
 
         $products = Cache::remember($cacheKey, $cacheDuration, function () use ($searchTerm, $perPage, $page) {
             $query = Product::with([
