@@ -28,6 +28,7 @@ Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:l
 Route::post('/register', [LoginController::class, 'register']);
 
 Route::group(['middleware' => ['jwt.auth']], function () {
+    Route::post('/change-password', [LoginController::class, 'changePassword']);
     Route::post('/logout', [LoginController::class, 'logout']);
     Route::get('/profile', [LoginController::class, 'me']);
 

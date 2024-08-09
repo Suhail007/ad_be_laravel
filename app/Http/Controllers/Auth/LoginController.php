@@ -28,7 +28,7 @@ class LoginController extends Controller
 
         $check = WpPassword::check($hashedPassword, $user->user_pass);
         if ($check == true) {
-            if($user->approved =="0"){
+            if ($user->approved == "0") {
                 return response()->json([
                     'status' => false,
                     'message' => 'Your Register Request Not Approved',
@@ -69,9 +69,30 @@ class LoginController extends Controller
         }
     }
 
+    public function changePassword(Request $request){
+        $user = JWTAuth::parseToken()->authenticate();
+
+        if (!$user) {
+            return response()->json(['message' => 'User not authenticated', 'status' => false], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'password' => 'required|string|confirmed|min:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors(), 'status' => false], 422);
+        }
+
+        $user->update([
+            'user_pass' => WpPassword::make($request->input('password')), 
+        ]);
+        return response()->json(['message' => 'Password updated successfully', 'status' => true], 200);
+    }
+
     public function register(Request $request)
     {
-        $validator = Validator::make($request->all(),[
+        $validator = Validator::make($request->all(), [
             'user_email' => 'required|string|email|unique:wp_users,user_email',
             'password' => 'required|string|confirmed|min:6',
             'first_name' => 'required|string',
@@ -87,9 +108,9 @@ class LoginController extends Controller
             'shipping_state' => 'nullable|string',
             'shipping_postcode' => 'nullable|string',
         ]);
-       
-        if($validator->fails()){
-            return response()->json(['message'=>$validator->errors()]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => $validator->errors()]);
         }
         $email = $request->input('user_email');
         $username = User::generateUniqueUsername($email);
@@ -157,14 +178,14 @@ class LoginController extends Controller
         UserMeta::create([
             'user_id' => $user->ID,
             'meta_key' => 'ur_user_status',
-            'meta_value' =>'0'
+            'meta_value' => '0'
         ]);
 
         // $token = JWTAuth::fromUser($user);
 
         return response()->json([
             'status' => true,
-            'message'=>'Wait till verification',
+            'message' => 'Wait till verification',
             // 'token' => $token,
             // 'user' => [
             //     'ID' => $user->ID,
