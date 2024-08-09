@@ -234,24 +234,57 @@ class ProductController extends Controller
                     ->orderBy('post_date', 'desc')
                     ->paginate($perPage, ['*'], 'page', $page);
             } else {
-                $products = Product::with([
-                    'meta' => function ($query) {
-                        $query->select('post_id', 'meta_key', 'meta_value')
-                            ->whereIn('meta_key', ['_stock_status', '_sku', '_thumbnail_id']);
-                    },
-                    'categories' => function ($query) {
-                        $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
-                            ->with([
-                                'categorymeta' => function ($query) {
-                                    $query->select('term_id', 'meta_key', 'meta_value')
-                                        ->where('meta_key', 'visibility');
-                                },
-                                'taxonomies' => function ($query) {
-                                    $query->select('term_id', 'taxonomy');
-                                }
-                            ]);
-                    }
-                ])
+                // $products = Product::with([
+                //     'meta' => function ($query) {
+                //         $query->select('post_id', 'meta_key', 'meta_value')
+                //             ->whereIn('meta_key', ['_stock_status', '_sku', '_thumbnail_id']);
+                //     },
+                //     'categories' => function ($query) {
+                //         $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                //             ->with([
+                //                 'categorymeta' => function ($query) {
+                //                     $query->select('term_id', 'meta_key', 'meta_value')
+                //                         ->where('meta_key', 'visibility');
+                //                 },
+                //                 'taxonomies' => function ($query) {
+                //                     $query->select('term_id', 'taxonomy')->where('product_visibility',);
+                //                 }
+                //             ]);
+                //     }
+                // ])
+                //     ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+                //     ->where('post_type', 'product')
+                //     ->whereHas('meta', function ($query) {
+                //         $query->where('meta_key', '_stock_status')
+                //             ->where('meta_value', 'instock');
+                //     })
+                //     ->whereHas('categories.taxonomies', function ($query) use ($slug) {
+                //         $query->where('slug', $slug)
+                //             ->where('taxonomy', 'product_cat');
+                //     })
+                //     ->orderBy('post_date', 'desc')
+                //     ->paginate($perPage, ['*'], 'page', $page);
+
+
+
+                    $products = Product::with([
+                        'meta' => function ($query) {
+                            $query->select('post_id', 'meta_key', 'meta_value')
+                                ->whereIn('meta_key', ['_stock_status', '_sku', '_thumbnail_id']);
+                        },
+                        'categories' => function ($query) {
+                            $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                                ->with([
+                                    'categorymeta' => function ($query) {
+                                        $query->select('term_id', 'meta_key', 'meta_value')
+                                            ->where('meta_key', 'visibility');
+                                    },
+                                    'taxonomies' => function ($query) {
+                                        $query->select('term_id', 'taxonomy');
+                                    }
+                                ]);
+                        }
+                    ])
                     ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                     ->where('post_type', 'product')
                     ->whereHas('meta', function ($query) {
@@ -262,8 +295,13 @@ class ProductController extends Controller
                         $query->where('slug', $slug)
                             ->where('taxonomy', 'product_cat');
                     })
+                    ->whereDoesntHave('categories.categorymeta', function ($query) {
+                        $query->where('meta_key', 'visibility')
+                            ->where('meta_value', 'protected');
+                    })
                     ->orderBy('post_date', 'desc')
                     ->paginate($perPage, ['*'], 'page', $page);
+                
             }
         }
 
