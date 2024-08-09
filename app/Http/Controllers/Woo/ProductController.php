@@ -562,7 +562,7 @@ class ProductController extends Controller
                         ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id']);
                 },
                 'categories' => function ($query) {
-                    $query->select('wp_terms.term_id', 'wp_terms.name')
+                    $query->select('wp_terms.term_id', 'wp_terms.name')->where('wp_term.slug','!=','uncategorized')
                         ->with([
                             'categorymeta' => function ($query) {
                                 $query->select('term_id', 'meta_key', 'meta_value')

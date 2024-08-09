@@ -434,9 +434,9 @@ class PayPalController extends Controller
                             //     $productTax= $item['quantity'] * $item['taxPerUnit'];
                             //     $taxAmmountWC=$productTax;
                             // }
-    
+                        
                             if ($item['isVape'] == true) {
-    
+                                
                                 $iLTax = $item['quantity'] * $item['taxPerUnit'];
                             } else {
                                 $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0);
@@ -961,7 +961,7 @@ class PayPalController extends Controller
                         // }
 
                         if ($item['isVape'] == true) {
-
+                           
                             $iLTax = $item['quantity'] * $item['taxPerUnit'];
                         } else {
                             $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0);
@@ -996,6 +996,8 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $linetotal ?? 0], //
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $linetotal ?? 0], //
                             //
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => $iLTax ?? 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' => $iLTax ?? 0],
                             
 
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' =>  $serializedData],
