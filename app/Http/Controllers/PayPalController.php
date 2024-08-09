@@ -180,6 +180,7 @@ class PayPalController extends Controller
                     if ($item['isVape'] == true) {
                         // if($orderData['shipping']['state'] == "IL"){
                         $order_tax += $item['quantity'] * $item['taxPerUnit'];
+                        $order_tax = round($order_tax, 2);
                         // }
                         // $subtotal = $subtotal + ($subtotal * 0.15); //il tax
                         $isVape = true;
@@ -191,7 +192,8 @@ class PayPalController extends Controller
                     // }
 
                     // $subtotal = $subtotal - ($item['unitDiscount'] ?? 0);
-                    $total += $item['quantity'] * $subtotal;
+                    $float1= $item['quantity'] * $subtotal;
+                    $total += round($float1, 2);
                 }
                 //any discount in subtotal
                 $total = $total - ($shippingLines[0]['subtotal_discount'] ?? 0) + $order_tax;
@@ -438,13 +440,18 @@ class PayPalController extends Controller
                             if ($item['isVape'] == true) {
                                 
                                 $iLTax = $item['quantity'] * $item['taxPerUnit'];
+                                $iLTax = round($iLTax, 2);
+                                
                             } else {
                                 $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0);
                                
                             }
     
                             // $productPrice = $productPrice - ($item['unitDiscount'] ?? 0);
-                            $linetotal += $item['quantity'] * $productPrice;
+                            $float2=0.00;
+                            $float2=$item['quantity'] * $productPrice;
+                            $float2 = round($float2, 2);
+                            $linetotal += $float2;
     
                             $taxAmount = (float) ($iLTax ?? 0);
     
@@ -453,10 +460,12 @@ class PayPalController extends Controller
                                 $taxAmount,
                                 $taxAmount
                             );
-                            $indirect_tax_amount = $item['quantity'] * $item['taxPerUnit'];
+                            $float3=0.00;
+                            $float3=$item['quantity'] * $item['taxPerUnit'];
+                            $indirect_tax_amount =round($float3, 2);
                            
                             if($orderData['shipping']['state'] == 'IL' && $item['isVape'] == true){
-                                $indirect_tax_amount=0;
+                                $indirect_tax_amount=0.00;
                             }
                             $itemMeta = [
                                 ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
@@ -762,6 +771,8 @@ class PayPalController extends Controller
                     if ($item['isVape'] == true) {
                         // if($orderData['shipping']['state'] == "IL"){
                         $order_tax += $item['quantity'] * $item['taxPerUnit'];
+                        $order_tax = round($order_tax, 2);
+
                         // }
                         // $subtotal = $subtotal + ($subtotal * 0.15); //il tax
                         $isVape = true;
@@ -773,7 +784,8 @@ class PayPalController extends Controller
                     // }
                     
                     // $subtotal = $subtotal - ($item['unitDiscount'] ?? 0);
-                    $total += $item['quantity'] * $subtotal;
+                    $float1= $item['quantity'] * $subtotal;
+                    $total += round($float1, 2);
                 }
                 
                 //any discount in subtotal
@@ -966,13 +978,17 @@ class PayPalController extends Controller
                         if ($item['isVape'] == true) {
                            
                             $iLTax = $item['quantity'] * $item['taxPerUnit'];
+                                $iLTax = round($iLTax, 2);
                         } else {
                             $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0);
                            
                         }
 
                         // $productPrice = $productPrice - ($item['unitDiscount'] ?? 0);
-                        $linetotal += $item['quantity'] * $productPrice;
+                        $float2=0.00;
+                            $float2=$item['quantity'] * $productPrice;
+                            $float2 = round($float2, 2);
+                            $linetotal += $float2;
 
                         $taxAmount = (float) ($iLTax ?? 0);
 
@@ -981,10 +997,12 @@ class PayPalController extends Controller
                             $taxAmount,
                             $taxAmount
                         );
-                        $indirect_tax_amount = $item['quantity'] * $item['taxPerUnit'];
+                            $float3=0.00;
+                            $float3=$item['quantity'] * $item['taxPerUnit'];
+                            $indirect_tax_amount =round($float3, 2);
 
                         if($orderData['shipping']['state'] == 'IL' && $item['isVape'] == true){
-                            $indirect_tax_amount=0;
+                            $indirect_tax_amount=0.00;
                         }
                         
                         $itemMeta = [
