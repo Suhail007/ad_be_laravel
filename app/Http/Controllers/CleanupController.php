@@ -24,7 +24,7 @@ class CleanupController extends Controller
     }
     public function brandProducts(Request $request, string $slugs)
 {
-    $perPage = $request->query('perPage', 15);
+    $perPage = $request->query('perPage', 500);
     $sortBy = $request->query('sort', 'default');
     $page = $request->query('page', 1);
     
