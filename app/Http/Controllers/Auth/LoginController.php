@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Http\Controllers\Controller;
+use App\Models\RegisterRequest;
 use App\Models\User;
 use App\Models\UserMeta;
 use Carbon\Carbon;
@@ -96,6 +97,10 @@ class LoginController extends Controller
             'user_email' => 'required|string|email|unique:wp_users,user_email',
             'password' => 'required|string|confirmed|min:6',
             'first_name' => 'required|string',
+            'finlicenceurl' => 'required|string',
+            'tobaccolicenceurl' => 'required|string',
+            'taxidurl' => 'required|string',
+            'govurl' => 'required|string',
             'last_name' => 'string',
             'billing_company' => 'nullable|string',
             'billing_address_1' => 'nullable|string',
@@ -140,14 +145,13 @@ class LoginController extends Controller
             'shipping_postcode' => $request->input('shipping_postcode'),
             'last_update' => $request->input('timestamp'), //time stamp
             'user_registration_number_box_1675806301' =>  $request->input('user_registration_number_box_1675806301'), //phone number
-            'user_registration_file_1675806995815' =>  $request->input('user_registration_file_1675806995815'), //file id Uplopad FEIN licence
+            'user_registration_file_1675806995815' =>  $request->input('user_registration_file_1675806995815')??0, //file id Uplopad FEIN licence
             'user_registration_number_box_1678138943' =>  $request->input('user_registration_number_box_1678138943'), //fein number
-            'user_registration_file_1675807041669' =>  $request->input('user_registration_file_1675807041669'), //file id Upload Tobacco License
-            'user_registration_file_1675806917' =>  $request->input('user_registration_file_1675806917'), //file id Upload State Tax ID / Business License
-            'user_registration_file_1675806973030' =>  $request->input('user_registration_file_1675806973030'), //file id Government Issued ID (Driver’s license, State ID etc)
+            'user_registration_file_1675807041669' =>  $request->input('user_registration_file_1675807041669')??0, //file id Upload Tobacco License
+            'user_registration_file_1675806917' =>  $request->input('user_registration_file_1675806917')??0, //file id Upload State Tax ID / Business License
+            'user_registration_file_1675806973030' =>  $request->input('user_registration_file_1675806973030')??0, //file id Government Issued ID (Driver’s license, State ID etc)
             'user_registration_select2_1676006057' => $request->input('user_registration_select2_1676006057'), //dropdown inspect name value (Distrubutor)
             'user_registration_select2_121' =>  $request->input('shipping_postcode'), //dropdown inspect name value (Wholesaler)
-            // 'ur_form_id' => '41122',
             'rich_editing' => 'TRUE',
             'syntax_highlighting' => 'TRUE',
             'comment_shortcuts' => 'FALSE',
@@ -157,7 +161,6 @@ class LoginController extends Controller
             'wp_user_level' => '0',
             'dismissed_wp_pointers' => '',
             'user_registration_country_1676005837' => 'US',
-            // 'ur_user_status' => '0',
         ];
 
         foreach ($userMetaFields as $key => $value) {
@@ -169,7 +172,13 @@ class LoginController extends Controller
                 ]);
             }
         }
-
+        RegisterRequest::create([
+            'user_id'=>$user->ID,
+            'finlicenceurl'=>$request->input('finlicenceurl'),
+            'tobaccolicenceurl'=>$request->input('tobaccolicenceurl'),
+            'taxidurl'=>$request->input('taxidurl'),
+            'govurl'=>$request->input('govurl'),
+        ]);
         UserMeta::create([
             'user_id' => $user->ID,
             'meta_key' => 'wp_capabilities',

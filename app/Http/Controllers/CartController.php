@@ -551,11 +551,19 @@ class CartController extends Controller
                 ])
                 ->pluck('meta_value', 'meta_key');
 
-            // Assign the values based on the meta_key
             $stockLevel = $productMeta->get('_stock', null);
             $stockStatus = $productMeta->get('_stock_status', null);
             $taxID = $productMeta->get('mm_indirect_tax_type', null);
+
             $taxClass = $productMeta->get('_tax_class', null);
+            if($taxClass=='parent'){
+                // echo 'tax class is '.$taxClass;
+                $taxClass = ProductMeta::where('post_id', $product->ID)
+                ->where('meta_key', '_tax_class')
+                ->value('meta_value');
+                // echo 'tax class is '.$taxClass;
+            }
+
             $sku = $productMeta->get('_sku', null);
             $ml1taxID = $productMeta->get('mm_product_basis_1', null);
             $ml2taxID = $productMeta->get('mm_product_basis_2', null);
