@@ -105,7 +105,7 @@ class LayoutController extends Controller
     public function uploadFile(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'thumbnail' => ['required', 'mimes:jpeg,png,jpg,gif,webp,avif,mp4', 'max:4048'],
+            'thumbnail' => ['required', 'mimes:jpeg,png,jpg,gif,webp,avif,mp4,pdf', 'max:4048'],
             'old_url' => ['nullable', 'string'],
         ]);
 

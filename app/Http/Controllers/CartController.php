@@ -614,13 +614,15 @@ class CartController extends Controller
         }
         $checkout = Checkout::where('user_id', $user->ID)->first();
         $isFreeze = $checkout ? $checkout->isFreeze : false;
+        $freeze_time= $checkout ? $checkout->updated_at: false;
         return response()->json([
             'status' => true,
             'freeze'=>$isFreeze,
             'username' => $user->user_login,
             'message' => 'Cart items',
             'data' => $userIp,
-            'time' => now()->toDateTimeString(),
+            'current_time' => now()->toDateTimeString(),
+            'freeze_time' =>$freeze_time->toDateTimeString(),
             'cart_total' => $total[0],
             'location_tax' => $total[1],
             'cart_count' => $itemCount,
