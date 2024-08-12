@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Order;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -51,10 +52,13 @@ class ShippingBuffer extends Command
                             ->where('post_id', $buffer->order_id)
                             ->where('meta_key', '_order_shipping')
                             ->update(['meta_value' => '15']);
-    
-                        DB::table('buffers')
+                        $value = DB::table('wp_posts')->where('id',$buffer->order_id)->value('post_status');
+                        if($value !== 'wc-processing'){
+                            DB::table('buffers')
                             ->where('id', $buffer->id)
                             ->delete();
+                        }
+                       
                         Log::info($buffer->order_id.' shipping charges updated');
                     }
                 }
