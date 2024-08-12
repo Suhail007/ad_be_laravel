@@ -621,7 +621,7 @@ class CartController extends Controller
             'username' => $user->user_login,
             'message' => 'Cart items',
             'data' => $userIp,
-            'current_time' => now()->toDateTimeString(),
+            // 'current_time' => now()->toDateTimeString(),
             'freeze_time' =>$freeze_time->toDateTimeString(),
             'cart_total' => $total[0],
             'location_tax' => $total[1],
