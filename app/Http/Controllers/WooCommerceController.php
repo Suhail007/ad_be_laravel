@@ -15,23 +15,43 @@ class WooCommerceController extends Controller
 {
 
     public function getTaxonomyType($taxonomy)
-{
-    if ($taxonomy->taxonomy === 'product_cat') {
-        return 'category';
-    } elseif ($taxonomy->taxonomy === 'product_brand') {
-        return 'brand';
+    {
+        if ($taxonomy->taxonomy === 'product_cat') {
+            return 'category';
+        } elseif ($taxonomy->taxonomy === 'product_brand') {
+            return 'brand';
+        }
+        return 'unknown';
     }
-    return 'unknown';
-}
 
     public function show(Request $request, $slug)
     {
-        $product = Product::with([
-            'meta',
-            'categories.taxonomies',
-            'categories.children',
-            'categories.categorymeta'
-        ])->where('post_name', $slug)->firstOrFail();
+        $auth = false;
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            if ($user->ID) {
+                $product = Product::with([
+                    'meta',
+                    'categories.taxonomies',
+                    'categories.children',
+                    'categories.categorymeta'
+                ])->where('post_name', $slug)->firstOrFail();
+            }
+        } catch (\Throwable $th) {
+            $product = Product::with([
+                'meta',
+                'categories.taxonomies',
+                'categories.children',
+                'categories.categorymeta'
+            ])->whereDoesntHave('categories.categorymeta', function ($query) {
+                $query->where('meta_key', 'visibility')
+                    ->where('meta_value', 'protected');
+            })
+            ->where('post_name', $slug)->first();
+            if(!$product){
+                return response()->json(['status' => false, 'message' => 'Product Not Found, Login to see Products']);
+            }
+        }
 
         $metaData = $product->meta->map(function ($meta) {
             return [
@@ -51,7 +71,7 @@ class WooCommerceController extends Controller
                 'children' => $category->children,
             ];
         });
-        
+
         $brands = $product->categories->filter(function ($category) {
             // Check if the category's taxonomy type is 'brand'
             return $this->getTaxonomyType($category->taxonomies) === 'brand';
@@ -65,96 +85,15 @@ class WooCommerceController extends Controller
                 'children' => $category->children,
             ];
         });
-       
+
         $thumbnailUrl = $this->getThumbnailUrl($product->ID);
         $galleryImagesUrls = $this->getGalleryImagesUrls($product->ID);
         $price = $metaData->where('key', '_price')->first()['value'] ?? '';
-            try {
-                $user = JWTAuth::parseToken()->authenticate();
-                if($user->ID){
-                    $priceTier = $user->price_tier ?? '';
-                    $variations = $this->getVariations($product->ID,$priceTier);
-                    $response = [
-                        'id' => $product->ID,
-                        'name' => $product->post_title,
-                        'slug' => $product->post_name,
-                        'permalink' => url('/product/' . $product->post_name),
-                        'date_created' => $product->post_date,
-                        'date_created_gmt' => $product->post_date_gmt,
-                        'date_modified' => $product->post_modified,
-                        'date_modified_gmt' => $product->post_modified_gmt,
-                        'type' => $product->post_type,
-                        'status' => $product->post_status,
-                        'min_quantity'=>$metaData->where('key','min_quantity')->first()['value']?? false,
-                        'max_quantity'=>$metaData->where('key','max_quantity')->first()['value']?? false,
-                        
-                        'featured' => $metaData->where('key', '_featured')->first()['value'] ?? false,
-                        'catalog_visibility' => $metaData->where('key', '_visibility')->first()['value'] ?? 'visible',
-                        'description' => $product->post_content,
-                        'short_description' => $product->post_excerpt,
-                        'sku' => $metaData->where('key', '_sku')->first()['value'] ?? '',
-                        'price' => $price ?? $metaData->where('key','_regular_price')->first()['value'] ?? $metaData->where('key','_price')->first()['value'] ?? null,
-                        'ad_price'=> $wholesalePrice = ProductMeta::where('post_id', $product->ID)->where('meta_key', $priceTier)->value('meta_value') ?? $metaData->where('key','_price')->first()['value']  ?? $metaData->where('key','_regular_price')->first()['value'] ?? $variations->ad_price ?? null,
-                        'regular_price' => $metaData->where('key', '_regular_price')->first()['value'] ?? '',
-                        'sale_price' => $metaData->where('key', '_sale_price')->first()['value'] ?? '',
-                        'date_on_sale_from' => $metaData->where('key', '_sale_price_dates_from')->first()['value'] ?? null,
-                        'date_on_sale_from_gmt' => $metaData->where('key', '_sale_price_dates_from_gmt')->first()['value'] ?? null,
-                        'date_on_sale_to' => $metaData->where('key', '_sale_price_dates_to')->first()['value'] ?? null,
-                        'date_on_sale_to_gmt' => $metaData->where('key', '_sale_price_dates_to_gmt')->first()['value'] ?? null,
-                        'on_sale' => optional($metaData->where('key', '_sale_price')->first())->value ? true : false,
-                        'purchasable' => $product->post_status === 'publish',
-                        'total_sales' => $metaData->where('key', 'total_sales')->first()['value'] ?? 0,
-                        'virtual' => $metaData->where('key', '_virtual')->first()['value'] ?? false,
-                        'downloadable' => $metaData->where('key', '_downloadable')->first()['value'] ?? false,
-                        'downloads' => [],  // Add logic for downloads if needed
-                        'download_limit' => $metaData->where('key', '_download_limit')->first()['value'] ?? -1,
-                        'download_expiry' => $metaData->where('key', '_download_expiry')->first()['value'] ?? -1,
-                        'external_url' => $metaData->where('key', '_product_url')->first()['value'] ?? '',
-                        'button_text' => $metaData->where('key', '_button_text')->first()['value'] ?? '',
-                        'tax_status' => $metaData->where('key', '_tax_status')->first()['value'] ?? 'taxable',
-                        'tax_class' => $metaData->where('key', '_tax_class')->first()['value'] ?? '',
-                        'manage_stock' => $metaData->where('key', '_manage_stock')->first()['value'] ?? false,
-                        'stock_quantity' => $metaData->where('key', '_stock')->first()['value'] ?? null,
-                        'backorders' => $metaData->where('key', '_backorders')->first()['value'] ?? 'no',
-                        'backorders_allowed' => $metaData->where('key', '_backorders')->first()['value'] === 'yes' ? true : false,
-                        'backordered' => $metaData->where('key', '_backorders')->first()['value'] === 'notify' ? true : false,
-                        'low_stock_amount' => $metaData->where('key', '_low_stock_amount')->first()['value'] ?? null,
-                        'sold_individually' => $metaData->where('key', '_sold_individually')->first()['value'] ?? false,
-                        'weight' => $metaData->where('key', '_weight')->first()['value'] ?? '',
-                        'dimensions' => [
-                            'length' => $metaData->where('key', '_length')->first()['value'] ?? '',
-                            'width' => $metaData->where('key', '_width')->first()['value'] ?? '',
-                            'height' => $metaData->where('key', '_height')->first()['value'] ?? ''
-                        ],
-                        'shipping_required' => $metaData->where('key', '_shipping')->first()['value'] ?? true,
-                        'shipping_taxable' => $metaData->where('key', '_shipping_taxable')->first()['value'] ?? true,
-                        'shipping_class' => $metaData->where('key', '_shipping_class')->first()['value'] ?? '',
-                        'shipping_class_id' => $metaData->where('key', '_shipping_class_id')->first()['value'] ?? 0,
-                        'reviews_allowed' => $product->comment_status === 'open',
-                        'average_rating' => $metaData->where('key', '_wc_average_rating')->first()['value'] ?? '0.00',
-                        'rating_count' => $metaData->where('key', '_wc_rating_count')->first()['value'] ?? 0,
-                        'parent_id' => $product->post_parent,
-                        'purchase_note' => $metaData->where('key', '_purchase_note')->first()['value'] ?? '',
-                        'categories' => $categories,
-                        'brands'=>$brands,
-                        'images' => $galleryImagesUrls,  
-                        'thumbnail_url' => $thumbnailUrl,
-                        'variations' => $variations,
-                        'menu_order' => $product->menu_order,
-                        'stock_status' => $metaData->where('key', '_stock_status')->first()['value'] ?? 'instock',
-                        'has_options' => $metaData->where('key', '_has_options')->first()['value'] ?? true,
-                        'post_password' => $product->post_password,
-                        '_links' => [
-                            'self' => [
-                                ['href' => url('/wp-json/wc/v3/products/' . $product->ID)]
-                            ],
-                            'collection' => [
-                                ['href' => url('/wp-json/wc/v3/products')]
-                            ]
-                        ],
-                    ];
-                }
-            } catch (\Throwable $th) {
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            if ($user->ID) {
+                $priceTier = $user->price_tier ?? '';
+                $variations = $this->getVariations($product->ID, $priceTier);
                 $response = [
                     'id' => $product->ID,
                     'name' => $product->post_title,
@@ -166,28 +105,65 @@ class WooCommerceController extends Controller
                     'date_modified_gmt' => $product->post_modified_gmt,
                     'type' => $product->post_type,
                     'status' => $product->post_status,
+                    'min_quantity' => $metaData->where('key', 'min_quantity')->first()['value'] ?? false,
+                    'max_quantity' => $metaData->where('key', 'max_quantity')->first()['value'] ?? false,
+
                     'featured' => $metaData->where('key', '_featured')->first()['value'] ?? false,
                     'catalog_visibility' => $metaData->where('key', '_visibility')->first()['value'] ?? 'visible',
                     'description' => $product->post_content,
                     'short_description' => $product->post_excerpt,
                     'sku' => $metaData->where('key', '_sku')->first()['value'] ?? '',
+                    'price' => $price ?? $metaData->where('key', '_regular_price')->first()['value'] ?? $metaData->where('key', '_price')->first()['value'] ?? null,
+                    'ad_price' => $wholesalePrice = ProductMeta::where('post_id', $product->ID)->where('meta_key', $priceTier)->value('meta_value') ?? $metaData->where('key', '_price')->first()['value']  ?? $metaData->where('key', '_regular_price')->first()['value'] ?? $variations->ad_price ?? null,
+                    'regular_price' => $metaData->where('key', '_regular_price')->first()['value'] ?? '',
+                    'sale_price' => $metaData->where('key', '_sale_price')->first()['value'] ?? '',
+                    'date_on_sale_from' => $metaData->where('key', '_sale_price_dates_from')->first()['value'] ?? null,
+                    'date_on_sale_from_gmt' => $metaData->where('key', '_sale_price_dates_from_gmt')->first()['value'] ?? null,
+                    'date_on_sale_to' => $metaData->where('key', '_sale_price_dates_to')->first()['value'] ?? null,
+                    'date_on_sale_to_gmt' => $metaData->where('key', '_sale_price_dates_to_gmt')->first()['value'] ?? null,
+                    'on_sale' => optional($metaData->where('key', '_sale_price')->first())->value ? true : false,
+                    'purchasable' => $product->post_status === 'publish',
+                    'total_sales' => $metaData->where('key', 'total_sales')->first()['value'] ?? 0,
+                    'virtual' => $metaData->where('key', '_virtual')->first()['value'] ?? false,
+                    'downloadable' => $metaData->where('key', '_downloadable')->first()['value'] ?? false,
+                    'downloads' => [],  // Add logic for downloads if needed
+                    'download_limit' => $metaData->where('key', '_download_limit')->first()['value'] ?? -1,
+                    'download_expiry' => $metaData->where('key', '_download_expiry')->first()['value'] ?? -1,
+                    'external_url' => $metaData->where('key', '_product_url')->first()['value'] ?? '',
+                    'button_text' => $metaData->where('key', '_button_text')->first()['value'] ?? '',
+                    'tax_status' => $metaData->where('key', '_tax_status')->first()['value'] ?? 'taxable',
+                    'tax_class' => $metaData->where('key', '_tax_class')->first()['value'] ?? '',
+                    'manage_stock' => $metaData->where('key', '_manage_stock')->first()['value'] ?? false,
+                    'stock_quantity' => $metaData->where('key', '_stock')->first()['value'] ?? null,
+                    'backorders' => $metaData->where('key', '_backorders')->first()['value'] ?? 'no',
+                    'backorders_allowed' => $metaData->where('key', '_backorders')->first()['value'] === 'yes' ? true : false,
+                    'backordered' => $metaData->where('key', '_backorders')->first()['value'] === 'notify' ? true : false,
+                    'low_stock_amount' => $metaData->where('key', '_low_stock_amount')->first()['value'] ?? null,
+                    'sold_individually' => $metaData->where('key', '_sold_individually')->first()['value'] ?? false,
                     'weight' => $metaData->where('key', '_weight')->first()['value'] ?? '',
                     'dimensions' => [
                         'length' => $metaData->where('key', '_length')->first()['value'] ?? '',
                         'width' => $metaData->where('key', '_width')->first()['value'] ?? '',
                         'height' => $metaData->where('key', '_height')->first()['value'] ?? ''
                     ],
-                 
+                    'shipping_required' => $metaData->where('key', '_shipping')->first()['value'] ?? true,
+                    'shipping_taxable' => $metaData->where('key', '_shipping_taxable')->first()['value'] ?? true,
+                    'shipping_class' => $metaData->where('key', '_shipping_class')->first()['value'] ?? '',
+                    'shipping_class_id' => $metaData->where('key', '_shipping_class_id')->first()['value'] ?? 0,
+                    'reviews_allowed' => $product->comment_status === 'open',
+                    'average_rating' => $metaData->where('key', '_wc_average_rating')->first()['value'] ?? '0.00',
+                    'rating_count' => $metaData->where('key', '_wc_rating_count')->first()['value'] ?? 0,
                     'parent_id' => $product->post_parent,
+                    'purchase_note' => $metaData->where('key', '_purchase_note')->first()['value'] ?? '',
                     'categories' => $categories,
-                    'brands'=>$brands,
-                    'images' => $galleryImagesUrls,  
+                    'brands' => $brands,
+                    'images' => $galleryImagesUrls,
                     'thumbnail_url' => $thumbnailUrl,
-                    'variations' => [],
+                    'variations' => $variations,
                     'menu_order' => $product->menu_order,
-                    'meta_data' => $metaData,
                     'stock_status' => $metaData->where('key', '_stock_status')->first()['value'] ?? 'instock',
                     'has_options' => $metaData->where('key', '_has_options')->first()['value'] ?? true,
+                    'post_password' => $product->post_password,
                     '_links' => [
                         'self' => [
                             ['href' => url('/wp-json/wc/v3/products/' . $product->ID)]
@@ -198,7 +174,51 @@ class WooCommerceController extends Controller
                     ],
                 ];
             }
-       
+        } catch (\Throwable $th) {
+            $response = [
+                'id' => $product->ID,
+                'name' => $product->post_title,
+                'slug' => $product->post_name,
+                'permalink' => url('/product/' . $product->post_name),
+                'date_created' => $product->post_date,
+                'date_created_gmt' => $product->post_date_gmt,
+                'date_modified' => $product->post_modified,
+                'date_modified_gmt' => $product->post_modified_gmt,
+                'type' => $product->post_type,
+                'status' => $product->post_status,
+                'featured' => $metaData->where('key', '_featured')->first()['value'] ?? false,
+                'catalog_visibility' => $metaData->where('key', '_visibility')->first()['value'] ?? 'visible',
+                'description' => $product->post_content,
+                'short_description' => $product->post_excerpt,
+                'sku' => $metaData->where('key', '_sku')->first()['value'] ?? '',
+                'weight' => $metaData->where('key', '_weight')->first()['value'] ?? '',
+                'dimensions' => [
+                    'length' => $metaData->where('key', '_length')->first()['value'] ?? '',
+                    'width' => $metaData->where('key', '_width')->first()['value'] ?? '',
+                    'height' => $metaData->where('key', '_height')->first()['value'] ?? ''
+                ],
+
+                'parent_id' => $product->post_parent,
+                'categories' => $categories,
+                'brands' => $brands,
+                'images' => $galleryImagesUrls,
+                'thumbnail_url' => $thumbnailUrl,
+                'variations' => [],
+                'menu_order' => $product->menu_order,
+                'meta_data' => $metaData,
+                'stock_status' => $metaData->where('key', '_stock_status')->first()['value'] ?? 'instock',
+                'has_options' => $metaData->where('key', '_has_options')->first()['value'] ?? true,
+                '_links' => [
+                    'self' => [
+                        ['href' => url('/wp-json/wc/v3/products/' . $product->ID)]
+                    ],
+                    'collection' => [
+                        ['href' => url('/wp-json/wc/v3/products')]
+                    ]
+                ],
+            ];
+        }
+
 
         return response()->json($response);
     }
@@ -218,33 +238,33 @@ class WooCommerceController extends Controller
             ->map(function ($variation) use ($priceTier) {
                 // Get meta data as an array
                 $metaData = $variation->meta->pluck('meta_value', 'meta_key')->toArray();
-    
+
                 // Construct the regex pattern to include the price tier
                 $pattern = '/^(_sku|attribute_.*|_stock|_regular_price|_price|_stock_status|max_quantity|min_quantity|max_quantity_var|min_quantity_var' . preg_quote($priceTier, '/') . '|_thumbnail_id)$/';
-    
+
                 // Filter meta data to include only the selected fields
-                $filteredMetaData = array_filter($metaData, function($key) use ($pattern) {
+                $filteredMetaData = array_filter($metaData, function ($key) use ($pattern) {
                     return preg_match($pattern, $key);
                 }, ARRAY_FILTER_USE_KEY);
-    
+
                 // Determine the price to use based on price tier or fallback to regular price
                 $adPrice = $metaData[$priceTier] ?? $metaData['_price'] ?? $metaData['_regular_price'] ?? null;
-    
+
                 return [
                     'id' => $variation->ID,
-                    'date'=> $variation->post_modified_gmt,
+                    'date' => $variation->post_modified_gmt,
                     'meta' => $filteredMetaData,
                     'ad_price' => $adPrice,  // Include ad_price here
                     'thumbnail_url' => $this->getThumbnailUrl($variation->ID),  // Add variation thumbnail URL here
                     'gallery_images_urls' => $this->getGalleryImagesUrls($variation->ID),  // Add variation gallery images URLs here
                 ];
             });
-    
+
         return $variations;
     }
-    
 
-    
+
+
     private function getThumbnailUrl($productId)
     {
         $thumbnailId = ProductMeta::where('post_id', $productId)->where('meta_key', '_thumbnail_id')->value('meta_value');
@@ -298,7 +318,7 @@ class WooCommerceController extends Controller
 
     // public function createNewOrder(Request $request)
     // {
-       
+
     //     $orderData = $request->all();
     //     try {
     //         $user = JWTAuth::parseToken()->authenticate();
