@@ -310,11 +310,16 @@ class ProductController extends Controller
                 if(!$auth){
                     $ad_price=null;
                 } else{
-                    $ad_price = $product->meta->where('meta_key', $priceTier )->pluck('meta_value')->first()??'';
-                    if($ad_price==''){
-                        $ad_price= $this->getVariations($product->ID,$priceTier);
-                        $ad_price=$ad_price[0];
+                    try {
+                        $ad_price = $product->meta->where('meta_key', $priceTier )->pluck('meta_value')->first()??'';
+                        if($ad_price==''){
+                            $ad_price= $this->getVariations($product->ID,$priceTier);
+                            $ad_price=$ad_price[0];
+                        }
+                    } catch (\Throwable $th) {
+                        $ad_price=null;
                     }
+                   
                 }
                 $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
     
@@ -437,10 +442,14 @@ class ProductController extends Controller
             if(!$auth){
                 $ad_price=null;
             } else{
-                $ad_price = $product->meta->where('meta_key', $priceTier )->pluck('meta_value')->first()??'';
-                if($ad_price==''){
-                    $ad_price= $this->getVariations($product->ID,$priceTier);
-                    $ad_price=$ad_price[0];
+                try {
+                    $ad_price = $product->meta->where('meta_key', $priceTier )->pluck('meta_value')->first()??'';
+                    if($ad_price==''){
+                        $ad_price= $this->getVariations($product->ID,$priceTier);
+                        $ad_price=$ad_price[0];
+                    }
+                } catch (\Throwable $th) {
+                    $ad_price=null;
                 }
             }
             $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
