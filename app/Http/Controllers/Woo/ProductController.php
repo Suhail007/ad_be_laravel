@@ -304,46 +304,50 @@ class ProductController extends Controller
             }
         }
 
-
-        $products->getCollection()->transform(function ($product) use($priceTier,$auth) {
-            $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
-            if(!$auth){
-                $ad_price=null;
-            } else{
-                $ad_price = $product->meta->where('meta_key', $priceTier )->pluck('meta_value')->first()??'';
-                if($ad_price==''){
-                    $ad_price= $this->getVariations($product->ID,$priceTier);
-                    $ad_price=$ad_price[0];
+        try {
+            $products->getCollection()->transform(function ($product) use($priceTier,$auth) {
+                $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
+                if(!$auth){
+                    $ad_price=null;
+                } else{
+                    $ad_price = $product->meta->where('meta_key', $priceTier )->pluck('meta_value')->first()??'';
+                    if($ad_price==''){
+                        $ad_price= $this->getVariations($product->ID,$priceTier);
+                        $ad_price=$ad_price[0];
+                    }
                 }
-            }
-            $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
-
-            return [
-                'ID' => $product->ID,
-                'ad_price'=>$ad_price,
-                'title' => $product->post_title,
-                'slug' => $product->post_name,
-                'thumbnail_url' => $thumbnailUrl,
-                'categories' => $product->categories->map(function ($category) {
-                    $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
-                    $taxonomy = $category->taxonomies->taxonomy;
-                    return [
-                        'term_id' => $category->term_id,
-                        'name' => $category->name,
-                        'slug' => $category->slug,
-                        'visibility' => $visibility ? $visibility : 'public',
-                        'taxonomy' => $taxonomy ? $taxonomy : 'public',
-                    ];
-                }),
-                'meta' => $product->meta->map(function ($meta) {
-                    return [
-                        'meta_key' => $meta->meta_key,
-                        'meta_value' => $meta->meta_value
-                    ];
-                }),
-                'post_modified' => $product->post_modified
-            ];
-        });
+                $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
+    
+                return [
+                    'ID' => $product->ID,
+                    'ad_price'=>$ad_price,
+                    'title' => $product->post_title,
+                    'slug' => $product->post_name,
+                    'thumbnail_url' => $thumbnailUrl,
+                    'categories' => $product->categories->map(function ($category) {
+                        $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                        $taxonomy = $category->taxonomies->taxonomy;
+                        return [
+                            'term_id' => $category->term_id,
+                            'name' => $category->name,
+                            'slug' => $category->slug,
+                            'visibility' => $visibility ? $visibility : 'public',
+                            'taxonomy' => $taxonomy ? $taxonomy : 'public',
+                        ];
+                    }),
+                    'meta' => $product->meta->map(function ($meta) {
+                        return [
+                            'meta_key' => $meta->meta_key,
+                            'meta_value' => $meta->meta_value
+                        ];
+                    }),
+                    'post_modified' => $product->post_modified
+                ];
+            });
+        } catch (\Throwable $th) {
+            return response()->json($th);
+        }
+       
 
         return response()->json($products);
     }
