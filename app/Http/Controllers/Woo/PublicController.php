@@ -6,18 +6,45 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductMeta;
 use Illuminate\Http\Request;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class PublicController extends Controller
 {
     public function show(Request $request, $slug)
     {
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            if ($user->ID) {
+                $product = Product::with([
+                    'meta',
+                    'categories.taxonomies',
+                    'categories.children',
+                    'categories.categorymeta'
+                ])->where('post_name', $slug)->firstOrFail();
+            }
+        } catch (\Throwable $th) {
+            $product = Product::with([
+                'meta',
+                'categories.taxonomies',
+                'categories.children',
+                'categories.categorymeta'
+            ])->whereDoesntHave('categories.categorymeta', function ($query) {
+                $query->where('meta_key', 'visibility')
+                    ->where('meta_value', 'protected');
+            })
+            ->where('post_name', $slug)->first();
+            if(!$product){
+                return response()->json(['status' => false, 'message' => 'Product Not Found, Login to see Products']);
+            }
+        }
+
        
-        $product = Product::with([
-            'meta',
-            'categories.taxonomies',
-            'categories.children',
-            'categories.categorymeta'
-        ])->where('post_name', $slug)->firstOrFail();
+        // $product = Product::with([
+        //     'meta',
+        //     'categories.taxonomies',
+        //     'categories.children',
+        //     'categories.categorymeta'
+        // ])->where('post_name', $slug)->firstOrFail();
 
         $metaData = $product->meta->map(function ($meta) {
             return [

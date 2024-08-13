@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cart;
+use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -10,6 +11,12 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class CleanupController extends Controller
 {
+    public function category(){
+        $data= Category::with(['categorymeta'=> function ($query){
+            $query->where('meta_key','visibility');
+        }])->get();
+        return response()->json($data);
+    }
 
     private function getThumbnailUrl($thumbnailId)
     {
