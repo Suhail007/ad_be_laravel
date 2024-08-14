@@ -11,10 +11,10 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class CleanupController extends Controller
 {
-    public function category(){
+    public function category(string $value){
         $data= Category::with(['categorymeta'=> function ($query){
             $query->where('meta_key','visibility');
-        }])->get();
+        }])->where('name','LIKE','%'.$value.'%')->orWhere('slug','Like','%'.$value.'%')->get();
         return response()->json($data);
     }
 

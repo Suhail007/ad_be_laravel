@@ -40,7 +40,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
     //menu cleanup 
     Route::get('/cleanup',[CleanupController::class,'menuCleanUp']);
-    Route::get('/category-list',[CleanupController::class,'category']);
+    Route::get('/category-list/{value}',[CleanupController::class,'category']);
     //media 
     Route::post('/media/upload', [MediaController::class, 'uploadFile']);
     Route::get('/media', [MediaController::class, 'index']);
