@@ -31,35 +31,54 @@ class ShippingBuffer extends Command
     public function handle()
     {
         // Log::info('buffer started');
-       
+
         try {
             $buffers = DB::table('buffers')->get();
-    
+
             foreach ($buffers as $buffer) {
-                $orderItem = DB::table('wp_woocommerce_order_items')
-                    ->where('order_id', $buffer->order_id)
-                    ->where('order_item_name', $buffer->shipping)
-                    ->first();
-    
-                if ($orderItem) {
-                    $orderShipping = DB::table('wp_postmeta')
-                        ->where('post_id', $buffer->order_id)
-                        ->where('meta_key', '_order_shipping')
-                        ->value('meta_value');
-    
-                    if ($orderShipping === '0') {
-                        DB::table('wp_postmeta')
+                if ($buffer->shipping == 'Flat rate') {
+                    $orderItem = DB::table('wp_woocommerce_order_items')
+                        ->where('order_id', $buffer->order_id)
+                        ->where('order_item_name', $buffer->shipping)
+                        ->first();
+
+                    if ($orderItem) {
+                        $orderShipping = DB::table('wp_postmeta')
                             ->where('post_id', $buffer->order_id)
                             ->where('meta_key', '_order_shipping')
-                            ->update(['meta_value' => '15']);
-                        $value = DB::table('wp_posts')->where('id',$buffer->order_id)->value('post_status');
-                        if($value !== 'wc-processing'){
-                            DB::table('buffers')
+                            ->value('meta_value');
+
+                        if ($orderShipping === '0') {
+                            DB::table('wp_postmeta')
+                                ->where('post_id', $buffer->order_id)
+                                ->where('meta_key', '_order_shipping')
+                                ->update(['meta_value' => '15']);
+                            $value = DB::table('wp_posts')->where('id', $buffer->order_id)->value('post_status');
+                            if ($value !== 'wc-processing') {
+                                DB::table('buffers')
+                                    ->where('id', $buffer->id)
+                                    ->delete();
+                            }
+
+                            Log::info($buffer->order_id . ' shipping charges updated');
+                        }
+                    }
+                } else {
+                    $cartDis = $buffer->shipping;
+                    $cartDisTax = $buffer->extra;
+                    DB::table('wp_postmeta')
+                        ->where('post_id', $buffer->order_id)
+                        ->where('meta_key', '_cart_discount')
+                        ->update(['meta_value' => $cartDis]);
+                    DB::table('wp_postmeta')
+                        ->where('post_id', $buffer->order_id)
+                        ->where('meta_key', '_cart_discount_tax')
+                        ->update(['meta_value' => $cartDisTax]);
+                    $value = DB::table('wp_posts')->where('id', $buffer->order_id)->value('post_status');
+                    if ($value !== 'wc-processing') {
+                        DB::table('buffers')
                             ->where('id', $buffer->id)
                             ->delete();
-                        }
-                       
-                        Log::info($buffer->order_id.' shipping charges updated');
                     }
                 }
             }
@@ -67,5 +86,4 @@ class ShippingBuffer extends Command
             Log::error('Error processing buffers: ' . $th->getMessage());
         }
     }
-
 }

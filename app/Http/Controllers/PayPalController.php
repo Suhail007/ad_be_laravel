@@ -170,46 +170,50 @@ class PayPalController extends Controller
                 $order_tax = 0;
                 $ordertotalQTY = 0;
                 $productnames = [];
+                $is_free = false;
+                $percentageDiscount = 0;
+                $cartDiscount = 0;
+                $couponIDs = [];
+                $isPercentageCoupone = false;
                 foreach ($orderData['extra'] as $item) {
                     $ordertotalQTY += $item['quantity'];
                     $subtotal = $item['product_price'];
 
                     $productnames[] = $item['product_name'];
-                    // $subtotal = $subtotal + ($item['taxPerUnit'] ?? 0);
-                    // $item['taxPerUnit']= 
+                  
                     if ($item['isVape'] == true) {
-                        // if($orderData['shipping']['state'] == "IL"){
                         $order_tax += $item['quantity'] * $item['taxPerUnit'];
-                        $order_tax = round($order_tax, 2);
-                        // }
-                        // $subtotal = $subtotal + ($subtotal * 0.15); //il tax
+                        $order_tax = round($order_tax, 1);
                         $isVape = true;
                     } else {
                         $subtotal = $subtotal + ($item['taxPerUnit'] ?? 0);
                     }
-                    // if ($orderData['shipping']['state'] == "IL") {
-                    //     $subtotal = $subtotal + ($subtotal * 0.15); //il tax
-                    // }
+                    try {
+                        if (isset($item['discount_amt']) && $item['discount_amt']) {
+                            $cartDiscount += $item['discount_amt'];
 
-                    // $subtotal = $subtotal - ($item['unitDiscount'] ?? 0);
-                    $float1= $item['quantity'] * $subtotal;
+                            $couponIDs[] = $item['applicable_rules'][0]['rule_id'];
+                            $isPercentageCoupone = true;
+                        }
+                    } catch (\Throwable $th) {
+                    }
+
+                    $float1 = $item['quantity'] * $subtotal;
                     $total += round($float1, 2);
                 }
-                //any discount in subtotal
-                $total = $total - ($shippingLines[0]['subtotal_discount'] ?? 0) + $order_tax;
 
-                //for meta
+               //cart discount 
+               $cartDiscountTax = 0;
+                if ($cartDiscount > 0 && $isVape) {
+                    $cartDiscountTax = $cartDiscount * 0.15;
+                    $cartDiscountTax = round($cartDiscountTax, 2);
+                }
+                $cartDiscount = round($cartDiscount, 2);
+                $total = $total - $cartDiscount + $order_tax;
+
                 $subtotal = $total;
-                //shipping charges
                 $shppingtotal = $shippingLines[0]['total'];
-                // if ($orderData['shipping']['state'] == "IL") {
-                //     $shppingtotal = $shppingtotal + ($shppingtotal * 0.15);
-                // }
-                // if ($isVape) {
-                //     $shppingtotal = $shppingtotal + ($shppingtotal * 0.15);
-                // }
                 $total += $shppingtotal;
-
 
                 $checkout->update(
                     [
@@ -346,12 +350,68 @@ class PayPalController extends Controller
                         ['post_id' => $orderId, 'meta_key' => '_billing_address_index', 'meta_value' => implode(' ', $orderData['billing'])],
                         ['post_id' => $orderId, 'meta_key' => '_shipping_address_index', 'meta_value' => implode(' ', $orderData['shipping'])],
                         ['post_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
-                        ['post_id' => $orderId, 'meta_key' => '_cart_discount', 'meta_value' => 0],
-                        ['post_id' => $orderId, 'meta_key' => '_cart_discount_tax', 'meta_value' => 0],
+                        ['post_id' => $orderId, 'meta_key' => '_cart_discount', 'meta_value' => $cartDiscount ?? 0],
+                        ['post_id' => $orderId, 'meta_key' => '_cart_discount_tax', 'meta_value' => $cartDiscountTax ?? 0],
                         ['post_id' => $orderId, 'meta_key' => '_order_tax', 'meta_value' => $order_tax ?? 0],
                         ['post_id' => $orderId, 'meta_key' => '_order_shipping', 'meta_value' => $floattotal],
                         ['post_id' => $orderId, 'meta_key' => '_order_shipping_tax', 'meta_value' => 0],
                     ];
+                    try {
+                        if ($isPercentageCoupone) {
+                            $discountRule = DB::table('wp_wdr_rules')->whereIn('id', $couponIDs)->get();
+
+                            $data = [
+                                'free_shipping' => false,
+                                'cart_discounts' => [
+                                    'applied_as' => 'coupon',
+                                    'combine_all_discounts' => false,
+                                    'applied_coupons' => [],
+                                ],
+                                'saved_amount' => [
+                                    'product_level' => 0,
+                                    'product_level_based_on_tax_settings' => 0,
+                                    'cart_level' => 0,
+                                    'total' => 0,
+                                    'total_based_on_tax_settings' => 0,
+                                ]
+                            ];
+                            // print_r($discountRule);
+
+                            foreach ($discountRule as $coupon) {
+                                $productAdjustments = json_decode($coupon->product_adjustments, true);
+                                if (json_last_error() === JSON_ERROR_NONE && isset($productAdjustments['cart_label'])) {
+                                    $cartLabel = $productAdjustments['cart_label'];
+                                    $cartValue = $productAdjustments['value'];
+                                } else {
+                                    $cartLabel = ' ';
+                                }
+
+                                $data['cart_discounts']['applied_coupons'][] = [
+                                    'name' => $coupon->title,
+                                    'value' => $cartDiscount ?? 0,
+                                    'rules' => [
+                                        [
+                                            'id' => $coupon->id,
+                                            'title' => $coupon->title,
+                                            'discount' => [
+                                                'discount_label' => $cartLabel ?? ' ',
+                                                'discount_value' => $cartDiscount ?? 0,
+                                            ]
+                                        ]
+                                    ]
+                                ];
+                                $data['saved_amount']['cart_level'] += $cartDiscount;
+                                $data['saved_amount']['total'] += $cartDiscount;
+                                $data['saved_amount']['total_based_on_tax_settings'] += $cartDiscount;
+                            }
+                            $serializedData = serialize($data);
+                            $metaData[] = ['post_id' => $orderId, 'meta_key' => '_wdr_discounts', 'meta_value' => $serializedData ?? ' '];
+                            $_wdr_discounts = $serializedData;
+                            $serializedData = '';
+                        }
+                    } catch (\Throwable $th) {
+                    }
+
                     foreach ($metaData as $meta) {
                         OrderMeta::insert($meta);
                     }
@@ -390,6 +450,15 @@ class PayPalController extends Controller
                         ]);
                         // BufferJob::dispatch();
                     }
+                    if ($cartDiscount > 0) {
+                        Buffer::create([
+                            'order_id' => $orderId,
+                            'shipping' =>$cartDiscount,
+                            'extra'=>$cartDiscountTax
+                        ]);
+                        // BufferJob::dispatch();
+                    }
+
                     foreach ($shippingtaxmeta as $meta) {
                         OrderItemMeta::insert($meta);
                     }
@@ -426,136 +495,232 @@ class PayPalController extends Controller
                             ->where('variation_id', $item['variation_id'] ?? null)
                             ->delete();
 
-                            $productPrice = $item['product_price']; 
-                            $linetotal = 0;
-                            $iLTax = 0;
-                            $initialPrice = 0;
-    
-                            // if($item['taxPerUnit']){
-                            //     $isPerUnit=true;
-                            //     $productTax= $item['quantity'] * $item['taxPerUnit'];
-                            //     $taxAmmountWC=$productTax;
-                            // }
-                        
-                            if ($item['isVape'] == true) {
-                                
-                                $iLTax = $item['quantity'] * $item['taxPerUnit'];
-                                $iLTax = round($iLTax, 2);
-                                
-                            } else {
-                                $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0);
-                               
-                            }
-    
-                            // $productPrice = $productPrice - ($item['unitDiscount'] ?? 0);
-                            $float2=0.00;
-                            $float2=$item['quantity'] * $productPrice;
-                            $float2 = round($float2, 2);
-                            $linetotal += $float2;
-    
-                            $taxAmount = (float) ($iLTax ?? 0);
-    
-                            $serializedData = sprintf(
-                                'a:2:{s:5:"total";a:1:{i:1;s:6:"%.2f";}s:8:"subtotal";a:1:{i:1;s:6:"%.2f";}}',
-                                $taxAmount,
-                                $taxAmount
-                            );
-                            $float3=0.00;
-                            $float3=$item['quantity'] * $item['taxPerUnit'];
-                            $indirect_tax_amount =round($float3, 2);
-                           
-                            if($orderData['shipping']['state'] == 'IL' && $item['isVape'] == true){
-                                $indirect_tax_amount=0.00;
-                            }
-                            $itemMeta = [
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_reduced_stock', 'meta_value' => $item['quantity']],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
-                                ['order_item_id' => $orderItemId, 'meta_key' => 'flavor', 'meta_value' => implode(',', $item['variation']) ?? ''],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' => $item['ml1'] * $item['quantity'] ?? $item['ml2'] * $item['quantity'] ?? 0], //
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $order_role],
+                        $productPrice = $item['product_price'];
+                        $linetotal = 0;
+                        $iLTax = 0;
+                        $initialPrice = 0;
 
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => $indirect_tax_amount ?? 0],
-    
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $linetotal ?? 0], //
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $linetotal ?? 0], //
-                                //
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => $iLTax ?? 0],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' => $iLTax ?? 0],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' =>  $serializedData],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis_j2', 'meta_value' => 0],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j2', 'meta_value' => 0],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis_j1', 'meta_value' => 0],
-                                ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j1', 'meta_value' => 0],
-    
+                        if ($item['isVape'] == true) {
+
+                            $iLTax = $item['quantity'] * $item['taxPerUnit'];
+                            $iLTax = round($iLTax, 2);
+                        } else {
+                            $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0);
+                        }
+                        $float2 = 0.00;
+                        $float2 = $item['quantity'] * $productPrice;
+                        $float2 = round($float2, 2);
+                        $linetotal += $float2;
+
+                        $taxAmount = (float) ($iLTax ?? 0);
+
+                        $serializedData = sprintf(
+                            'a:2:{s:5:"total";a:1:{i:1;s:6:"%.2f";}s:8:"subtotal";a:1:{i:1;s:6:"%.2f";}}',
+                            $taxAmount,
+                            $taxAmount
+                        );
+                        $float3 = 0.00;
+                        $float3 = $item['quantity'] * $item['taxPerUnit'];
+                        $indirect_tax_amount = round($float3, 2);
+
+                        if ($orderData['shipping']['state'] == 'IL' && $item['isVape'] == true) {
+                            $indirect_tax_amount = 0.00;
+                        }
+                        $itemMeta = [
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_reduced_stock', 'meta_value' => $item['quantity']],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
+                            ['order_item_id' => $orderItemId, 'meta_key' => 'flavor', 'meta_value' => implode(',', $item['variation']) ?? ''],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' => $item['ml1'] * $item['quantity'] ?? $item['ml2'] * $item['quantity'] ?? 0], //
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $order_role],
+
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => $indirect_tax_amount ?? 0],
+
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $linetotal ?? 0], //
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $linetotal ?? 0], //
+                            //
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => $iLTax ?? 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' => $iLTax ?? 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' =>  $serializedData],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis_j2', 'meta_value' => 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j2', 'meta_value' => 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis_j1', 'meta_value' => 0],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j1', 'meta_value' => 0],
+
+                        ];
+                        if (isset($item['is_free_product']) && $item['is_free_product']) {
+                            $discountId = $item['discount_id'];
+                           
+                            $initialPrice = $item['initial_price'];
+                            $discounted_price = $productPrice;
+                            $initial_price_based_on_tax_settings = $initialPrice;
+                            $discounted_price_based_on_tax_settings = $productPrice;
+                            $saved_amount = $initialPrice - $discounted_price;
+                            $saved_amount_based_on_tax_settings = $saved_amount;
+
+
+                            $metaValue = [
+                                'initial_price' => $initialPrice,
+                                'discounted_price' => $discounted_price,
+                                'initial_price_based_on_tax_settings' => $initial_price_based_on_tax_settings,
+                                'discounted_price_based_on_tax_settings' => $discounted_price_based_on_tax_settings,
+                                'applied_rules' => [],
+                                'saved_amount' => $saved_amount,
+                                'saved_amount_based_on_tax_settings' => $saved_amount_based_on_tax_settings,
+                                'is_free_product' => $item['is_free_product']
                             ];
-                            if (isset($item['is_free_product']) && $item['is_free_product']) {
-                                $discountId = $item['discount_id'];
-                                // $discountRule = DB::table('wp_wdr_rules')->where('id', $discountId)->first();
-    
-                                // if ($discountRule) {
-                                //     $currentUsageLimits = $discountRule->usage_limits;
-    
-                                //     if ($currentUsageLimits && $currentUsageLimits > 0) {
-                                //         // Update the usage_limits field
-                                //         DB::table('wp_wdr_rules')
-                                //             ->where('id', $discountId)
-                                //             ->update([
-                                //                 'usage_limits' => $currentUsageLimits - 1
-                                //             ]);
-                                //     } else {
-                                //         return response()->json([
-                                //             'status' => false,
-                                //             'message' => 'Limited coupon usability exceeded!',
-                                //         ]);
-                                //     }
-                                // } else {
-                                //     return response()->json([
-                                //         'status' => false,
-                                //         'message' => 'Discount rule not found!',
-                                //     ]);
-                                // }
-                                $initialPrice = $item['initial_price'];
-                                $discounted_price = $productPrice;
-                                $initial_price_based_on_tax_settings = $initialPrice;
-                                $discounted_price_based_on_tax_settings = $productPrice;
-                                $saved_amount = $initialPrice - $discounted_price;
-                                $saved_amount_based_on_tax_settings = $saved_amount;
-    
-    
-                                $metaValue = [
-                                    'initial_price' => $initialPrice,
-                                    'discounted_price' => $discounted_price,
-                                    'initial_price_based_on_tax_settings' => $initial_price_based_on_tax_settings,
-                                    'discounted_price_based_on_tax_settings' => $discounted_price_based_on_tax_settings,
-                                    'applied_rules' => [],
-                                    'saved_amount' => $saved_amount,
-                                    'saved_amount_based_on_tax_settings' => $saved_amount_based_on_tax_settings,
-                                    'is_free_product' => $item['is_free_product']
-                                ];
-    
-                                $serializedMetaValue = serialize($metaValue);
-                                   
-                                $itemMeta[] = ['order_item_id' => $orderItemId, 'meta_key' => '_wdr_discounts', 'meta_value' => $serializedMetaValue];
-                                $variation_id = $item['variation_id']??0;
-                                $product_id = $item['product_id'] ;
-                                if ($variation_id) {
-                                    $stockLevel = ProductMeta::where('post_id', $variation_id)->where('meta_key', '_stock')->value('meta_value');
-                                    $newStockLevel = max(0, $stockLevel - $item['quantity']);
-                                    ProductMeta::where('post_id', $variation_id)->where('meta_key', '_stock')->update(['meta_value' => $newStockLevel]);
+
+                            $serializedMetaValue = serialize($metaValue);
+
+                            $itemMeta[] = ['order_item_id' => $orderItemId, 'meta_key' => '_wdr_discounts', 'meta_value' => $serializedMetaValue];
+                            $variation_id = $item['variation_id'] ?? 0;
+                            $product_id = $item['product_id'];
+                            if ($variation_id) {
+                                $stockLevel = ProductMeta::where('post_id', $variation_id)->where('meta_key', '_stock')->value('meta_value');
+                                $newStockLevel = max(0, $stockLevel - $item['quantity']);
+                                ProductMeta::where('post_id', $variation_id)->where('meta_key', '_stock')->update(['meta_value' => $newStockLevel]);
+                            } else {
+                                $stockLevel = ProductMeta::where('post_id', $product_id)->where('meta_key', '_stock')->value('meta_value');
+                                $newStockLevel = max(0, $stockLevel - $item['quantity']);
+                                ProductMeta::where('post_id', $product_id)->where('meta_key', '_stock')->update(['meta_value' => $newStockLevel]);
+                            }
+                        }
+
+                        try {
+
+                           
+        
+                            if (isset($item['discount_amt']) && $item['discount_amt']) {
+                                $discountAmount= $item['discount_amt'];
+                                $coupon = DB::table('wp_wdr_rules')->where('id', $item['applicable_rules'][0]['rule_id'])->first();
+                               
+                                $productAdjustments = json_decode($coupon->product_adjustments, true);
+                                if (json_last_error() === JSON_ERROR_NONE && isset($productAdjustments['cart_label'])) {
+                                    $cartLabel = $productAdjustments['cart_label'];
+                                    $cartValue = $productAdjustments['value'];
+                                    $cartType = $productAdjustments['type'];
                                 } else {
-                                    $stockLevel = ProductMeta::where('post_id', $product_id)->where('meta_key', '_stock')->value('meta_value');
-                                    $newStockLevel = max(0, $stockLevel - $item['quantity']);
-                                    ProductMeta::where('post_id', $product_id)->where('meta_key', '_stock')->update(['meta_value' => $newStockLevel]);
+                                    $cartLabel = ' ';
+                                    $cartValue = 0;
+                                    $cartType = ' ';
                                 }
+                                if($cartType == 'percentage'){
+                                    $cartTypeN = 'percent';
+                                }
+                                $couponTitle = $cartLabel; //20% off  //<-lable
+                                $discountRateType = $cartTypeN; // 'percent'
+                                $discountRateValue = $cartValue; //20
+    
+                                $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
+                                    'order_id' => $orderId,
+                                    'order_item_name' => $couponTitle,
+                                    'order_item_type' => 'coupon'
+                                ]);
+    
+                           
+                                $coupon_info = [0, $couponTitle, $discountRateType, $discountRateValue];
+                                $jsonCouponInfo = json_encode($coupon_info);
+                                $metaILTax = [
+                                    ['order_item_id' => $id3, 'meta_key' => 'coupon_info', 'meta_value' => $jsonCouponInfo ],
+                                    ['order_item_id' => $id3, 'meta_key' => 'discount_amount_tax', 'meta_value' =>round($cartDiscountTax,2)??0],
+                                    ['order_item_id' => $id3, 'meta_key' => 'discount_amount', 'meta_value' => $cartDiscount ?? 0],
+                                ];
+                                
+                                foreach ($metaILTax as $meta) {
+                                    OrderItemMeta::insert($meta);
+                                }
+
+                                $lineTotalValue = $productPrice - $discountAmount; //product price with tax 
+                                // dd($lineTotalValue);
+                                foreach ($itemMeta as &$meta) {
+                                    if ($meta['meta_key'] == '_line_total') {
+                                        $meta['meta_value'] = $lineTotalValue;
+                                    }
+                                    // elseif ($meta['meta_key'] === '_line_subtotal') {
+                                    //     $meta['meta_value'] = $lineSubtotalValue;
+                                    // } $value = 9.998;   $roundedValue = round($value); //10
+    
+                                }
+                                $initialPriced= $productPrice;
+                                $discounted_priced=$productPrice;
+                                $initial_price_based_on_tax_settingsd=$productPrice;
+                                $discounted_price_based_on_tax_settingsd=$productPrice;
+                                $idd= $coupon->id;
+                                $titled=$coupon->title;
+                                $appliedInd= 'cart_level';
+                                $discount_typed=$cartType;
+                                $discount_valued=$discountRateValue;
+                                $discount_labeld=$couponTitle;
+                                $discount_priced=$discountAmount;
+                                $qtyd= $item['quantity'];
+                                $data2 = [
+                                    'initial_price' => $initialPriced,
+                                    'discounted_price' => $discounted_priced,
+                                    'initial_price_based_on_tax_settings' => $initial_price_based_on_tax_settingsd,
+                                    'discounted_price_based_on_tax_settings' => $discounted_price_based_on_tax_settingsd,
+                                    'applied_rules' => [
+                                        [
+                                            'id' => $idd,
+                                            'title' => $titled,
+                                            'type' => 'simple_discount',
+                                            'discount' => [
+                                                'applied_in' => $appliedInd,
+                                                'discount_type' => $discount_typed,
+                                                'discount_value' => $discount_valued,
+                                                'discount_label' => $discount_labeld,
+                                                'discount_price' => $discount_priced
+                                            ]
+                                        ]
+                                    ],
+                                    'saved_amount' => 0,
+                                    'saved_amount_based_on_tax_settings' => 0,
+                                    'is_free_product' => false
+                                ];
+                                $serializedData2= serialize($data2);
+
+                                $data3 = [
+                                    'initial_price' => $initialPriced,
+                                    'discounted_price' => $discounted_priced,
+                                    'total_discount_details' => [],
+                                    'cart_discount_details' => [
+                                        $idd => [ // Use coupon ID or another unique identifier here
+                                            'cart_discount' => $discount_valued,
+                                            'cart_shipping' => 'no',
+                                            'cart_discount_type' => $discount_typed,
+                                            'cart_discount_label' => $discount_labeld,
+                                            'cart_discount_price' => $discount_priced,
+                                            'cart_discount_product_price' => $discount_priced
+                                        ]
+                                    ],
+                                    'apply_as_cart_rule' => ['yes'],
+                                    'discount_lines' => [
+                                        'non_applied' => [
+                                            'quantity' => $qtyd,
+                                            'discount' => 0,
+                                            'price' => $initialPriced,
+                                            'calculate_discount_from' => $initialPriced
+                                        ]
+                                    ],
+                                    'cart_quantity' => $qtyd,
+                                    'product_id' =>$item['variation_id'] ?? $item['product_id'],
+                                    'initial_price_based_on_tax_settings' => $initialPrice,
+                                    'discounted_price_based_on_tax_settings' => $initialPrice
+                                ];
+                                
+                                $serializedData3= serialize($data3);
+                                $itemMeta[]=['order_item_id' => $orderItemId, 'meta_key' => '_wdr_discounts', 'meta_value' => $serializedData2];
+                                $itemMeta[]=['order_item_id' => $orderItemId, 'meta_key' => '_advanced_woo_discount_item_total_discount', 'meta_value' => $serializedData3];
                             }
-                            // $dd[]=$itemMeta;
-                            foreach ($itemMeta as $meta) {
-                                OrderItemMeta::insert($meta);
-                            }
+                        } catch (\Throwable $th) {
+                            //throw $th;
+                        }
+
+                        foreach ($itemMeta as $meta) {
+                            OrderItemMeta::insert($meta);
+                        }
 
                         $unitshippingCharge = (float) ($shppingtotal / max($ordertotalQTY, 1)) * $item['quantity'];
                         $done = DB::table('wp_wc_order_product_lookup')->insert([
@@ -714,12 +879,12 @@ class PayPalController extends Controller
 
                     $checkout->delete();
                     DB::commit();
-                    $email= $orderData['billing']['email'];
-                    $username = $orderData['billing']['first_name']. ' '. $orderData['billing']['last_name'];
-                    $deliveryDate= '3 working Days';
-                    $businessAddress= implode(' ', $orderData['shipping']);
+                    $email = $orderData['billing']['email'];
+                    $username = $orderData['billing']['first_name'] . ' ' . $orderData['billing']['last_name'];
+                    $deliveryDate = '3 working Days';
+                    $businessAddress = implode(' ', $orderData['shipping']);
                     SendOrderConfirmationEmail::dispatch(
-                        $email, 
+                        $email,
                         $newValue,
                         $username,
                         $deliveryDate,
@@ -761,46 +926,49 @@ class PayPalController extends Controller
                 $order_tax = 0;
                 $ordertotalQTY = 0;
                 $productnames = [];
-                $is_free=false;
+                $is_free = false;
+                $percentageDiscount = 0;
+                $cartDiscount = 0;
+                $couponIDs = [];
+                $isPercentageCoupone = false;
                 foreach ($orderData['extra'] as $item) {
                     $ordertotalQTY += $item['quantity'];
                     $subtotal = $item['product_price'];
-
                     $productnames[] = $item['product_name'];
-                    // $subtotal = $subtotal + ($item['taxPerUnit'] ?? 0);
-                    if ($item['isVape'] == true) {
-                        // if($orderData['shipping']['state'] == "IL"){
-                        $order_tax += $item['quantity'] * $item['taxPerUnit'];
-                        $order_tax = round($order_tax, 2);
 
-                        // }
-                        // $subtotal = $subtotal + ($subtotal * 0.15); //il tax
+                    if ($item['isVape'] == true) {
+                        $order_tax += $item['quantity'] * $item['taxPerUnit'];
+                        $order_tax = round($order_tax, 1);
                         $isVape = true;
                     } else {
                         $subtotal = $subtotal + ($item['taxPerUnit'] ?? 0);
                     }
-                    // if ($orderData['shipping']['state'] == "IL") {
-                    //     $subtotal = $subtotal + ($subtotal * 0.15); //il tax
-                    // }
-                    
-                    // $subtotal = $subtotal - ($item['unitDiscount'] ?? 0);
-                    $float1= $item['quantity'] * $subtotal;
+                    //percentage discount only
+                    try {
+                        if (isset($item['discount_amt']) && $item['discount_amt']) {
+                            $cartDiscount += $item['discount_amt'];
+
+                            $couponIDs[] = $item['applicable_rules'][0]['rule_id'];
+                            $isPercentageCoupone = true;
+                        }
+                    } catch (\Throwable $th) {
+                    }
+
+                    $float1 = $item['quantity'] * $subtotal;
                     $total += round($float1, 2);
                 }
-                
-                //any discount in subtotal
-                $total = $total - ($shippingLines[0]['subtotal_discount'] ?? 0) + $order_tax;
 
-                //for meta
+                //cart discount 
+                $cartDiscountTax = 0;
+                if ($cartDiscount > 0 && $isVape) {
+                    $cartDiscountTax = $cartDiscount * 0.15;
+                    $cartDiscountTax = round($cartDiscountTax, 2);
+                }
+                $cartDiscount = round($cartDiscount, 2);
+                $total = $total - $cartDiscount + $order_tax;
+
                 $subtotal = $total;
-                //shipping charges
                 $shppingtotal = $shippingLines[0]['total'];
-                // if ($orderData['shipping']['state'] == "IL") {
-                //     $shppingtotal = $shppingtotal + ($shppingtotal * 0.15);
-                // }
-                // if ($isVape) {
-                //     $shppingtotal = $shppingtotal + ($shppingtotal * 0.15);
-                // }
                 $total += $shppingtotal;
 
                 $checkout->update(
@@ -808,6 +976,7 @@ class PayPalController extends Controller
                         'total' => $total,
                     ]
                 );
+                
                 $orderData = Checkout::where('user_id', $user->ID)->first();
                 try {
                     DB::beginTransaction();
@@ -877,12 +1046,66 @@ class PayPalController extends Controller
                         ['post_id' => $orderId, 'meta_key' => '_billing_address_index', 'meta_value' => implode(' ', $orderData['billing'])],
                         ['post_id' => $orderId, 'meta_key' => '_shipping_address_index', 'meta_value' => implode(' ', $orderData['shipping'])],
                         ['post_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $newValue],
-                        ['post_id' => $orderId, 'meta_key' => '_cart_discount', 'meta_value' => 0],
-                        ['post_id' => $orderId, 'meta_key' => '_cart_discount_tax', 'meta_value' => 0],
+                        ['post_id' => $orderId, 'meta_key' => '_cart_discount', 'meta_value' => $cartDiscount ?? 0],
+                        ['post_id' => $orderId, 'meta_key' => '_cart_discount_tax', 'meta_value' => $cartDiscountTax ?? 0],
                         ['post_id' => $orderId, 'meta_key' => '_order_tax', 'meta_value' => $order_tax ?? 0],
                     ];
-                    //    dd();
 
+                    try {
+                        if ($isPercentageCoupone) {
+                            $discountRule = DB::table('wp_wdr_rules')->whereIn('id', $couponIDs)->get();
+
+                            $data = [
+                                'free_shipping' => false,
+                                'cart_discounts' => [
+                                    'applied_as' => 'coupon',
+                                    'combine_all_discounts' => false,
+                                    'applied_coupons' => [],
+                                ],
+                                'saved_amount' => [
+                                    'product_level' => 0,
+                                    'product_level_based_on_tax_settings' => 0,
+                                    'cart_level' => 0,
+                                    'total' => 0,
+                                    'total_based_on_tax_settings' => 0,
+                                ]
+                            ];
+                            // print_r($discountRule);
+
+                            foreach ($discountRule as $coupon) {
+                                $productAdjustments = json_decode($coupon->product_adjustments, true);
+                                if (json_last_error() === JSON_ERROR_NONE && isset($productAdjustments['cart_label'])) {
+                                    $cartLabel = $productAdjustments['cart_label'];
+                                    $cartValue = $productAdjustments['value'];
+                                } else {
+                                    $cartLabel = ' ';
+                                }
+
+                                $data['cart_discounts']['applied_coupons'][] = [
+                                    'name' => $coupon->title,
+                                    'value' => $cartDiscount ?? 0,
+                                    'rules' => [
+                                        [
+                                            'id' => $coupon->id,
+                                            'title' => $coupon->title,
+                                            'discount' => [
+                                                'discount_label' => $cartLabel ?? ' ',
+                                                'discount_value' => $cartDiscount ?? 0,
+                                            ]
+                                        ]
+                                    ]
+                                ];
+                                $data['saved_amount']['cart_level'] += $cartDiscount;
+                                $data['saved_amount']['total'] += $cartDiscount;
+                                $data['saved_amount']['total_based_on_tax_settings'] += $cartDiscount;
+                            }
+                            $serializedData = serialize($data);
+                            $metaData[] = ['post_id' => $orderId, 'meta_key' => '_wdr_discounts', 'meta_value' => $serializedData ?? ' '];
+                            $_wdr_discounts = $serializedData;
+                            $serializedData = '';
+                        }
+                    } catch (\Throwable $th) {
+                    }
 
                     foreach ($metaData as $meta) {
                         OrderMeta::insert($meta);
@@ -907,8 +1130,6 @@ class PayPalController extends Controller
                     ]);
 
                     $productnamesString = implode(',', $productnames);
-
-                    // $floattotal=(float) $shippingLines[0]['total']+0.00;
                     $shippingtaxmeta = [
                         ['order_item_id' => $id1, 'meta_key' => 'taxes', 'meta_value' =>  serialize(['total' => [0]])],
                         ['order_item_id' => $id1, 'meta_key' => 'total_tax', 'meta_value' => 0],
@@ -917,11 +1138,18 @@ class PayPalController extends Controller
                         ['order_item_id' => $id1, 'meta_key' => 'instance_id', 'meta_value' => ($shippingLines[0]['method_id'] == 'flat_rate') ? 1 : 2],
                         ['order_item_id' => $id1, 'meta_key' => 'method_id', 'meta_value' => $shippingLines[0]['method_id']],
                     ];
-
                     if ($floattotal > 0) {
                         Buffer::create([
                             'order_id' => $orderId,
                             'shipping' => $shippingLines[0]['method_title'],
+                        ]);
+                        // BufferJob::dispatch();
+                    }
+                    if ($cartDiscount > 0) {
+                        Buffer::create([
+                            'order_id' => $orderId,
+                            'shipping' =>$cartDiscount,
+                            'extra'=>$cartDiscountTax
                         ]);
                         // BufferJob::dispatch();
                     }
@@ -950,7 +1178,7 @@ class PayPalController extends Controller
                         }
                     }
 
-                    $dd=[];
+                    $dd = [];
                     foreach ($orderData['extra'] as $item) {
                         $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,
@@ -964,47 +1192,37 @@ class PayPalController extends Controller
                             ->delete();
 
 
-                        $productPrice = $item['product_price']; 
+                        $productPrice = $item['product_price'];
                         $linetotal = 0;
                         $iLTax = 0;
                         $initialPrice = 0;
 
-                        // if($item['taxPerUnit']){
-                        //     $isPerUnit=true;
-                        //     $productTax= $item['quantity'] * $item['taxPerUnit'];
-                        //     $taxAmmountWC=$productTax;
-                        // }
-
                         if ($item['isVape'] == true) {
-                           
+
                             $iLTax = $item['quantity'] * $item['taxPerUnit'];
-                                $iLTax = round($iLTax, 2);
+                            $iLTax = round($iLTax, 2);
                         } else {
                             $productPrice = $productPrice + ($item['taxPerUnit'] ?? 0);
-                           
                         }
-
-                        // $productPrice = $productPrice - ($item['unitDiscount'] ?? 0);
-                        $float2=0.00;
-                            $float2=$item['quantity'] * $productPrice;
-                            $float2 = round($float2, 2);
-                            $linetotal += $float2;
+                        $float2 = 0.00;
+                        $float2 = $item['quantity'] * $productPrice;
+                        $float2 = round($float2, 2);
+                        $linetotal += $float2;
 
                         $taxAmount = (float) ($iLTax ?? 0);
-
                         $serializedData = sprintf(
                             'a:2:{s:5:"total";a:1:{i:1;s:6:"%.2f";}s:8:"subtotal";a:1:{i:1;s:6:"%.2f";}}',
                             $taxAmount,
                             $taxAmount
                         );
-                            $float3=0.00;
-                            $float3=$item['quantity'] * $item['taxPerUnit'];
-                            $indirect_tax_amount =round($float3, 2);
+                        $float3 = 0.00;
+                        $float3 = $item['quantity'] * $item['taxPerUnit'];
+                        $indirect_tax_amount = round($float3, 2);
 
-                        if($orderData['shipping']['state'] == 'IL' && $item['isVape'] == true){
-                            $indirect_tax_amount=0.00;
+                        if ($orderData['shipping']['state'] == 'IL' && $item['isVape'] == true) {
+                            $indirect_tax_amount = 0.00;
                         }
-                        
+
                         $itemMeta = [
                             ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
@@ -1022,7 +1240,7 @@ class PayPalController extends Controller
                             //
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => $iLTax ?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' => $iLTax ?? 0],
-                            
+
 
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' =>  $serializedData],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis_j2', 'meta_value' => 0],
@@ -1033,30 +1251,7 @@ class PayPalController extends Controller
                         ];
                         if (isset($item['is_free_product']) && $item['is_free_product']) {
                             $discountId = $item['discount_id'];
-                            // $discountRule = DB::table('wp_wdr_rules')->where('id', $discountId)->first();
 
-                            // if ($discountRule) {
-                            //     $currentUsageLimits = $discountRule->usage_limits;
-
-                            //     if ($currentUsageLimits && $currentUsageLimits > 0) {
-                            //         // Update the usage_limits field
-                            //         DB::table('wp_wdr_rules')
-                            //             ->where('id', $discountId)
-                            //             ->update([
-                            //                 'usage_limits' => $currentUsageLimits - 1
-                            //             ]);
-                            //     } else {
-                            //         return response()->json([
-                            //             'status' => false,
-                            //             'message' => 'Limited coupon usability exceeded!',
-                            //         ]);
-                            //     }
-                            // } else {
-                            //     return response()->json([
-                            //         'status' => false,
-                            //         'message' => 'Discount rule not found!',
-                            //     ]);
-                            // }
                             $initialPrice = $item['initial_price'];
                             $discounted_price = $productPrice;
                             $initial_price_based_on_tax_settings = $initialPrice;
@@ -1077,10 +1272,10 @@ class PayPalController extends Controller
                             ];
 
                             $serializedMetaValue = serialize($metaValue);
-                              
+
                             $itemMeta[] = ['order_item_id' => $orderItemId, 'meta_key' => '_wdr_discounts', 'meta_value' => $serializedMetaValue];
-                            $variation_id = $item['variation_id']??0;
-                            $product_id = $item['product_id'] ;
+                            $variation_id = $item['variation_id'] ?? 0;
+                            $product_id = $item['product_id'];
                             if ($variation_id) {
                                 $stockLevel = ProductMeta::where('post_id', $variation_id)->where('meta_key', '_stock')->value('meta_value');
                                 $newStockLevel = max(0, $stockLevel - $item['quantity']);
@@ -1090,7 +1285,137 @@ class PayPalController extends Controller
                                 $newStockLevel = max(0, $stockLevel - $item['quantity']);
                                 ProductMeta::where('post_id', $product_id)->where('meta_key', '_stock')->update(['meta_value' => $newStockLevel]);
                             }
-                        } 
+                        }
+
+                        try {
+
+                           
+        
+                            if (isset($item['discount_amt']) && $item['discount_amt']) {
+                                $discountAmount= $item['discount_amt'];
+                                $coupon = DB::table('wp_wdr_rules')->where('id', $item['applicable_rules'][0]['rule_id'])->first();
+                               
+                                $productAdjustments = json_decode($coupon->product_adjustments, true);
+                                if (json_last_error() === JSON_ERROR_NONE && isset($productAdjustments['cart_label'])) {
+                                    $cartLabel = $productAdjustments['cart_label'];
+                                    $cartValue = $productAdjustments['value'];
+                                    $cartType = $productAdjustments['type'];
+                                } else {
+                                    $cartLabel = ' ';
+                                    $cartValue = 0;
+                                    $cartType = ' ';
+                                }
+                                if($cartType == 'percentage'){
+                                    $cartTypeN = 'percent';
+                                }
+                                $couponTitle = $cartLabel; //20% off  //<-lable
+                                $discountRateType = $cartTypeN; // 'percent'
+                                $discountRateValue = $cartValue; //20
+    
+                                $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
+                                    'order_id' => $orderId,
+                                    'order_item_name' => $couponTitle,
+                                    'order_item_type' => 'coupon'
+                                ]);
+    
+                           
+                                $coupon_info = [0, $couponTitle, $discountRateType, $discountRateValue];
+                                $jsonCouponInfo = json_encode($coupon_info);
+                                $metaILTax = [
+                                    ['order_item_id' => $id3, 'meta_key' => 'coupon_info', 'meta_value' => $jsonCouponInfo ],
+                                    ['order_item_id' => $id3, 'meta_key' => 'discount_amount_tax', 'meta_value' =>round($cartDiscountTax,2)??0],
+                                    ['order_item_id' => $id3, 'meta_key' => 'discount_amount', 'meta_value' => $cartDiscount ?? 0],
+                                ];
+                                
+                                foreach ($metaILTax as $meta) {
+                                    OrderItemMeta::insert($meta);
+                                }
+
+                                $lineTotalValue = $productPrice - $discountAmount; //product price with tax 
+                                // dd($lineTotalValue);
+                                foreach ($itemMeta as &$meta) {
+                                    if ($meta['meta_key'] == '_line_total') {
+                                        $meta['meta_value'] = $lineTotalValue;
+                                    }
+                                    // elseif ($meta['meta_key'] === '_line_subtotal') {
+                                    //     $meta['meta_value'] = $lineSubtotalValue;
+                                    // } $value = 9.998;   $roundedValue = round($value); //10
+    
+                                }
+                                $initialPriced= $productPrice;
+                                $discounted_priced=$productPrice;
+                                $initial_price_based_on_tax_settingsd=$productPrice;
+                                $discounted_price_based_on_tax_settingsd=$productPrice;
+                                $idd= $coupon->id;
+                                $titled=$coupon->title;
+                                $appliedInd= 'cart_level';
+                                $discount_typed=$cartType;
+                                $discount_valued=$discountRateValue;
+                                $discount_labeld=$couponTitle;
+                                $discount_priced=$discountAmount;
+                                $qtyd= $item['quantity'];
+                                $data2 = [
+                                    'initial_price' => $initialPriced,
+                                    'discounted_price' => $discounted_priced,
+                                    'initial_price_based_on_tax_settings' => $initial_price_based_on_tax_settingsd,
+                                    'discounted_price_based_on_tax_settings' => $discounted_price_based_on_tax_settingsd,
+                                    'applied_rules' => [
+                                        [
+                                            'id' => $idd,
+                                            'title' => $titled,
+                                            'type' => 'simple_discount',
+                                            'discount' => [
+                                                'applied_in' => $appliedInd,
+                                                'discount_type' => $discount_typed,
+                                                'discount_value' => $discount_valued,
+                                                'discount_label' => $discount_labeld,
+                                                'discount_price' => $discount_priced
+                                            ]
+                                        ]
+                                    ],
+                                    'saved_amount' => 0,
+                                    'saved_amount_based_on_tax_settings' => 0,
+                                    'is_free_product' => false
+                                ];
+                                $serializedData2= serialize($data2);
+
+                                $data3 = [
+                                    'initial_price' => $initialPriced,
+                                    'discounted_price' => $discounted_priced,
+                                    'total_discount_details' => [],
+                                    'cart_discount_details' => [
+                                        $idd => [ // Use coupon ID or another unique identifier here
+                                            'cart_discount' => $discount_valued,
+                                            'cart_shipping' => 'no',
+                                            'cart_discount_type' => $discount_typed,
+                                            'cart_discount_label' => $discount_labeld,
+                                            'cart_discount_price' => $discount_priced,
+                                            'cart_discount_product_price' => $discount_priced
+                                        ]
+                                    ],
+                                    'apply_as_cart_rule' => ['yes'],
+                                    'discount_lines' => [
+                                        'non_applied' => [
+                                            'quantity' => $qtyd,
+                                            'discount' => 0,
+                                            'price' => $initialPriced,
+                                            'calculate_discount_from' => $initialPriced
+                                        ]
+                                    ],
+                                    'cart_quantity' => $qtyd,
+                                    'product_id' =>$item['variation_id'] ?? $item['product_id'],
+                                    'initial_price_based_on_tax_settings' => $initialPrice,
+                                    'discounted_price_based_on_tax_settings' => $initialPrice
+                                ];
+                                
+                                $serializedData3= serialize($data3);
+                                $itemMeta[]=['order_item_id' => $orderItemId, 'meta_key' => '_wdr_discounts', 'meta_value' => $serializedData2];
+                                $itemMeta[]=['order_item_id' => $orderItemId, 'meta_key' => '_advanced_woo_discount_item_total_discount', 'meta_value' => $serializedData3];
+                            }
+                        } catch (\Throwable $th) {
+                            //throw $th;
+                        }
+
                         foreach ($itemMeta as $meta) {
                             OrderItemMeta::insert($meta);
                         }
@@ -1109,7 +1434,7 @@ class PayPalController extends Controller
 
 
 
-                        
+
                         $unitshippingCharge = (float) ($shppingtotal / max($ordertotalQTY, 1)) * $item['quantity'];
                         $done = DB::table('wp_wc_order_product_lookup')->insert([
                             'order_item_id' => $orderItemId,
@@ -1156,7 +1481,7 @@ class PayPalController extends Controller
                     //     isset($orderData['shipping']['state']) ? $orderData['shipping']['state'] : '',
                     //     isset($orderData['shipping']['postcode']) ? $orderData['shipping']['postcode'] : ''
                     // ];
-                    
+
                     // $meta_value1 = trim(implode(' ', $shippingFields));
 
                     // $wp_wc_order_meta = [
@@ -1267,14 +1592,14 @@ class PayPalController extends Controller
                     }
 
                     $checkout->delete();
-                    
+
                     DB::commit();
-                    $email= $orderData['billing']['email'];
-                    $username = $orderData['billing']['first_name']. ' '. $orderData['billing']['last_name'];
-                    $deliveryDate= '3 working Days';
-                    $businessAddress= implode(' ', $orderData['shipping']);
+                    $email = $orderData['billing']['email'];
+                    $username = $orderData['billing']['first_name'] . ' ' . $orderData['billing']['last_name'];
+                    $deliveryDate = '3 working Days';
+                    $businessAddress = implode(' ', $orderData['shipping']);
                     SendOrderConfirmationEmail::dispatch(
-                        $email, 
+                        $email,
                         $newValue,
                         $username,
                         $deliveryDate,
