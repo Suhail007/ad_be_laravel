@@ -17,6 +17,7 @@ use App\Http\Controllers\DiscountRuleController;
 use App\Http\Controllers\MyAcccountController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\Woo\PublicController;
+use App\Http\Controllers\Woo\TestController;
 use App\Http\Controllers\Woo\WishlistController;
 use Illuminate\Support\Facades\Mail;
 
@@ -127,7 +128,7 @@ Route::get('/log', function () {
 Route::get('/cart-sync',[CleanupController::class,'cartSync']);
 
 
-
+Route::post('/createorder',[TestController::class,'createOrder']);
 
 
 Route::get('/best-product/{slug}', [PublicController::class, 'show']);
