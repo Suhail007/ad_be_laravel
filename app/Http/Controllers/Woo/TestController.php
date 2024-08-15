@@ -41,7 +41,7 @@ class TestController extends Controller
         'line_items' => $validated['line_items'],
         'shipping_lines' => $request->input('shipping_lines', []) // Optional
     ];
-
+dd($orderData);
         try {
             // Send request to WooCommerce API
             $response = Http::withBasicAuth($this->consumerKey, $this->consumerSecret)
