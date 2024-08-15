@@ -659,7 +659,7 @@ class ProductController extends Controller
                     }
                 ])
                     ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
-                    ->where('post_type', 'product');
+                    ->where('post_type', 'product')->where('post_status','publish');
     
                 if (!empty($searchTerm)) {
                     $searchWords = preg_split('/\s+/', $searchTerm);
