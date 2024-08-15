@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Woo;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class TestController extends Controller
 {
@@ -31,21 +32,21 @@ class TestController extends Controller
         ]);
 
         // Prepare data for the API request
-        $orderData = [
-            'customer_id' => $validated['customer_id'],
-            'line_items' => $validated['line_items'],
-            'billing' => $validated['billing'],
-            'shipping' => $validated['shipping'],
-            'payment_method' => 'bacs', // Example payment method
-            'payment_method_title' => 'Direct Bank Transfer',
-            'set_paid' => true, // Set to false if payment is not done yet
-        ];
+         $orderData = [
+        'payment_method' => 'bacs',
+        'payment_method_title' => 'Direct Bank Transfer',
+        'set_paid' => true, // Set to false if payment is not done yet
+        'billing' => $validated['billing'],
+        'shipping' => $validated['shipping'],
+        'line_items' => $validated['line_items'],
+        'shipping_lines' => $request->input('shipping_lines', []) // Optional
+    ];
 
         try {
             // Send request to WooCommerce API
             $response = Http::withBasicAuth($this->consumerKey, $this->consumerSecret)
                 ->post($this->apiUrl, $orderData);
-
+            Log::info('response api '.$response);
             // Check if request was successful
             if ($response->successful()) {
                 return response()->json($response->json(), 201); // Return created order details
