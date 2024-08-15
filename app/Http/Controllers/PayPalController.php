@@ -143,7 +143,7 @@ class PayPalController extends Controller
         $paytype = $request->input('paymentType');
         $amount = $request->input('amount');
         $order_type = $request->input('order_type');
-        $stateType = $request->input('stateType') ?? 'OS';
+        $stateType =$user->mmtax ?? $request->input('stateType') ?? 'OS';
         $order_role = $request->input('order_role');
         $order_wholesale_role = $request->input('order_role'); // $request->input('order_wholesale_role');
         $shippingLines = $request->input('shipping_lines');
