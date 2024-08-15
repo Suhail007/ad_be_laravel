@@ -619,6 +619,7 @@ class CartController extends Controller
             'status' => true,
             'freeze'=>$isFreeze,
             'username' => $user->user_login,
+            'user_mm_txc' => $user->mmtax ?? null,
             'message' => 'Cart items',
             'data' => $userIp,
             'current_time' => now()->toDateTimeString(),
