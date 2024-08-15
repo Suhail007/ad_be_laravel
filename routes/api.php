@@ -41,6 +41,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     //menu cleanup 
     Route::get('/cleanup',[CleanupController::class,'menuCleanUp']);
     Route::get('/category-list/{value}',[CleanupController::class,'category']);
+    Route::get('/brand-list/{value}',[CleanupController::class,'brand']);
     //media 
     Route::post('/media/upload', [MediaController::class, 'uploadFile']);
     Route::get('/media', [MediaController::class, 'index']);

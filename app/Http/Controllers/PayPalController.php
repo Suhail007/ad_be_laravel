@@ -143,7 +143,7 @@ class PayPalController extends Controller
         $paytype = $request->input('paymentType');
         $amount = $request->input('amount');
         $order_type = $request->input('order_type');
-        $stateType =$user->mmtax ?? $request->input('stateType') ?? 'OS';
+        $stateType = $user->mmtax ?? $request->input('stateType') ?? 'OS';
         $order_role = $request->input('order_role');
         $order_wholesale_role = $request->input('order_role'); // $request->input('order_wholesale_role');
         $shippingLines = $request->input('shipping_lines');
@@ -416,10 +416,10 @@ class PayPalController extends Controller
                     foreach ($metaData as $meta) {
                         OrderMeta::insert($meta);
                     }
-                    if ($orderData['shipping']['state'] == 'IL') {
-                        $metaValueST =  'IL';
-                    } elseif ($stateType == 'EX') {
+                    if ($stateType == 'EX') {
                         $metaValueST = 'EX';
+                    } elseif ($orderData['shipping']['state'] == 'IL') {
+                        $metaValueST =  'IL';
                     } else {
                         $metaValueST =  'OS';
                     }
@@ -483,6 +483,34 @@ class PayPalController extends Controller
                         foreach ($metaILTax as $meta) {
                             OrderItemMeta::insert($meta);
                         }
+                    }
+                    try {
+                    if ($request->input('cartAdjustment')) {
+                        $cartAdjustment = $request->input('cartAdjustment');
+                        if ($cartAdjustment[0]['couponName']) {
+                            $id4= DB::table('wp_woocommerce_order_items')->insertGetId([
+                                'order_id' => $orderId,
+                                'order_item_name' => $cartAdjustment[0]['couponName'],
+                                'order_item_type' => 'coupon'
+                            ]);
+                            if($cartAdjustment[0]['type'] =='percentage'){
+                                $discountRateTypec='percent';
+                            }
+
+                            $coupon_info = [0, $cartAdjustment[0]['couponName'], $discountRateTypec, 0];
+                            $jsonCouponInfo = json_encode($coupon_info);
+                            $metaILTax = [
+                                ['order_item_id' => $id4, 'meta_key' => 'coupon_info', 'meta_value' => $jsonCouponInfo],
+                                ['order_item_id' => $id4, 'meta_key' => 'discount_amount_tax', 'meta_value' => 0],
+                                ['order_item_id' => $id4, 'meta_key' => 'discount_amount', 'meta_value' => 0],
+                            ];
+                            foreach ($metaILTax as $meta) {
+                                OrderItemMeta::insert($meta);
+                            }
+                        }
+                    }
+                    } catch (\Throwable $th) {
+
                     }
 
                     $taxAmmountWC = 0;
@@ -1113,10 +1141,10 @@ class PayPalController extends Controller
                     foreach ($metaData as $meta) {
                         OrderMeta::insert($meta);
                     }
-                    if ($orderData['shipping']['state'] == 'IL') {
-                        $metaValueST =  'IL';
-                    } elseif ($stateType == 'EX') {
+                    if ($stateType == 'EX') {
                         $metaValueST = 'EX';
+                    } elseif ($orderData['shipping']['state'] == 'IL') {
+                        $metaValueST =  'IL';
                     } else {
                         $metaValueST =  'OS';
                     }
@@ -1182,6 +1210,36 @@ class PayPalController extends Controller
                             OrderItemMeta::insert($meta);
                         }
                     }
+
+                       try {
+                        if ($request->input('cartAdjustment')) {
+                            $cartAdjustment = $request->input('cartAdjustment');
+                            if ($cartAdjustment[0]['couponName']) {
+                                $id4= DB::table('wp_woocommerce_order_items')->insertGetId([
+                                    'order_id' => $orderId,
+                                    'order_item_name' => $cartAdjustment[0]['couponName'],
+                                    'order_item_type' => 'coupon'
+                                ]);
+                                if($cartAdjustment[0]['type'] =='percentage'){
+                                    $discountRateTypec='percent';
+                                }
+    
+                                $coupon_info = [0, $cartAdjustment[0]['couponName'], $discountRateTypec, 0];
+                                $jsonCouponInfo = json_encode($coupon_info);
+                                $metaILTax = [
+                                    ['order_item_id' => $id4, 'meta_key' => 'coupon_info', 'meta_value' => $jsonCouponInfo],
+                                    ['order_item_id' => $id4, 'meta_key' => 'discount_amount_tax', 'meta_value' => 0],
+                                    ['order_item_id' => $id4, 'meta_key' => 'discount_amount', 'meta_value' => 0],
+                                ];
+                                foreach ($metaILTax as $meta) {
+                                    OrderItemMeta::insert($meta);
+                                }
+                            }
+                        }
+                        } catch (\Throwable $th) {
+    
+                        }
+    
 
                     $dd = [];
                     foreach ($orderData['extra'] as $item) {
@@ -1597,7 +1655,7 @@ class PayPalController extends Controller
                     }
 
                     $checkout->delete();
-
+// dd();
                     DB::commit();
                     $email = $orderData['billing']['email'];
                     $username = $orderData['billing']['first_name'] . ' ' . $orderData['billing']['last_name'];
