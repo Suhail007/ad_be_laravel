@@ -47,8 +47,8 @@ class WooCommerceController extends Controller
                 $query->where('meta_key', 'visibility')
                     ->where('meta_value', 'protected');
             })
-            ->where('post_name', $slug)->first();
-            if(!$product){
+                ->where('post_name', $slug)->first();
+            if (!$product) {
                 return response()->json(['status' => false, 'message' => 'Product Not Found, Login to see Products']);
             }
         }
@@ -308,6 +308,97 @@ class WooCommerceController extends Controller
         );
         return $woocommerce;
     }
+
+    public function createOrder(Request $request)
+    {
+        $apiUrl = 'https://adfe.phantasm.solutions/wp-json/wc/v3/orders';
+        $consumerKey = 'ck_c8dc03022f8f45e6f71552507ef3f36b9d21b272';
+        $consumerSecret = 'cs_ff377d2ce01a253a56090984036b08c727d945b5';
+
+        $data = [
+            // "paymentType"=>"card",
+            'payment_method' => 'bacs',
+            'payment_method_title' => 'Direct Bank Transfer',
+            'set_paid' => true,
+            'billing' => [
+                'first_name' => 'John',
+                'last_name' => 'Doe',
+                'address_1' => '969 Market',
+                'address_2' => '',
+                'city' => 'Chicago',
+                'state' => 'IL',
+                'postcode' => '60665',
+                'country' => 'US',
+                'email' => 'john.doe@example.com',
+                'phone' => '5555555555'
+            ],
+            'shipping' => [
+                'first_name' => 'John',
+                'last_name' => 'Doe',
+                'address_1' => '969 Market',
+                'address_2' => '',
+                'city' => 'Chicago',
+                'state' => 'IL',
+                'postcode' => '60665',
+                'country' => 'US'
+            ],
+            'line_items' => [
+                [
+                    'product_id' => 12,
+                    'variation_id' => 15,
+                    'quantity' => 1,
+                    "tax_class" => "vapes",
+                    "subtotal" => "600.00",
+                    "subtotal_tax" => "0.45",
+                    "total" => "600.00",
+                    "total_tax" => "0.45",
+                    "taxes" => [
+                        [
+                            "id" => 75,
+                            "total" => "0.45",
+                            "subtotal" => "0.45"
+                        ]
+                    ],
+                    'meta_data' => [
+                        [
+                            'key' => '_indirect_tax_amount',
+                            'value' => '0.45'
+                        ],
+                        [
+                            'key' => '_indirect_tax_basis',
+                            'value' => '60'
+                        ]
+                        ],
+                    "sku" => "",
+                    "price" => 300
+                ]
+            ],
+            'shipping_lines' => [
+                [
+                    'method_id' => 'flat_rate',
+                    'method_title' => 'Flat Rate',
+                    'total' => '15.00'
+                ]
+            ]
+        ];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $apiUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_USERPWD, $consumerKey . ":" . $consumerSecret);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+
+        $response = curl_exec($ch);
+        if (curl_errno($ch)) {
+            echo 'Error:' . curl_error($ch);
+        } else {
+            echo $response;
+        }
+        curl_close($ch);
+    }
+
 
     public function getAllOrders()
     {

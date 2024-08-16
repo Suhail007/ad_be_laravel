@@ -128,7 +128,7 @@ Route::get('/log', function () {
 Route::get('/cart-sync',[CleanupController::class,'cartSync']);
 
 
-Route::post('/createorder',[TestController::class,'createOrder']);
+Route::post('/createorder',[WooCommerceController::class,'createOrder']);
 
 
 Route::get('/best-product/{slug}', [PublicController::class, 'show']);

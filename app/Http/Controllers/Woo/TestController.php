@@ -31,7 +31,6 @@ class TestController extends Controller
             'shipping' => 'required|array',
         ]);
 
-        // Prepare data for the API request
          $orderData = [
         'payment_method' => 'bacs',
         'payment_method_title' => 'Direct Bank Transfer',
