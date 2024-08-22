@@ -16,6 +16,7 @@ use Exception;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PhpParser\Node\Stmt\TryCatch;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class PayPalController extends Controller
@@ -623,14 +624,27 @@ class PayPalController extends Controller
                         try {
 
 
-
+                            $ischangeproducttocart=false;
                             if (isset($item['discount_amt']) && $item['discount_amt']) {
                                 $discountAmount = $item['discount_amt'];
                                 $coupon = DB::table('wp_wdr_rules')->where('id', $item['applicable_rules'][0]['rule_id'])->first();
 
                                 $productAdjustments = json_decode($coupon->product_adjustments, true);
+                                try {
+                                    if($request->input('cartAdjustment')){
+                                        $productAdjustments = json_decode($coupon->cart_adjustments, true);
+                                        $ischangeproducttocart=true;
+                                    }
+                                } catch (\Throwable $th) {
+                                    
+                                }
+                                
                                 if (json_last_error() === JSON_ERROR_NONE && isset($productAdjustments['cart_label'])) {
                                     $cartLabel = $productAdjustments['cart_label'];
+                                    $cartValue = $productAdjustments['value'];
+                                    $cartType = $productAdjustments['type'];
+                                } else if ($ischangeproducttocart) {
+                                    $cartLabel = $productAdjustments['label'];
                                     $cartValue = $productAdjustments['value'];
                                     $cartType = $productAdjustments['type'];
                                 } else {
@@ -1353,14 +1367,27 @@ class PayPalController extends Controller
                         try {
 
 
-
+                        $ischangeproducttocart=false;
                             if (isset($item['discount_amt']) && $item['discount_amt']) {
                                 $discountAmount = $item['discount_amt'];
                                 $coupon = DB::table('wp_wdr_rules')->where('id', $item['applicable_rules'][0]['rule_id'])->first();
 
                                 $productAdjustments = json_decode($coupon->product_adjustments, true);
+                                try {
+                                    if($request->input('cartAdjustment')){
+                                        $productAdjustments = json_decode($coupon->cart_adjustments, true);
+                                        $ischangeproducttocart=true;
+                                    }
+                                } catch (\Throwable $th) {
+                                    
+                                }
+                                // dd($productAdjustments);
                                 if (json_last_error() === JSON_ERROR_NONE && isset($productAdjustments['cart_label'])) {
                                     $cartLabel = $productAdjustments['cart_label'];
+                                    $cartValue = $productAdjustments['value'];
+                                    $cartType = $productAdjustments['type'];
+                                } else if ($ischangeproducttocart) {
+                                    $cartLabel = $productAdjustments['label'];
                                     $cartValue = $productAdjustments['value'];
                                     $cartType = $productAdjustments['type'];
                                 } else {
@@ -1370,6 +1397,8 @@ class PayPalController extends Controller
                                 }
                                 if ($cartType == 'percentage') {
                                     $cartTypeN = 'percent';
+                                } else  {
+                                    $cartTypeN=$cartType;
                                 }
                                 $couponTitle = $cartLabel; //20% off  //<-lable
                                 $discountRateType = $cartTypeN; // 'percent'
@@ -1380,7 +1409,7 @@ class PayPalController extends Controller
                                     'order_item_name' => $couponTitle,
                                     'order_item_type' => 'coupon'
                                 ]);
-
+                                                       
 
                                 $coupon_info = [0, $couponTitle, $discountRateType, $discountRateValue];
                                 $jsonCouponInfo = json_encode($coupon_info);
@@ -1389,7 +1418,7 @@ class PayPalController extends Controller
                                     ['order_item_id' => $id3, 'meta_key' => 'discount_amount_tax', 'meta_value' => round($cartDiscountTax, 2) ?? 0],
                                     ['order_item_id' => $id3, 'meta_key' => 'discount_amount', 'meta_value' => $cartDiscount ?? 0],
                                 ];
-
+                                // dd($metaILTax);
                                 foreach ($metaILTax as $meta) {
                                     OrderItemMeta::insert($meta);
                                 }
