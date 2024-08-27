@@ -834,13 +834,20 @@ class PayPalController extends Controller
 
                     // DB::table('wp_wc_orders_meta')->insert($wp_wc_order_meta);
 
+                    try {
+                        $billingCompany= $orderData['billing']['company'];
+                        $shippingCompany= $orderData['shipping']['company'];
+                    } catch (\Throwable $th) {
+                        $billingCompany='';
+                        $shippingCompany='';
+                    }
                     DB::table('wp_wc_order_addresses')->insert([
                         [
                             'order_id' => $orderId,
                             'address_type' => 'billing',
                             'first_name' => $orderData['billing']['first_name'],
                             'last_name' => $orderData['billing']['last_name'],
-                            'company' => '',
+                            'company' => $billingCompany??'',
                             'address_1' => $orderData['billing']['address_1'],
                             'address_2' => $orderData['billing']['address_2'],
                             'city' => $orderData['billing']['city'],
@@ -855,7 +862,7 @@ class PayPalController extends Controller
                             'address_type' => 'shipping',
                             'first_name' => $orderData['shipping']['first_name'],
                             'last_name' => $orderData['shipping']['last_name'],
-                            'company' => '',
+                            'company' => $shippingCompany??'',
                             'address_1' => $orderData['shipping']['address_1'],
                             'address_2' => $orderData['shipping']['address_2'],
                             'city' => $orderData['shipping']['city'],
@@ -959,14 +966,12 @@ class PayPalController extends Controller
                 $total = 0;
                 $checkout->update(
                     [
-                        // 'total' => $shippingLines[0]['total'] + $amount, 
                         'extra' => $lineItems,
                         'paymentType' => $paytype,
                     ]
                 );
                 $orderData = Checkout::where('user_id', $user->ID)->first();
 
-                //total item with unit tax with per unit discount
                 $isVape = false;
                 $order_tax = 0;
                 $ordertotalQTY = 0;
@@ -1595,13 +1600,20 @@ class PayPalController extends Controller
 
                     // DB::table('wp_wc_orders_meta')->insert($wp_wc_order_meta);
 
+                    try {
+                        $billingCompany= $orderData['billing']['company'];
+                        $shippingCompany= $orderData['shipping']['company'];
+                    } catch (\Throwable $th) {
+                        $billingCompany='';
+                        $shippingCompany='';
+                    }
                     DB::table('wp_wc_order_addresses')->insert([
                         [
                             'order_id' => $orderId,
                             'address_type' => 'billing',
                             'first_name' => $orderData['billing']['first_name'],
                             'last_name' => $orderData['billing']['last_name'],
-                            'company' => '',
+                            'company' => $billingCompany??'',
                             'address_1' => $orderData['billing']['address_1'],
                             'address_2' => $orderData['billing']['address_2'],
                             'city' => $orderData['billing']['city'],
@@ -1616,7 +1628,7 @@ class PayPalController extends Controller
                             'address_type' => 'shipping',
                             'first_name' => $orderData['shipping']['first_name'],
                             'last_name' => $orderData['shipping']['last_name'],
-                            'company' => '',
+                            'company' => $shippingCompany??'',
                             'address_1' => $orderData['shipping']['address_1'],
                             'address_2' => $orderData['shipping']['address_2'],
                             'city' => $orderData['shipping']['city'],
