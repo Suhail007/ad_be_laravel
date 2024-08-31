@@ -625,200 +625,196 @@ class ProductController extends Controller
     }
 
     public function searchProductsAll(Request $request)
-    {
-        $searchTerm = $request->input('searchTerm', '');
-        $perPage = $request->query('perPage', 15);
-        $sortBy = $request->query('sort', 'default');
-        $page = $request->query('page', 1);
+{
+    $searchTerm = $request->input('searchTerm', '');
+    $perPage = $request->query('perPage', 15);
+    $sortBy = $request->query('sort', 'default');
+    $page = $request->query('page', 1);
 
-        $cacheKey = 'products_' . md5($searchTerm . $perPage . $sortBy . $page);
-        $cacheDuration = 4320;
-        $auth=false;
-        
-        try {
-            $user = JWTAuth::parseToken()->authenticate();
-            $priceTier = $user->price_tier ?? '';
-            $auth=true;
-            $products = Cache::remember($cacheKey, $cacheDuration, function () use ($searchTerm, $perPage, $page, $priceTier) {
-                $query = Product::with([
-                    'meta' => function ($query) use($priceTier) {
-                        $query->select('post_id', 'meta_key', 'meta_value')
-                            ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
-                    },
-                    'categories' => function ($query) {
-                        $query->select('wp_terms.term_id', 'wp_terms.name')
-                            ->with([
-                                'categorymeta' => function ($query) {
-                                    $query->select('term_id', 'meta_key', 'meta_value')
-                                        ->where('meta_key', 'visibility');
-                                },
-                                'taxonomies' => function ($query) {
-                                        $query->select('term_id', 'taxonomy');
-                                    }
-                            ]);
-                    }
-                ])
-                    ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
-                    ->where('post_type', 'product')->where('post_status','publish');
-    
-                if (!empty($searchTerm)) {
-                    $searchWords = preg_split('/\s+/', $searchTerm);
-                    $regexPattern = implode('.*', array_map(function ($word) {
-                        return "(?=.*" . preg_quote($word) . ")";
-                    }, $searchWords));
-    
-                    $query->where(function ($query) use ($regexPattern) {
-                        $query->where('post_title', 'REGEXP', $regexPattern)
-                            ->orWhereHas('meta', function ($query) use ($regexPattern) {
-                                $query->where('meta_key', '_sku')
-                                    ->where('meta_value', 'REGEXP', $regexPattern);
-                            });
+    $auth = false;
+
+    try {
+        $user = JWTAuth::parseToken()->authenticate();
+        $priceTier = $user->price_tier ?? '';
+        $auth = true;
+
+        $query = Product::with([
+            'meta' => function ($query) use ($priceTier) {
+                $query->select('post_id', 'meta_key', 'meta_value')
+                    ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
+            },
+            'categories' => function ($query) {
+                $query->select('wp_terms.term_id', 'wp_terms.name')
+                    ->with([
+                        'categorymeta' => function ($query) {
+                            $query->select('term_id', 'meta_key', 'meta_value')
+                                ->where('meta_key', 'visibility');
+                        },
+                        'taxonomies' => function ($query) {
+                            $query->select('term_id', 'taxonomy');
+                        }
+                    ]);
+            }
+        ])
+            ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+            ->where('post_type', 'product')->where('post_status', 'publish');
+
+        if (!empty($searchTerm)) {
+            $searchWords = preg_split('/\s+/', $searchTerm);
+            $regexPattern = implode('.*', array_map(function ($word) {
+                return "(?=.*" . preg_quote($word) . ")";
+            }, $searchWords));
+
+            $query->where(function ($query) use ($regexPattern) {
+                $query->where('post_title', 'REGEXP', $regexPattern)
+                    ->orWhereHas('meta', function ($query) use ($regexPattern) {
+                        $query->where('meta_key', '_sku')
+                            ->where('meta_value', 'REGEXP', $regexPattern);
                     });
-                }
-    
-                return $query->orderBy('post_date', 'desc')->paginate($perPage, ['*'], 'page', $page);
-            });
-        } catch (\Throwable $th) {
-            $priceTier='';
-            $products = Cache::remember($cacheKey, $cacheDuration, function () use ($searchTerm, $perPage, $page) {
-                $query = Product::with([
-                    'meta' => function ($query) {
-                        $query->select('post_id', 'meta_key', 'meta_value')
-                            ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id']);
-                    },
-                    'categories' => function ($query) {
-                        $query->select('wp_terms.term_id', 'wp_terms.name')
-                            ->with([
-                                'categorymeta' => function ($query) {
-                                    $query->select('term_id', 'meta_key', 'meta_value')
-                                        ->where('meta_key', 'visibility');
-                                },
-                                'taxonomies' => function ($query) {
-                                        $query->select('term_id', 'taxonomy');
-                                }
-                            ]);
-                    }
-                ])
-                    ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
-                    ->whereDoesntHave('categories.categorymeta', function ($query) {
-                        $query->where('meta_key', 'visibility')
-                            ->where('meta_value', 'protected');
-                    })
-                    ->where('post_type', 'product');
-    
-                if (!empty($searchTerm)) {
-                    $searchWords = preg_split('/\s+/', $searchTerm);
-                    $regexPattern = implode('.*', array_map(function ($word) {
-                        return "(?=.*" . preg_quote($word) . ")";
-                    }, $searchWords));
-    
-                    $query->where(function ($query) use ($regexPattern) {
-                        $query->where('post_title', 'REGEXP', $regexPattern)
-                            ->orWhereHas('meta', function ($query) use ($regexPattern) {
-                                $query->where('meta_key', '_sku')
-                                    ->where('meta_value', 'REGEXP', $regexPattern);
-                            });
-                    });
-                }
-    
-                return $query->orderBy('post_date', 'desc')->paginate($perPage, ['*'], 'page', $page);
             });
         }
-      
+
+        $products = $query->orderBy('post_date', 'desc')->paginate($perPage, ['*'], 'page', $page);
+    } catch (\Throwable $th) {
+        $priceTier = '';
+
+        $query = Product::with([
+            'meta' => function ($query) {
+                $query->select('post_id', 'meta_key', 'meta_value')
+                    ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id']);
+            },
+            'categories' => function ($query) {
+                $query->select('wp_terms.term_id', 'wp_terms.name')
+                    ->with([
+                        'categorymeta' => function ($query) {
+                            $query->select('term_id', 'meta_key', 'meta_value')
+                                ->where('meta_key', 'visibility');
+                        },
+                        'taxonomies' => function ($query) {
+                            $query->select('term_id', 'taxonomy');
+                        }
+                    ]);
+            }
+        ])
+            ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+            ->whereDoesntHave('categories.categorymeta', function ($query) {
+                $query->where('meta_key', 'visibility')
+                    ->where('meta_value', 'protected');
+            })
+            ->where('post_type', 'product');
+
+        if (!empty($searchTerm)) {
+            $searchWords = preg_split('/\s+/', $searchTerm);
+            $regexPattern = implode('.*', array_map(function ($word) {
+                return "(?=.*" . preg_quote($word) . ")";
+            }, $searchWords));
+
+            $query->where(function ($query) use ($regexPattern) {
+                $query->where('post_title', 'REGEXP', $regexPattern)
+                    ->orWhereHas('meta', function ($query) use ($regexPattern) {
+                        $query->where('meta_key', '_sku')
+                            ->where('meta_value', 'REGEXP', $regexPattern);
+                    });
+            });
+        }
+
+        $products = $query->orderBy('post_date', 'desc')->paginate($perPage, ['*'], 'page', $page);
+    }
+
+    try {
+        $user = JWTAuth::parseToken()->authenticate();
+        $priceTier = $user->price_tier ?? '';
+        if ($user) {
+            $products->getCollection()->transform(function ($product) use ($priceTier) {
+                $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
+                $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
+                try {
+                    $ad_price = $product->meta->where('meta_key', $priceTier)->pluck('meta_value')->first() ?? '';
+                    if ($ad_price == '') {
+                        $ad_price = $this->getVariations($product->ID, $priceTier);
+                        $ad_price = $ad_price[0];
+                    }
+                } catch (\Throwable $th) {
+                    $ad_price = null;
+                }
+                return [
+                    'ID' => $product->ID,
+                    'ad_price' => $ad_price,
+                    'title' => $product->post_title,
+                    'slug' => $product->post_name,
+                    'thumbnail_url' => $thumbnailUrl,
+                    'categories' => $product->categories->map(function ($category) {
+                        $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                        return [
+                            'term_id' => $category->term_id,
+                            'name' => $category->name,
+                            'visibility' => $visibility ? $visibility : 'public',
+                        ];
+                    }),
+                    'meta' => $product->meta->map(function ($meta) {
+                        return [
+                            'meta_key' => $meta->meta_key,
+                            'meta_value' => $meta->meta_value
+                        ];
+                    }),
+                    'post_modified' => $product->post_modified
+                ];
+            });
+
+            return response()->json(['status' => 'auth', 'user' => $user, 'products' => $products]);
+        }
+    } catch (\Throwable $th) {
+        Log::error('Error processing authenticated request: ' . $th->getMessage());
 
         try {
-            $user = JWTAuth::parseToken()->authenticate();
-            $priceTier = $user->price_tier ?? '';
-            if ($user) {
-                $products->getCollection()->transform(function ($product) use($priceTier) {
-                    $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
-                    $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
-                    try {
-                        $ad_price = $product->meta->where('meta_key', $priceTier )->pluck('meta_value')->first()??'';
-                        if($ad_price==''){
-                            $ad_price= $this->getVariations($product->ID,$priceTier);
-                            $ad_price=$ad_price[0];
-                        }
-                    } catch (\Throwable $th) {
-                        $ad_price=null;
-                    }
-                    return [
-                        'ID' => $product->ID,
-                        'ad_price'=>$ad_price,
-                        'title' => $product->post_title,
-                        'slug' => $product->post_name,
-                        'thumbnail_url' => $thumbnailUrl,
-                        'categories' => $product->categories->map(function ($category) {
-                            $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
-                            return [
-                                'term_id' => $category->term_id,
-                                'name' => $category->name,
-                                'visibility' => $visibility ? $visibility : 'public',
-                            ];
-                        }),
-                        'meta' => $product->meta->map(function ($meta) {
-                            return [
-                                'meta_key' => $meta->meta_key,
-                                'meta_value' => $meta->meta_value
-                            ];
-                        }),
-                        'post_modified' => $product->post_modified
-                    ];
+            $originalCollection = $products->getCollection();
+
+            $filteredCollection = $originalCollection->filter(function ($product) {
+                $hasProtectedCategory = $product->categories->contains(function ($category) {
+                    $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                    return $visibility === 'protected';
                 });
+                return !$hasProtectedCategory;
+            });
 
-                return response()->json(['status' => 'auth', 'user' => $user, 'products' => $products]);
-            }
-        } catch (\Throwable $th) {
-            Log::error('Error processing authenticated request: ' . $th->getMessage());
+            $transformedCollection = $filteredCollection->transform(function ($product) {
+                $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
+                $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
 
-            try {
-                $originalCollection = $products->getCollection();
-
-                $filteredCollection = $originalCollection->filter(function ($product) {
-                    $hasProtectedCategory = $product->categories->contains(function ($category) {
+                return [
+                    'ID' => $product->ID,
+                    'ad_price' => null,
+                    'title' => $product->post_title,
+                    'slug' => $product->post_name,
+                    'thumbnail_url' => $thumbnailUrl,
+                    'categories' => $product->categories->map(function ($category) {
                         $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
-                        return $visibility === 'protected';
-                    });
-                    return !$hasProtectedCategory;
-                });
+                        return [
+                            'term_id' => $category->term_id,
+                            'name' => $category->name,
+                            'visibility' => $visibility ? $visibility : 'public',
+                        ];
+                    }),
+                    'meta' => $product->meta->map(function ($meta) {
+                        return [
+                            'meta_key' => $meta->meta_key,
+                            'meta_value' => $meta->meta_value
+                        ];
+                    }),
+                    'post_modified' => $product->post_modified
+                ];
+            });
 
-                $transformedCollection = $filteredCollection->transform(function ($product) {
-                    $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
-                    $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
+            $products->setCollection($transformedCollection->values());
 
-                    return [
-                        'ID' => $product->ID,
-                        'ad_price'=>null,
-                        'title' => $product->post_title,
-                        'slug' => $product->post_name,
-                        'thumbnail_url' => $thumbnailUrl,
-                        'categories' => $product->categories->map(function ($category) {
-                            $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
-                            return [
-                                'term_id' => $category->term_id,
-                                'name' => $category->name,
-                                'visibility' => $visibility ? $visibility : 'public',
-                            ];
-                        }),
-                        'meta' => $product->meta->map(function ($meta) {
-                            return [
-                                'meta_key' => $meta->meta_key,
-                                'meta_value' => $meta->meta_value
-                            ];
-                        }),
-                        'post_modified' => $product->post_modified
-                    ];
-                });
-
-                $products->setCollection($transformedCollection->values());
-
-                return response()->json(['status' => 'no-auth', 'products' => $products]);
-            } catch (\Throwable $th) {
-                Log::error('Error processing unauthenticated request: ' . $th->getMessage());
-                return response()->json(['status' => 'no-auth', 'message' => $th->getMessage()], 500);
-            }
+            return response()->json(['status' => 'no-auth', 'products' => $products]);
+        } catch (\Throwable $th) {
+            Log::error('Error processing unauthenticated request: ' . $th->getMessage());
+            return response()->json(['status' => 'no-auth', 'message' => $th->getMessage()], 500);
         }
     }
+}
+
     public function getRelatedProducts($id)
     {
         // Fetch the product
