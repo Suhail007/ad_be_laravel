@@ -626,8 +626,7 @@ class PayPalController extends Controller
 
 
                             $ischangeproducttocart=false;
-                            if (isset($item['discount_amt']) && $item['discount_amt'] && $temp== false) {
-                                $temp=true;
+                            if (isset($item['discount_amt']) && $item['discount_amt']) {
                                 $discountAmount = $item['discount_amt'];
                                 $coupon = DB::table('wp_wdr_rules')->where('id', $item['applicable_rules'][0]['rule_id'])->first();
 
@@ -661,11 +660,14 @@ class PayPalController extends Controller
                                 $discountRateType = $cartTypeN; // 'percent'
                                 $discountRateValue = $cartValue; //20
 
-                                $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
-                                    'order_id' => $orderId,
-                                    'order_item_name' => $couponTitle,
-                                    'order_item_type' => 'coupon'
-                                ]);
+                                if($temp== false){
+                                    $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
+                                        'order_id' => $orderId,
+                                        'order_item_name' => $couponTitle,
+                                        'order_item_type' => 'coupon'
+                                    ]);
+                                    $temp=true;
+                                }
 
 
                                 $coupon_info = [0, $couponTitle, $discountRateType, $discountRateValue];
@@ -1376,8 +1378,8 @@ class PayPalController extends Controller
 
 
                         $ischangeproducttocart=false;
-                            if (isset($item['discount_amt']) && $item['discount_amt'] && $temp== false) {
-                                $temp=true;
+                            if (isset($item['discount_amt']) && $item['discount_amt'] ) {
+                               
                                 $discountAmount = $item['discount_amt'];
                                 $coupon = DB::table('wp_wdr_rules')->where('id', $item['applicable_rules'][0]['rule_id'])->first();
 
@@ -1413,11 +1415,15 @@ class PayPalController extends Controller
                                 $discountRateType = $cartTypeN; // 'percent'
                                 $discountRateValue = $cartValue; //20
 
-                                $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
-                                    'order_id' => $orderId,
-                                    'order_item_name' => $couponTitle,
-                                    'order_item_type' => 'coupon'
-                                ]);
+                                if($temp== false){
+                                    $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
+                                        'order_id' => $orderId,
+                                        'order_item_name' => $couponTitle,
+                                        'order_item_type' => 'coupon'
+                                    ]);
+                                    $temp=true;
+                                }
+                               
                                                        
 
                                 $coupon_info = [0, $couponTitle, $discountRateType, $discountRateValue];
