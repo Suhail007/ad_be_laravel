@@ -678,7 +678,7 @@ class PayPalController extends Controller
                                     OrderItemMeta::insert($meta);
                                 }
 
-                                $lineTotalValue = $productPrice - $discountAmount; //product price with tax 
+                                $lineTotalValue = $float2 - $discountAmount; //product price with tax 
                                 // dd($lineTotalValue);
                                 foreach ($itemMeta as &$meta) {
                                     if ($meta['meta_key'] == '_line_total') {
@@ -1428,7 +1428,7 @@ class PayPalController extends Controller
                                     OrderItemMeta::insert($meta);
                                 }
 
-                                $lineTotalValue = $productPrice - $discountAmount; //product price with tax 
+                                $lineTotalValue = $float2 - $discountAmount; //product price with tax 
                                 // dd($lineTotalValue);
                                 foreach ($itemMeta as &$meta) {
                                     if ($meta['meta_key'] == '_line_total') {
