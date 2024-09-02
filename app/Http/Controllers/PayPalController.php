@@ -515,6 +515,7 @@ class PayPalController extends Controller
                     }
 
                     $taxAmmountWC = 0;
+                    $temp=false;
                     foreach ($orderData['extra'] as $item) {
                         $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,
@@ -625,7 +626,8 @@ class PayPalController extends Controller
 
 
                             $ischangeproducttocart=false;
-                            if (isset($item['discount_amt']) && $item['discount_amt']) {
+                            if (isset($item['discount_amt']) && $item['discount_amt'] && $temp== false) {
+                                $temp=true;
                                 $discountAmount = $item['discount_amt'];
                                 $coupon = DB::table('wp_wdr_rules')->where('id', $item['applicable_rules'][0]['rule_id'])->first();
 
@@ -1261,6 +1263,7 @@ class PayPalController extends Controller
     
 
                     $dd = [];
+                    $temp= false;
                     foreach ($orderData['extra'] as $item) {
                         $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,
@@ -1373,7 +1376,8 @@ class PayPalController extends Controller
 
 
                         $ischangeproducttocart=false;
-                            if (isset($item['discount_amt']) && $item['discount_amt']) {
+                            if (isset($item['discount_amt']) && $item['discount_amt'] && $temp== false) {
+                                $temp=true;
                                 $discountAmount = $item['discount_amt'];
                                 $coupon = DB::table('wp_wdr_rules')->where('id', $item['applicable_rules'][0]['rule_id'])->first();
 
