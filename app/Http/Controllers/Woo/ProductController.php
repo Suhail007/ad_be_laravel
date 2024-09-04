@@ -1120,14 +1120,14 @@ class ProductController extends Controller
                                 'visibility' => $visibility ? $visibility : 'public',
                             ];
                         }),
-                        'meta' => $product->meta->filter(function ($meta) {
-                            return $meta->meta_key !== '_price'; // Exclude _price from the response
+                        'meta' =>  $product->meta->filter(function ($meta) {
+                            return $meta->meta_key !== '_price';
                         })->map(function ($meta) {
                             return [
                                 'meta_key' => $meta->meta_key,
                                 'meta_value' => $meta->meta_value
                             ];
-                        }),
+                        })->values(),
                         'post_modified' => $product->post_modified
                     ];
                 });
