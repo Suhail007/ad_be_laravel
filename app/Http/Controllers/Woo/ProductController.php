@@ -691,6 +691,18 @@ class ProductController extends Controller
             }
             $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
 
+            $metaArray = $product->meta->map(function ($meta) {
+                return [
+                    'meta_key' => $meta->meta_key,
+                    'meta_value' => $meta->meta_value
+                ];
+            })->toArray(); // Ensure metaArray is a plain array
+        
+            // Filter meta based on authentication status
+            $filteredMeta = $auth ? $metaArray : array_values(array_filter($metaArray, function ($meta) {
+                return $meta['meta_key'] !== '_price'; 
+            }));
+
             return [
                 'ID' => $product->ID,
                 'ad_price' => $ad_price,
@@ -708,20 +720,7 @@ class ProductController extends Controller
                         'taxonomy' => $taxonomy ? $taxonomy : 'public',
                     ];
                 }),
-                'meta' => $auth  ? $product->meta->map(function ($meta) {
-                    return [
-                        'meta_key' => $meta->meta_key,
-                        'meta_value' => $meta->meta_value
-                    ];
-                })
-                    : $product->meta->filter(function ($meta) {
-                        return $meta->meta_key !== '_price';
-                    })->map(function ($meta) {
-                        return [
-                            'meta_key' => $meta->meta_key,
-                            'meta_value' => $meta->meta_value
-                        ];
-                    }),
+                'meta' => $filteredMeta,
                 'post_modified' => $product->post_modified
             ];
         });
