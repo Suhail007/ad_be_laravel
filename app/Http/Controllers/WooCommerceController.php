@@ -114,7 +114,7 @@ class WooCommerceController extends Controller
                     'short_description' => $product->post_excerpt,
                     'sku' => $metaData->where('key', '_sku')->first()['value'] ?? '',
                     'price' => $price ?? $metaData->where('key', '_regular_price')->first()['value'] ?? $metaData->where('key', '_price')->first()['value'] ?? null,
-                    'ad_price' => $wholesalePrice = ProductMeta::where('post_id', $product->ID)->where('meta_key', $priceTier)->value('meta_value') ?? $metaData->where('key', '_price')->first()['value']  ?? $metaData->where('key', '_regular_price')->first()['value'] ?? $variations->ad_price ?? null,
+                    'ad_price' => ProductMeta::where('post_id', $product->ID)->where('meta_key', $priceTier)->value('meta_value') ?? $this->getVariationsPrice($product->ID, $priceTier),//?? $metaData->where('key', '_price')->first()['value']  ?? $metaData->where('key', '_regular_price')->first()['value'] ?? $variations->ad_price ?? null,
                     'regular_price' => $metaData->where('key', '_regular_price')->first()['value'] ?? '',
                     'sale_price' => $metaData->where('key', '_sale_price')->first()['value'] ?? '',
                     'date_on_sale_from' => $metaData->where('key', '_sale_price_dates_from')->first()['value'] ?? null,
@@ -263,7 +263,30 @@ class WooCommerceController extends Controller
         return $variations;
     }
 
+    private function getVariationsPrice($productId, $priceTier = '')
+    {
+        $variations = Product::where('post_parent', $productId)
+            ->where('post_type', 'product_variation')
+            ->whereHas('meta', function ($query) {
+                // Filter variations to include only those in stock
+                $query->where('meta_key', '_stock_status')
+                    ->where('meta_value', 'instock');
+            })
+            ->with('meta')
+            ->get()
+            ->map(function ($variation) use ($priceTier) {
+                $metaData = $variation->meta->pluck('meta_value', 'meta_key')->toArray();
+                $pattern = '/^(_regular_price|_price' . preg_quote($priceTier, '/') . '|_thumbnail_id)$/';
+                $filteredMetaData = array_filter($metaData, function ($key) use ($pattern) {
+                    return preg_match($pattern, $key);
+                }, ARRAY_FILTER_USE_KEY);
+                $adPrice = $metaData[$priceTier] ?? $metaData['_price'] ?? $metaData['_regular_price'] ?? null;
 
+                return $adPrice;
+            });
+
+        return $variations[0];
+    }
 
     private function getThumbnailUrl($productId)
     {
