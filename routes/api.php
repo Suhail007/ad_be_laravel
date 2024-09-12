@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WooCommerceController;
 // routes/web.php or routes/api.php
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\Checkout\ProcessOrderController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CleanupController;
 use App\Http\Controllers\DiscountRuleController;
@@ -77,6 +78,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     //payment 
     Route::get('/payment-price',[PayPalController::class, 'me']);
     Route::post('/process-payment', [PayPalController::class, 'processPayment']);
+    // Route::post('/process-payment',[ProcessOrderController::class, 'processPayment']);
     // Route::post('/payment-process', [CheckoutController::class, 'processPayment']);
     
     //discount api

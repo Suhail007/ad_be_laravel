@@ -342,7 +342,7 @@ class PayPalController extends Controller
                         ['post_id' => $orderId, 'meta_key' => '_transaction_id', 'meta_value' => $orderId], //$paymentResult['data']['transactionid']],
                         ['post_id' => $orderId, 'meta_key' => '_order_total', 'meta_value' => $total],
                         ['post_id' => $orderId, 'meta_key' => '_order_currency', 'meta_value' => 'USD'],
-                        ['post_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => $isVape ? 0 : null],
+                        // ['post_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => $isVape ? 0 : null],
                         ['post_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? null],
                         ['post_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? null],
                         ['post_id' => $orderId, 'meta_key' => '_order_key', 'meta_value' => 'wc_order_' . uniqid()],
@@ -419,6 +419,7 @@ class PayPalController extends Controller
                     }
                     if ($stateType == 'EX') {
                         $metaValueST = 'EX';
+                        $stateEx = true;
                     } elseif ($orderData['shipping']['state'] == 'IL') {
                         $metaValueST =  'IL';
                     } else {
@@ -430,6 +431,23 @@ class PayPalController extends Controller
                         'meta_key' => 'mm_field_TXC',
                         'meta_value' => $metaValueST,
                     ]);
+
+
+                    if ($stateType == 'EX' && $orderData['shipping']['state'] != 'IL') {
+                        OrderMeta::insert([
+                            'post_id' => $orderId,
+                            'meta_key' => 'mm_field_ITX',
+                            'meta_value' => '1',
+                        ]);
+                    } else {
+                        OrderMeta::insert([
+                            'post_id' => $orderId,
+                            'meta_key' => 'mm_field_ITX',
+                            'meta_value' => $isVape ? 0 : null,
+                        ]);
+                    }
+
+
                     $totalAmount = $total;
                     $productCount = count($orderData['extra']);
                     $id1 = DB::table('wp_woocommerce_order_items')->insertGetId([
@@ -486,36 +504,35 @@ class PayPalController extends Controller
                         }
                     }
                     try {
-                    if ($request->input('cartAdjustment')) {
-                        $cartAdjustment = $request->input('cartAdjustment');
-                        if ($cartAdjustment[0]['couponName']) {
-                            $id4= DB::table('wp_woocommerce_order_items')->insertGetId([
-                                'order_id' => $orderId,
-                                'order_item_name' => $cartAdjustment[0]['couponName'],
-                                'order_item_type' => 'coupon'
-                            ]);
-                            if($cartAdjustment[0]['type'] =='percentage'){
-                                $discountRateTypec='percent';
-                            }
+                        if ($request->input('cartAdjustment')) {
+                            $cartAdjustment = $request->input('cartAdjustment');
+                            if ($cartAdjustment[0]['couponName']) {
+                                $id4 = DB::table('wp_woocommerce_order_items')->insertGetId([
+                                    'order_id' => $orderId,
+                                    'order_item_name' => $cartAdjustment[0]['couponName'],
+                                    'order_item_type' => 'coupon'
+                                ]);
+                                if ($cartAdjustment[0]['type'] == 'percentage') {
+                                    $discountRateTypec = 'percent';
+                                }
 
-                            $coupon_info = [0, $cartAdjustment[0]['couponName'], $discountRateTypec, 0];
-                            $jsonCouponInfo = json_encode($coupon_info);
-                            $metaILTax = [
-                                ['order_item_id' => $id4, 'meta_key' => 'coupon_info', 'meta_value' => $jsonCouponInfo],
-                                ['order_item_id' => $id4, 'meta_key' => 'discount_amount_tax', 'meta_value' => 0],
-                                ['order_item_id' => $id4, 'meta_key' => 'discount_amount', 'meta_value' => 0],
-                            ];
-                            foreach ($metaILTax as $meta) {
-                                OrderItemMeta::insert($meta);
+                                $coupon_info = [0, $cartAdjustment[0]['couponName'], $discountRateTypec, 0];
+                                $jsonCouponInfo = json_encode($coupon_info);
+                                $metaILTax = [
+                                    ['order_item_id' => $id4, 'meta_key' => 'coupon_info', 'meta_value' => $jsonCouponInfo],
+                                    ['order_item_id' => $id4, 'meta_key' => 'discount_amount_tax', 'meta_value' => 0],
+                                    ['order_item_id' => $id4, 'meta_key' => 'discount_amount', 'meta_value' => 0],
+                                ];
+                                foreach ($metaILTax as $meta) {
+                                    OrderItemMeta::insert($meta);
+                                }
                             }
                         }
-                    }
                     } catch (\Throwable $th) {
-
                     }
 
                     $taxAmmountWC = 0;
-                    $temp=false;
+                    $temp = false;
                     foreach ($orderData['extra'] as $item) {
                         $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,
@@ -625,21 +642,20 @@ class PayPalController extends Controller
                         try {
 
 
-                            $ischangeproducttocart=false;
+                            $ischangeproducttocart = false;
                             if (isset($item['discount_amt']) && $item['discount_amt']) {
                                 $discountAmount = $item['discount_amt'];
                                 $coupon = DB::table('wp_wdr_rules')->where('id', $item['applicable_rules'][0]['rule_id'])->first();
 
                                 $productAdjustments = json_decode($coupon->product_adjustments, true);
                                 try {
-                                    if($request->input('cartAdjustment')){
+                                    if ($request->input('cartAdjustment')) {
                                         $productAdjustments = json_decode($coupon->cart_adjustments, true);
-                                        $ischangeproducttocart=true;
+                                        $ischangeproducttocart = true;
                                     }
                                 } catch (\Throwable $th) {
-                                    
                                 }
-                                
+
                                 if (json_last_error() === JSON_ERROR_NONE && isset($productAdjustments['cart_label'])) {
                                     $cartLabel = $productAdjustments['cart_label'];
                                     $cartValue = $productAdjustments['value'];
@@ -660,13 +676,13 @@ class PayPalController extends Controller
                                 $discountRateType = $cartTypeN; // 'percent'
                                 $discountRateValue = $cartValue; //20
 
-                                if($temp== false){
+                                if ($temp == false) {
                                     $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
                                         'order_id' => $orderId,
                                         'order_item_name' => $couponTitle,
                                         'order_item_type' => 'coupon'
                                     ]);
-                                    $temp=true;
+                                    $temp = true;
                                 }
 
 
@@ -839,11 +855,11 @@ class PayPalController extends Controller
                     // DB::table('wp_wc_orders_meta')->insert($wp_wc_order_meta);
 
                     try {
-                        $billingCompany= $orderData['billing']['company'];
-                        $shippingCompany= $orderData['shipping']['company'];
+                        $billingCompany = $orderData['billing']['company'];
+                        $shippingCompany = $orderData['shipping']['company'];
                     } catch (\Throwable $th) {
-                        $billingCompany='';
-                        $shippingCompany='';
+                        $billingCompany = '';
+                        $shippingCompany = '';
                     }
                     DB::table('wp_wc_order_addresses')->insert([
                         [
@@ -851,7 +867,7 @@ class PayPalController extends Controller
                             'address_type' => 'billing',
                             'first_name' => $orderData['billing']['first_name'],
                             'last_name' => $orderData['billing']['last_name'],
-                            'company' => $billingCompany??'',
+                            'company' => $billingCompany ?? '',
                             'address_1' => $orderData['billing']['address_1'],
                             'address_2' => $orderData['billing']['address_2'],
                             'city' => $orderData['billing']['city'],
@@ -866,7 +882,7 @@ class PayPalController extends Controller
                             'address_type' => 'shipping',
                             'first_name' => $orderData['shipping']['first_name'],
                             'last_name' => $orderData['shipping']['last_name'],
-                            'company' => $shippingCompany??'',
+                            'company' => $shippingCompany ?? '',
                             'address_1' => $orderData['shipping']['address_1'],
                             'address_2' => $orderData['shipping']['address_2'],
                             'city' => $orderData['shipping']['city'],
@@ -1089,7 +1105,7 @@ class PayPalController extends Controller
                         ['post_id' => $orderId, 'meta_key' => '_transaction_id', 'meta_value' => uniqid()],
                         ['post_id' => $orderId, 'meta_key' => 'mm_field_CID', 'meta_value' => $user->account ?? null],
                         // ['post_id' => $orderId, 'meta_key' => 'mm_field_TXC', 'meta_value' => $state == 'IL' ? 'IL' : 'OS'],
-                        ['post_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => $isVape ? 0 : null],
+                        // ['post_id' => $orderId, 'meta_key' => 'mm_field_ITX', 'meta_value' => $isVape ? 0 : null],
                         ['post_id' => $orderId, 'meta_key' => 'mm_login_id', 'meta_value' => $user->user_email ?? null],
                         ['post_id' => $orderId, 'meta_key' => '_order_total', 'meta_value' => $total], //$orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {return $carry + $item['quantity'] * $item['product_price'];}, 0)],
                         ['post_id' => $orderId, 'meta_key' => '_order_currency', 'meta_value' => 'USD'],
@@ -1177,6 +1193,22 @@ class PayPalController extends Controller
                         'meta_key' => 'mm_field_TXC',
                         'meta_value' => $metaValueST,
                     ]);
+
+                    if ($stateType == 'EX' && $orderData['shipping']['state'] != 'IL') {
+                        OrderMeta::insert([
+                            'post_id' => $orderId,
+                            'meta_key' => 'mm_field_ITX',
+                            'meta_value' => '1',
+                        ]);
+                    } else {
+                        OrderMeta::insert([
+                            'post_id' => $orderId,
+                            'meta_key' => 'mm_field_ITX',
+                            'meta_value' => $isVape ? 0 : null,
+                        ]);
+                    }
+
+
                     $totalAmount = $total;
                     $productCount = count($orderData['extra']);
                     $id1 = DB::table('wp_woocommerce_order_items')->insertGetId([
@@ -1234,19 +1266,19 @@ class PayPalController extends Controller
                         }
                     }
 
-                       try {
+                    try {
                         if ($request->input('cartAdjustment')) {
                             $cartAdjustment = $request->input('cartAdjustment');
                             if ($cartAdjustment[0]['couponName']) {
-                                $id4= DB::table('wp_woocommerce_order_items')->insertGetId([
+                                $id4 = DB::table('wp_woocommerce_order_items')->insertGetId([
                                     'order_id' => $orderId,
                                     'order_item_name' => $cartAdjustment[0]['couponName'],
                                     'order_item_type' => 'coupon'
                                 ]);
-                                if($cartAdjustment[0]['type'] =='percentage'){
-                                    $discountRateTypec='percent';
+                                if ($cartAdjustment[0]['type'] == 'percentage') {
+                                    $discountRateTypec = 'percent';
                                 }
-    
+
                                 $coupon_info = [0, $cartAdjustment[0]['couponName'], $discountRateTypec, 0];
                                 $jsonCouponInfo = json_encode($coupon_info);
                                 $metaILTax = [
@@ -1259,13 +1291,12 @@ class PayPalController extends Controller
                                 }
                             }
                         }
-                        } catch (\Throwable $th) {
-    
-                        }
-    
+                    } catch (\Throwable $th) {
+                    }
+
 
                     $dd = [];
-                    $temp= false;
+                    $temp = false;
                     foreach ($orderData['extra'] as $item) {
                         $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,
@@ -1377,20 +1408,19 @@ class PayPalController extends Controller
                         try {
 
 
-                        $ischangeproducttocart=false;
-                            if (isset($item['discount_amt']) && $item['discount_amt'] ) {
-                               
+                            $ischangeproducttocart = false;
+                            if (isset($item['discount_amt']) && $item['discount_amt']) {
+
                                 $discountAmount = $item['discount_amt'];
                                 $coupon = DB::table('wp_wdr_rules')->where('id', $item['applicable_rules'][0]['rule_id'])->first();
 
                                 $productAdjustments = json_decode($coupon->product_adjustments, true);
                                 try {
-                                    if($request->input('cartAdjustment')){
+                                    if ($request->input('cartAdjustment')) {
                                         $productAdjustments = json_decode($coupon->cart_adjustments, true);
-                                        $ischangeproducttocart=true;
+                                        $ischangeproducttocart = true;
                                     }
                                 } catch (\Throwable $th) {
-                                    
                                 }
                                 // dd($productAdjustments);
                                 if (json_last_error() === JSON_ERROR_NONE && isset($productAdjustments['cart_label'])) {
@@ -1408,23 +1438,23 @@ class PayPalController extends Controller
                                 }
                                 if ($cartType == 'percentage') {
                                     $cartTypeN = 'percent';
-                                } else  {
-                                    $cartTypeN=$cartType;
+                                } else {
+                                    $cartTypeN = $cartType;
                                 }
                                 $couponTitle = $cartLabel; //20% off  //<-lable
                                 $discountRateType = $cartTypeN; // 'percent'
                                 $discountRateValue = $cartValue; //20
 
-                                if($temp== false){
+                                if ($temp == false) {
                                     $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
                                         'order_id' => $orderId,
                                         'order_item_name' => $couponTitle,
                                         'order_item_type' => 'coupon'
                                     ]);
-                                    $temp=true;
+                                    $temp = true;
                                 }
-                               
-                                                       
+
+
 
                                 $coupon_info = [0, $couponTitle, $discountRateType, $discountRateValue];
                                 $jsonCouponInfo = json_encode($coupon_info);
@@ -1611,11 +1641,11 @@ class PayPalController extends Controller
                     // DB::table('wp_wc_orders_meta')->insert($wp_wc_order_meta);
 
                     try {
-                        $billingCompany= $orderData['billing']['company'];
-                        $shippingCompany= $orderData['shipping']['company'];
+                        $billingCompany = $orderData['billing']['company'];
+                        $shippingCompany = $orderData['shipping']['company'];
                     } catch (\Throwable $th) {
-                        $billingCompany='';
-                        $shippingCompany='';
+                        $billingCompany = '';
+                        $shippingCompany = '';
                     }
                     DB::table('wp_wc_order_addresses')->insert([
                         [
@@ -1623,7 +1653,7 @@ class PayPalController extends Controller
                             'address_type' => 'billing',
                             'first_name' => $orderData['billing']['first_name'],
                             'last_name' => $orderData['billing']['last_name'],
-                            'company' => $billingCompany??'',
+                            'company' => $billingCompany ?? '',
                             'address_1' => $orderData['billing']['address_1'],
                             'address_2' => $orderData['billing']['address_2'],
                             'city' => $orderData['billing']['city'],
@@ -1638,7 +1668,7 @@ class PayPalController extends Controller
                             'address_type' => 'shipping',
                             'first_name' => $orderData['shipping']['first_name'],
                             'last_name' => $orderData['shipping']['last_name'],
-                            'company' => $shippingCompany??'',
+                            'company' => $shippingCompany ?? '',
                             'address_1' => $orderData['shipping']['address_1'],
                             'address_2' => $orderData['shipping']['address_2'],
                             'city' => $orderData['shipping']['city'],
@@ -1706,7 +1736,7 @@ class PayPalController extends Controller
                     }
 
                     $checkout->delete();
-// dd();
+                    // dd();
                     DB::commit();
                     $email = $orderData['billing']['email'];
                     $username = $orderData['billing']['first_name'] . ' ' . $orderData['billing']['last_name'];
@@ -1726,7 +1756,7 @@ class PayPalController extends Controller
 
                 return response()->json([
                     'status' => true,
-                    'message' => 'Payment successful',
+                    'message' => 'Order ' . $newValue . ' successfully created',
                     'data' => 'On Account Payment',
                     'order' => $orderId,
                     'orderNo' => $newValue

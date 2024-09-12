@@ -54,7 +54,9 @@ return [
     'nmi' => [
         'security' => env('NMI_SECURITY_KEY'),
         'transactionkey' => env('NMI_TOKENIZATION_KEY'),
+    ],
+    'wpurl'=>[
+        'homeurl'=>env('WP_HOME_URL'),
     ]
-
 
 ];
