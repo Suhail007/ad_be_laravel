@@ -437,7 +437,7 @@ class PayPalController extends Controller
                         OrderMeta::insert([
                             'post_id' => $orderId,
                             'meta_key' => 'mm_field_ITX',
-                            'meta_value' => '1',
+                            'meta_value' => 1,
                         ]);
                     } else {
                         OrderMeta::insert([
@@ -1198,7 +1198,7 @@ class PayPalController extends Controller
                         OrderMeta::insert([
                             'post_id' => $orderId,
                             'meta_key' => 'mm_field_ITX',
-                            'meta_value' => '1',
+                            'meta_value' => 1,
                         ]);
                     } else {
                         OrderMeta::insert([
