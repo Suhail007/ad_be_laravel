@@ -121,7 +121,7 @@ class WooCommerceController extends Controller
                     'date_on_sale_from_gmt' => $metaData->where('key', '_sale_price_dates_from_gmt')->first()['value'] ?? null,
                     'date_on_sale_to' => $metaData->where('key', '_sale_price_dates_to')->first()['value'] ?? null,
                     'date_on_sale_to_gmt' => $metaData->where('key', '_sale_price_dates_to_gmt')->first()['value'] ?? null,
-                    'on_sale' => optional($metaData->where('key', '_sale_price')->first())->value ? true : false,
+                    // 'on_sale' => optional($metaData->where('key', '_sale_price')->first())->value ? true : false,
                     'purchasable' => $product->post_status === 'publish',
                     'total_sales' => $metaData->where('key', 'total_sales')->first()['value'] ?? 0,
                     'virtual' => $metaData->where('key', '_virtual')->first()['value'] ?? false,

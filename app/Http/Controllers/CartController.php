@@ -187,33 +187,33 @@ class CartController extends Controller
                 if ($cartItem) {
                     $newQty = $variation['quantity'];
                     $cartItem->quantity += $newQty;
-                    if ($cartItem->isLimit) {
-                        if ($cartItem->quantity < $cartItem->min) {
-                            // $cartItem->quantity += $cartItem->min;
-                            // $cartItem->save();
-                            return response()->json(['status'=> false , 'message' => 'Quantity cannot be less than '. $cartItem->min]);
-                        }
-                        if ($cartItem->quantity > $cartItem->max) {
-                            // $cartItem->quantity += $cartItem->max;
-                            // $cartItem->save();
-                            return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $cartItem->max]);
-                        }
-                    }
+                    // if ($cartItem->isLimit) {
+                    //     if ($cartItem->quantity < $cartItem->min) {
+                    //         // $cartItem->quantity += $cartItem->min;
+                    //         // $cartItem->save();
+                    //         return response()->json(['status'=> false , 'message' => 'Quantity cannot be less than '. $cartItem->min]);
+                    //     }
+                    //     if ($cartItem->quantity > $cartItem->max) {
+                    //         // $cartItem->quantity += $cartItem->max;
+                    //         // $cartItem->save();
+                    //         return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $cartItem->max]);
+                    //     }
+                    // }
                 
                     $cartItem->save();
                     if ($isFreeze) {
                         $this->reduceStockByQuantity($cartItem, $newQty);
                     }
                 } else {
-                    if ($variation['isLimit']) {
-                        if ($variation['quantity'] < $variation['min']) {
-                            return response()->json(['status'=> false , 'message' => 'Quantity cannot be less than '. $variation['min']]);
-                        }
+                    // if ($variation['isLimit']) {
+                    //     if ($variation['quantity'] < $variation['min']) {
+                    //         return response()->json(['status'=> false , 'message' => 'Quantity cannot be less than '. $variation['min']]);
+                    //     }
                 
-                        if ($variation['quantity'] > $variation['max']) {
-                            return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $variation['max']]);
-                        }
-                    }
+                    //     if ($variation['quantity'] > $variation['max']) {
+                    //         return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $variation['max']]);
+                    //     }
+                    // }
                 
                     $cartItem = Cart::create([
                         'user_id' => $user_id,
@@ -319,9 +319,9 @@ class CartController extends Controller
                 'stock' => $stockLevel,
                 'stock_status' => $stockStatus,
                 'quantity' => $cartItem->quantity,
-                'min' => $cartItem->min ?? null,
-                'max' => $cartItem->max ?? null,
-                'isLimit' => $cartItem->isLimit ?? 0,
+                // 'min' => $cartItem->min ?? null,
+                // 'max' => $cartItem->max ?? null,
+                // 'isLimit' => $cartItem->isLimit ?? 0,
                 'variation_id' => $variation ? $variation->ID : null,
                 'variation' => $variationAttributes,
                 'taxonomies' => $categoryIds
@@ -362,9 +362,9 @@ class CartController extends Controller
             $product_id = $item['product_id'];
             $variation_id = $item['variation_id'];
             $quantity = $item['quantity'];
-            $min = $item['min'];
-            $max = $item['max'];
-            $isLimit = $item['isLimit'];
+            // $min = $item['min'];
+            // $max = $item['max'];
+            // $isLimit = $item['isLimit'];
 
             $cartItem = Cart::where('user_id', $user_id)
                 ->where('product_id', $product_id)
@@ -374,32 +374,32 @@ class CartController extends Controller
             if ($cartItem) {
                 $oldQuantity = $cartItem->quantity;
                 $cartItem->quantity = $quantity;
-                if ($cartItem->isLimit) {
-                    if ($cartItem->quantity < $cartItem->min) {
-                        // $cartItem->quantity += $cartItem->min;
-                        // $cartItem->save();
-                        return response()->json(['status'=> false , 'message' => 'Quantity cannot be less than '. $cartItem->min]);
-                    }
-                    if ($cartItem->quantity > $cartItem->max) {
-                        // $cartItem->quantity += $cartItem->max;
-                        // $cartItem->save();
-                        return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $cartItem->max]);
-                    }
-                }
+                // if ($cartItem->isLimit) {
+                //     if ($cartItem->quantity < $cartItem->min) {
+                //         // $cartItem->quantity += $cartItem->min;
+                //         // $cartItem->save();
+                //         return response()->json(['status'=> false , 'message' => 'Quantity cannot be less than '. $cartItem->min]);
+                //     }
+                //     if ($cartItem->quantity > $cartItem->max) {
+                //         // $cartItem->quantity += $cartItem->max;
+                //         // $cartItem->save();
+                //         return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $cartItem->max]);
+                //     }
+                // }
                 $cartItem->save();
                 if ($isFreeze) {
                     $this->adjustStock($cartItem, $oldQuantity, $quantity);
                 }
             } else {
-                if ($isLimit) {
-                    if ($quantity < $min) {
-                        return response()->json(['status'=> false , 'message' => 'Quantity cannot be less than '. $min]);
-                    }
+                // if ($isLimit) {
+                //     if ($quantity < $min) {
+                //         return response()->json(['status'=> false , 'message' => 'Quantity cannot be less than '. $min]);
+                //     }
             
-                    if ($quantity > $max) {
-                        return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $max]);
-                    }
-                }
+                //     if ($quantity > $max) {
+                //         return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $max]);
+                //     }
+                // }
                 $cartItem = Cart::create([
                     'user_id' => $user_id,
                     'product_id' => $product_id,
@@ -503,9 +503,9 @@ class CartController extends Controller
                 'stock' => $stockLevel,
                 'stock_status' => $stockStatus,
                 'quantity' => $cartItem->quantity,
-                'min' => $cartItem->min ?? null,
-                'max' => $cartItem->max ?? null,
-                'isLimit' => $cartItem->isLimit ?? 0,
+                // 'min' => $cartItem->min ?? null,
+                // 'max' => $cartItem->max ?? null,
+                // 'isLimit' => $cartItem->isLimit ?? 0,
                 'variation_id' => $variation ? $variation->ID : null,
                 'variation' => $variationAttributes,
                 'taxonomies' => $categoryIds
@@ -652,9 +652,9 @@ class CartController extends Controller
                 'stock' => $stockLevel,
                 'stock_status' => $stockStatus,
                 'quantity' => $cartItem->quantity,
-                'min' => $cartItem->min,
-                'max' => $cartItem->max,
-                'isLimit' => $cartItem->isLimit,
+                // 'min' => $cartItem->min,
+                // 'max' => $cartItem->max,
+                // 'isLimit' => $cartItem->isLimit,
                 'variation_id' => $variation ? $variation->ID : null,
                 'variation' => $variationAttributes,
                 'taxonomies' => $categoryIds,
@@ -739,18 +739,18 @@ class CartController extends Controller
 
         $oldQuantity = $cartItem->quantity;
         $cartItem->quantity = $request->quantity;
-        if ($cartItem->isLimit) {
-            if ($cartItem->quantity < $cartItem->min) {
-                // $cartItem->quantity += $cartItem->min;
-                // $cartItem->save();
-                return response()->json(['status'=> false , 'message' => 'Quantity cannot be less than '. $cartItem->min]);
-            }
-            if ($cartItem->quantity > $cartItem->max) {
-                // $cartItem->quantity += $cartItem->max;
-                // $cartItem->save();
-                return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $cartItem->max]);
-            }
-        }
+        // if ($cartItem->isLimit) {
+        //     if ($cartItem->quantity < $cartItem->min) {
+        //         // $cartItem->quantity += $cartItem->min;
+        //         // $cartItem->save();
+        //         return response()->json(['status'=> false , 'message' => 'Quantity cannot be less than '. $cartItem->min]);
+        //     }
+        //     if ($cartItem->quantity > $cartItem->max) {
+        //         // $cartItem->quantity += $cartItem->max;
+        //         // $cartItem->save();
+        //         return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $cartItem->max]);
+        //     }
+        // }
         $cartItem->save();
 
         $checkout = Checkout::where('user_id', $user->ID)->first();
