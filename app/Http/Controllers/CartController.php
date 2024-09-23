@@ -196,7 +196,7 @@ class CartController extends Controller
                         if ($cartItem->quantity > $cartItem->max) {
                             // $cartItem->quantity += $cartItem->max;
                             // $cartItem->save();
-                            return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $cartItem->min]);
+                            return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $cartItem->max]);
                         }
                     }
                 
@@ -383,7 +383,7 @@ class CartController extends Controller
                     if ($cartItem->quantity > $cartItem->max) {
                         // $cartItem->quantity += $cartItem->max;
                         // $cartItem->save();
-                        return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $cartItem->min]);
+                        return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $cartItem->max]);
                     }
                 }
                 $cartItem->save();
@@ -748,7 +748,7 @@ class CartController extends Controller
             if ($cartItem->quantity > $cartItem->max) {
                 // $cartItem->quantity += $cartItem->max;
                 // $cartItem->save();
-                return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $cartItem->min]);
+                return response()->json(['status'=> false , 'message' => 'Quantity cannot be more than '. $cartItem->max]);
             }
         }
         $cartItem->save();
