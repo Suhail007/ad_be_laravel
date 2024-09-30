@@ -26,7 +26,12 @@ class LoginController extends Controller
         $email = $request->input('user_email');
         $hashedPassword = $request->input('password');
         $user = User::where('user_email', $email)->orWhere('user_login', $email)->first();
-
+        if(!$user){
+            return response()->json([
+                'status' => false,
+                'message' => 'Invalid credentials',
+            ]);
+        }
         $check = WpPassword::check($hashedPassword, $user->user_pass);
         if ($check == true) {
             if ($user->approved == "0") {

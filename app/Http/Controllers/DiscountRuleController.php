@@ -91,7 +91,7 @@ class DiscountRuleController extends Controller
             'min_quantity' => $metaData->where('key', 'min_quantity')->first()['value'] ?? false,
             'max_quantity' => $metaData->where('key', 'max_quantity')->first()['value'] ?? false,
             'sku' => $metaData->where('key', '_sku')->first()['value'] ?? '',
-            'ad_price' => $wholesalePrice = ProductMeta::where('post_id', $product->ID)->where('meta_key', $priceTier)->value('meta_value') ?? $metaData->where('key', '_price')->first()['value']  ?? $metaData->where('key', '_regular_price')->first()['value'] ?? $variations->ad_price ?? null,
+            'ad_price' => ProductMeta::where('post_id', $product->ID)->where('meta_key', $priceTier)->value('meta_value') ?? $this->getVariationsPrice($product->ID, $priceTier),
             'price' => $price ?? $metaData->where('key', '_regular_price')->first()['value'] ?? $metaData->where('key', '_price')->first()['value'] ?? null,
             'purchasable' => $product->post_status === 'publish',
             'catalog_visibility' => $metaData->where('key', '_visibility')->first()['value'] ?? 'visible',
@@ -108,6 +108,30 @@ class DiscountRuleController extends Controller
 
         return response()->json($response);
     }
+    private function getVariationsPrice($productId, $priceTier = '')
+    {
+        $variations = Product::where('post_parent', $productId)
+            ->where('post_type', 'product_variation')
+            ->whereHas('meta', function ($query) {
+                $query->where('meta_key', '_stock_status')
+                    ->where('meta_value', 'instock');
+            })
+            ->with('meta')
+            ->get()
+            ->map(function ($variation) use ($priceTier) {
+                $metaData = $variation->meta->pluck('meta_value', 'meta_key')->toArray();
+                $pattern = '/^(_regular_price|_price' . preg_quote($priceTier, '/') . '|_thumbnail_id)$/';
+                $filteredMetaData = array_filter($metaData, function ($key) use ($pattern) {
+                    return preg_match($pattern, $key);
+                }, ARRAY_FILTER_USE_KEY);
+                $adPrice = $metaData[$priceTier] ?? $metaData['_price'] ?? $metaData['_regular_price'] ?? null;
+
+                return $adPrice;
+            });
+            $variations= $variations[0]??[];
+        return $variations;
+    }
+
 
     public function getTaxonomyType($taxonomy)
     {
@@ -135,7 +159,7 @@ class DiscountRuleController extends Controller
                 $metaData = $variation->meta->pluck('meta_value', 'meta_key')->toArray();
 
                 // Construct the regex pattern to include the price tier
-                $pattern = '/^(_sku|attribute_.*|_stock|_regular_price|_price|_stock_status|max_quantity|min_quantity' . preg_quote($priceTier, '/') . '|_thumbnail_id)$/';
+                $pattern = '/^(_sku|attribute_.*|_stock|_regular_price|_price|_stock_status|max_quantity|min_quantity|mm_indirect_tax_type|_tax_class|mm_product_basis_1|mm_product_basis_2' . preg_quote($priceTier, '/') . '|_thumbnail_id)$/';
 
                 // Filter meta data to include only the selected fields
                 $filteredMetaData = array_filter($metaData, function ($key) use ($pattern) {
