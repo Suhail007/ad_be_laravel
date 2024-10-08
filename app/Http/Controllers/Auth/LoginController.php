@@ -20,109 +20,46 @@ use MikeMcLin\WpPassword\Facades\WpPassword;
 class LoginController extends Controller
 {
 
+
     public function login(Request $request)
     {
         $email = $request->input('user_email');
         $hashedPassword = $request->input('password');
-        $user = User::where('user_email', $email)
-            ->orWhere('user_login', $email)
-            ->first();
-
-        if (!$user) {
+        $user = User::where('user_email', $email)->orWhere('user_login', $email)->first();
+        if(!$user){
             return response()->json([
                 'status' => false,
                 'message' => 'Invalid credentials',
             ]);
         }
-
-        // First, attempt to check the password using WpPassword
         $check = WpPassword::check($hashedPassword, $user->user_pass);
-
-        if ($check !== true) {
-            // Fallback to pure PHP logic when WpPassword check fails
-            if (!self::phpPasswordCheck($hashedPassword, $user->user_pass)) {
+        if ($check == true) {
+            if ($user->approved == "0") {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => 'Invalid credentials',
-                ], 401);
+                    'status' => false,
+                    'message' => 'Your Register Request Not Approved',
+                ]);
             }
-        }
-
-        // Check if the user is approved
-        if ($user->approved == "0") {
+            $data = [
+                'ID' => $user->ID,
+                'name' => $user->user_login,
+                'email' => $user->user_email,
+                'capabilities' => $user->capabilities,
+                'account_no' => $user->account
+            ];
+            if ($token = JWTAuth::fromUser($user)) {
+                return response()->json([
+                    'status' => 'success',
+                    'token' => $token,
+                    'data' => $data,
+                ]);
+            }
+        } else {
             return response()->json([
-                'status' => false,
-                'message' => 'Your Register Request Not Approved',
-            ]);
+                'status' => 'error',
+                'message' => 'Invalid credentials',
+            ], 401);
         }
-
-        // Prepare user data for the response
-        $data = [
-            'ID' => $user->ID,
-            'name' => $user->user_login,
-            'email' => $user->user_email,
-            'capabilities' => $user->capabilities,
-            'account_no' => $user->account
-        ];
-
-        // Generate JWT token if the password is valid
-        if ($token = JWTAuth::fromUser($user)) {
-            return response()->json([
-                'status' => 'success',
-                'token' => $token,
-                'data' => $data,
-            ]);
-        }
-    }
-
-
-    // public function login(Request $request)
-    // {
-    //     $email = $request->input('user_email');
-    //     $hashedPassword = $request->input('password');
-    //     $user = User::where('user_email', $email)->orWhere('user_login', $email)->first();
-    //     if(!$user){
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => 'Invalid credentials',
-    //         ]);
-    //     }
-    //     $check = WpPassword::check($hashedPassword, $user->user_pass);
-    //     if ($check == true) {
-    //         if ($user->approved == "0") {
-    //             return response()->json([
-    //                 'status' => false,
-    //                 'message' => 'Your Register Request Not Approved',
-    //             ]);
-    //         }
-    //         $data = [
-    //             'ID' => $user->ID,
-    //             'name' => $user->user_login,
-    //             'email' => $user->user_email,
-    //             'capabilities' => $user->capabilities,
-    //             'account_no' => $user->account
-    //         ];
-    //         if ($token = JWTAuth::fromUser($user)) {
-    //             return response()->json([
-    //                 'status' => 'success',
-    //                 'token' => $token,
-    //                 'data' => $data,
-    //             ]);
-    //         }
-    //     } else {
-    //         return response()->json([
-    //             'status' => 'error',
-    //             'message' => 'Invalid credentials',
-    //         ], 401);
-    //     }
-    // }
-
-    private static function phpPasswordCheck($password, $hash)
-    {
-        if (strlen($hash) <= 32) {
-            return md5($password) === $hash;
-        }
-        return Hash::check($password, $hash);
     }
 
     public function logout(Request $request)
@@ -138,8 +75,7 @@ class LoginController extends Controller
         }
     }
 
-    public function changePassword(Request $request)
-    {
+    public function changePassword(Request $request){
         $user = JWTAuth::parseToken()->authenticate();
 
         if (!$user) {
@@ -155,7 +91,7 @@ class LoginController extends Controller
         }
 
         $user->update([
-            'user_pass' => WpPassword::make($request->input('password')),
+            'user_pass' => WpPassword::make($request->input('password')), 
         ]);
         return response()->json(['message' => 'Password updated successfully', 'status' => true], 200);
     }
@@ -214,11 +150,11 @@ class LoginController extends Controller
             'shipping_postcode' => $request->input('shipping_postcode'),
             'last_update' => $request->input('timestamp'), //time stamp
             'user_registration_number_box_1675806301' =>  $request->input('user_registration_number_box_1675806301'), //phone number
-            'user_registration_file_1675806995815' =>  $request->input('user_registration_file_1675806995815') ?? 0, //file id Uplopad FEIN licence
+            'user_registration_file_1675806995815' =>  $request->input('user_registration_file_1675806995815')??0, //file id Uplopad FEIN licence
             'user_registration_number_box_1678138943' =>  $request->input('user_registration_number_box_1678138943'), //fein number
-            'user_registration_file_1675807041669' =>  $request->input('user_registration_file_1675807041669') ?? 0, //file id Upload Tobacco License
-            'user_registration_file_1675806917' =>  $request->input('user_registration_file_1675806917') ?? 0, //file id Upload State Tax ID / Business License
-            'user_registration_file_1675806973030' =>  $request->input('user_registration_file_1675806973030') ?? 0, //file id Government Issued ID (Driver’s license, State ID etc)
+            'user_registration_file_1675807041669' =>  $request->input('user_registration_file_1675807041669')??0, //file id Upload Tobacco License
+            'user_registration_file_1675806917' =>  $request->input('user_registration_file_1675806917')??0, //file id Upload State Tax ID / Business License
+            'user_registration_file_1675806973030' =>  $request->input('user_registration_file_1675806973030')??0, //file id Government Issued ID (Driver’s license, State ID etc)
             'user_registration_select2_1676006057' => $request->input('user_registration_select2_1676006057'), //dropdown inspect name value (Distrubutor)
             'user_registration_select2_121' =>  $request->input('shipping_postcode'), //dropdown inspect name value (Wholesaler)
             'rich_editing' => 'TRUE',
@@ -242,11 +178,11 @@ class LoginController extends Controller
             }
         }
         RegisterRequest::create([
-            'user_id' => $user->ID,
-            'finlicenceurl' => $request->input('finlicenceurl'),
-            'tobaccolicenceurl' => $request->input('tobaccolicenceurl'),
-            'taxidurl' => $request->input('taxidurl'),
-            'govurl' => $request->input('govurl'),
+            'user_id'=>$user->ID,
+            'finlicenceurl'=>$request->input('finlicenceurl'),
+            'tobaccolicenceurl'=>$request->input('tobaccolicenceurl'),
+            'taxidurl'=>$request->input('taxidurl'),
+            'govurl'=>$request->input('govurl'),
         ]);
         UserMeta::create([
             'user_id' => $user->ID,
