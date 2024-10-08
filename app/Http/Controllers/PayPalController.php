@@ -16,6 +16,7 @@ use Exception;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use PhpParser\Node\Stmt\TryCatch;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -126,7 +127,38 @@ class PayPalController extends Controller
             throw new Exception("Error: " . $e->getMessage());
         }
     }
+    private function webhookIsVerified($webhookBody, $signingKey, $nonce, $sig)
+    {
+        return $sig === hash_hmac("sha256", $nonce . "." . $webhookBody, $signingKey);
+    }
+    public function handleWebhook(Request $request)
+    {
+        try {
+            $signingKey = config('services.nmi.security'); 
+            $webhookBody = $request->getContent(); 
+            $headers = $request->headers->all(); 
+            $sigHeader = $headers['webhook-signature'][0] ?? null; 
+            if (is_null($sigHeader) || strlen($sigHeader) < 1) {
+                throw new Exception("Invalid webhook - signature header missing");
+            }
+            if (preg_match('/t=(.*),s=(.*)/', $sigHeader, $matches)) {
+                $nonce = $matches[1]; 
+                $signature = $matches[2]; 
+            } else {
+                throw new Exception("Unrecognized webhook signature format");
+            }
+            if (!$this->webhookIsVerified($webhookBody, $signingKey, $nonce, $signature)) {
+                throw new Exception("Invalid webhook - signature verification failed");
+            }
+            $webhookData = json_decode($webhookBody, true); 
 
+            return response()->json(['message' => 'Webhook processed successfully','usefulldata'=>$webhookData], 200);
+
+        } catch (Exception $e) {
+            Log::error('Webhook error: ' . $e->getMessage());
+            return response()->json(['message' => 'Webhook verification failed: ' . $e->getMessage()]);
+        }
+    }
     public function processPayment(Request $request)
     {
         $user = JWTAuth::parseToken()->authenticate();

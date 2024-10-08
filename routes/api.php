@@ -94,6 +94,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 });
 
 
+Route::post('nmi/webhook',[PayPalController::class,'handleWebhook']);
 
 Route::get('/cleanup',[CleanupController::class,'menuCleanUp']);
 Route::get('/mail-brand/{slugs}',[CleanupController::class,'brandProducts']);
