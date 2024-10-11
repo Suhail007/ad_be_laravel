@@ -14,6 +14,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Http\Response;
 
 class ProductController extends Controller
 {
@@ -512,8 +513,23 @@ class ProductController extends Controller
             return response()->json($th);
         }
 
+        //cache
+        if ($auth) {
+            $userId = $user->ID;
+            $productModifiedTimestamps = $products->pluck('post_modified')->toArray();
+            $etag = md5($userId . implode(',', $productModifiedTimestamps));
+        } else {
+            $etag = md5(implode(',', $products->pluck('post_modified')->toArray()));
+        }
 
-        return response()->json($products);
+        if ($request->header('If-None-Match') === $etag) {
+            return response()->json($products, Response::HTTP_NOT_MODIFIED);
+        }
+        $response = response()->json($products);
+        $response->header('ETag', $etag);
+        $response->header('Cache-Control', 'public, max-age=7200');
+        return $response;
+        // return response()->json($products);
     }
     public function brandProducts(Request $request, string $slug)
     {
@@ -725,7 +741,22 @@ class ProductController extends Controller
             ];
         });
 
-        return response()->json($products);
+         //cache
+         if ($auth) {
+            $userId = $user->ID;
+            $productModifiedTimestamps = $products->pluck('post_modified')->toArray();
+            $etag = md5($userId . implode(',', $productModifiedTimestamps));
+        } else {
+            $etag = md5(implode(',', $products->pluck('post_modified')->toArray()));
+        }
+        if ($request->header('If-None-Match') === $etag) {
+            return response()->json($products, Response::HTTP_NOT_MODIFIED);
+        }
+        $response = response()->json($products);
+        $response->header('ETag', $etag);
+        $response->header('Cache-Control', 'public, max-age=3600');
+        return $response;
+        // return response()->json($products);
     }
 
     public function searchProducts(Request $request)
@@ -1083,7 +1114,18 @@ class ProductController extends Controller
                     ];
                 });
 
-                return response()->json(['status' => 'auth', 'user' => $user, 'products' => $products]);
+                //cache
+                $userId = $user->ID;
+                $productModifiedTimestamps = $products->pluck('post_modified')->toArray();
+                $etag = md5($userId . implode(',', $productModifiedTimestamps));
+                if ($request->header('If-None-Match') === $etag) {
+                    return response()->json(['status' => 'auth', 'user' => $user, 'products' => $products], Response::HTTP_NOT_MODIFIED);
+                }
+                $response = response()->json(['status' => 'auth', 'user' => $user, 'products' => $products]);
+                $response->header('ETag', $etag);
+                $response->header('Cache-Control', 'public, max-age=3600');
+                return $response;
+                // return response()->json(['status' => 'auth', 'user' => $user, 'products' => $products]);
             }
         } catch (\Throwable $th) {
             Log::error('Error processing authenticated request: ' . $th->getMessage());
@@ -1131,7 +1173,17 @@ class ProductController extends Controller
 
                 $products->setCollection($transformedCollection->values());
 
-                return response()->json(['status' => 'no-auth', 'products' => $products]);
+                //cache
+                $etag = md5(implode(',', $products->pluck('post_modified')->toArray()));
+                if ($request->header('If-None-Match') === $etag) {
+                    return response()->json(['status' => 'no-auth', 'products' => $products], Response::HTTP_NOT_MODIFIED);
+                }
+                $response = response()->json(['status' => 'no-auth', 'products' => $products]);
+                $response->header('ETag', $etag);
+                $response->header('Cache-Control', 'public, max-age=3600');
+                return $response;
+
+                // return response()->json(['status' => 'no-auth', 'products' => $products]);
             } catch (\Throwable $th) {
                 Log::error('Error processing unauthenticated request: ' . $th->getMessage());
                 return response()->json(['status' => 'no-auth', 'message' => $th->getMessage()], 500);
