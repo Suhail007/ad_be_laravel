@@ -527,7 +527,7 @@ class ProductController extends Controller
         }
         $response = response()->json($products);
         $response->header('ETag', $etag);
-       
+
         if ($auth) {
             $response->header('Cache-Control', 'no-cache, no-store, must-revalidate');
             // $response->header('Cache-Control', 'public, max-age=300');
@@ -758,7 +758,7 @@ class ProductController extends Controller
         }
         $response = response()->json($products);
         $response->header('ETag', $etag);
-       
+
         if ($auth) {
             $response->header('Cache-Control', 'no-cache, no-store, must-revalidate');
             // $response->header('Cache-Control', 'public, max-age=300');
@@ -1106,10 +1106,13 @@ class ProductController extends Controller
                         'thumbnail_url' => $thumbnailUrl,
                         'categories' => $product->categories->map(function ($category) {
                             $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                            $taxonomy = $category->taxonomies->taxonomy;
                             return [
                                 'term_id' => $category->term_id,
                                 'name' => $category->name,
+                                'slug' => $category->slug,
                                 'visibility' => $visibility ? $visibility : 'public',
+                                'taxonomy' => $taxonomy ? $taxonomy : 'public',
                             ];
                         }),
                         'meta' => $product->meta->map(function ($meta) {
@@ -1131,7 +1134,7 @@ class ProductController extends Controller
                 }
                 $response = response()->json(['status' => 'auth', 'user' => $user, 'products' => $products]);
                 $response->header('ETag', $etag);
-                
+
                 if ($auth) {
                     $response->header('Cache-Control', 'no-cache, no-store, must-revalidate');
                     // $response->header('Cache-Control', 'public, max-age=300');
@@ -1192,7 +1195,7 @@ class ProductController extends Controller
                 }
                 $response = response()->json(['status' => 'no-auth', 'products' => $products]);
                 $response->header('ETag', $etag);
-                
+
                 if ($auth) {
                     $response->header('Cache-Control', 'no-cache, no-store, must-revalidate');
                     // $response->header('Cache-Control', 'public, max-age=300');
