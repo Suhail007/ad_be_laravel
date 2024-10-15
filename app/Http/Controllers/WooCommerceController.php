@@ -35,7 +35,12 @@ class WooCommerceController extends Controller
                     'categories.taxonomies',
                     'categories.children',
                     'categories.categorymeta'
-                ])->where('post_name', $slug)->firstOrFail();
+                ])->where('post_name', $slug) 
+                ->whereHas('meta', function ($query) {
+                    $query->where('meta_key', '_stock_status')
+                        ->where('meta_value', 'instock');
+                })
+                ->firstOrFail();
             }
         } catch (\Throwable $th) {
             $product = Product::with([
@@ -43,7 +48,12 @@ class WooCommerceController extends Controller
                 'categories.taxonomies',
                 'categories.children',
                 'categories.categorymeta'
-            ])->whereDoesntHave('categories.categorymeta', function ($query) {
+            ]) 
+            ->whereHas('meta', function ($query) {
+                $query->where('meta_key', '_stock_status')
+                    ->where('meta_value', 'instock');
+            })
+            ->whereDoesntHave('categories.categorymeta', function ($query) {
                 $query->where('meta_key', 'visibility')
                     ->where('meta_value', 'protected');
             })

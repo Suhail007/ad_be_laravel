@@ -940,7 +940,11 @@ class ProductController extends Controller
                 }
             ])
                 ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
-                ->where('post_type', 'product')->where('post_status', 'publish');
+                ->where('post_type', 'product')->where('post_status', 'publish')
+                ->whereHas('meta', function ($query) {
+                    $query->where('meta_key', '_stock_status')
+                        ->where('meta_value', 'instock');
+                });
 
             if (!empty($searchTerm)) {
                 $searchWords = preg_split('/\s+/', $searchTerm);
@@ -1019,6 +1023,10 @@ class ProductController extends Controller
                 }
             ])
                 ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+                ->whereHas('meta', function ($query) {
+                    $query->where('meta_key', '_stock_status')
+                        ->where('meta_value', 'instock');
+                })
                 ->whereDoesntHave('categories.categorymeta', function ($query) {
                     $query->where('meta_key', 'visibility')
                         ->where('meta_value', 'protected');
