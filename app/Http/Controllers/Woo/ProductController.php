@@ -114,7 +114,7 @@ class ProductController extends Controller
         $category = CustomCategory::get();
         $brand = CustomBrand::where('category', '!=', '')->get();
         $response = response()->json(['category' => $category, 'brands' => $brand]);
-        $response->header('Cache-Control', 'public, max-age=3600');
+        $response->header('Cache-Control', 'public, max-age=600');
         return $response;
     }
     public function categoryProduct(Request $request, string $slug)
@@ -527,7 +527,11 @@ class ProductController extends Controller
         }
         $response = response()->json($products);
         $response->header('ETag', $etag);
-        $response->header('Cache-Control', 'public, max-age=7200');
+       
+        if ($auth) {
+            $response->header('Cache-Control', 'no-cache, no-store, must-revalidate');
+            // $response->header('Cache-Control', 'public, max-age=300');
+        }
         return $response;
         // return response()->json($products);
     }
@@ -713,10 +717,10 @@ class ProductController extends Controller
                     'meta_value' => $meta->meta_value
                 ];
             })->toArray(); // Ensure metaArray is a plain array
-        
+
             // Filter meta based on authentication status
             $filteredMeta = $auth ? $metaArray : array_values(array_filter($metaArray, function ($meta) {
-                return $meta['meta_key'] !== '_price'; 
+                return $meta['meta_key'] !== '_price';
             }));
 
             return [
@@ -741,8 +745,8 @@ class ProductController extends Controller
             ];
         });
 
-         //cache
-         if ($auth) {
+        //cache
+        if ($auth) {
             $userId = $user->ID;
             $productModifiedTimestamps = $products->pluck('post_modified')->toArray();
             $etag = md5($userId . implode(',', $productModifiedTimestamps));
@@ -754,7 +758,11 @@ class ProductController extends Controller
         }
         $response = response()->json($products);
         $response->header('ETag', $etag);
-        $response->header('Cache-Control', 'public, max-age=3600');
+       
+        if ($auth) {
+            $response->header('Cache-Control', 'no-cache, no-store, must-revalidate');
+            // $response->header('Cache-Control', 'public, max-age=300');
+        }
         return $response;
         // return response()->json($products);
     }
@@ -1123,7 +1131,11 @@ class ProductController extends Controller
                 }
                 $response = response()->json(['status' => 'auth', 'user' => $user, 'products' => $products]);
                 $response->header('ETag', $etag);
-                $response->header('Cache-Control', 'public, max-age=3600');
+                
+                if ($auth) {
+                    $response->header('Cache-Control', 'no-cache, no-store, must-revalidate');
+                    // $response->header('Cache-Control', 'public, max-age=300');
+                }
                 return $response;
                 // return response()->json(['status' => 'auth', 'user' => $user, 'products' => $products]);
             }
@@ -1180,7 +1192,11 @@ class ProductController extends Controller
                 }
                 $response = response()->json(['status' => 'no-auth', 'products' => $products]);
                 $response->header('ETag', $etag);
-                $response->header('Cache-Control', 'public, max-age=3600');
+                
+                if ($auth) {
+                    $response->header('Cache-Control', 'no-cache, no-store, must-revalidate');
+                    // $response->header('Cache-Control', 'public, max-age=300');
+                }
                 return $response;
 
                 // return response()->json(['status' => 'no-auth', 'products' => $products]);
