@@ -321,10 +321,23 @@ class PayPalController extends Controller
                 $orderData = Checkout::where('user_id', $user->ID)->first();
                 try {
                     DB::beginTransaction();
-                    $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
-                    $currentValue = (int)$options[0]->option_value;
-                    $newValue = $currentValue + 1;
-                    DB::update("UPDATE wp_options SET option_value = ? WHERE option_name = 'wt_last_order_number'", [$newValue]);
+
+                    $newValue = DB::transaction(function () {
+                        $currentValue = DB::table('wp_options')
+                            ->where('option_name', 'wt_last_order_number')
+                            ->lockForUpdate()
+                            ->value('option_value');
+                        $newValue = (int)$currentValue + 1;
+                        DB::table('wp_options')
+                            ->where('option_name', 'wt_last_order_number')
+                            ->update(['option_value' => $newValue]);
+                        return $newValue;
+                    });
+                    
+                    // $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
+                    // $currentValue = (int)$options[0]->option_value;
+                    // $newValue = $currentValue + 1;
+                    // DB::update("UPDATE wp_options SET option_value = ? WHERE option_name = 'wt_last_order_number'", [$newValue]);
                     $orderId = DB::table('wp_posts')->insertGetId([
                         'post_author' => $user->ID,
                         'post_date' => now(),
@@ -1082,10 +1095,22 @@ class PayPalController extends Controller
                 $orderData = Checkout::where('user_id', $user->ID)->first();
                 try {
                     DB::beginTransaction();
-                    $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
-                    $currentValue = (int)$options[0]->option_value;
-                    $newValue = $currentValue + 1;
-                    DB::update("UPDATE wp_options SET option_value = ? WHERE option_name = 'wt_last_order_number'", [$newValue]);
+
+                    $newValue = DB::transaction(function () {
+                        $currentValue = DB::table('wp_options')
+                            ->where('option_name', 'wt_last_order_number')
+                            ->lockForUpdate()
+                            ->value('option_value');
+                        $newValue = (int)$currentValue + 1;
+                        DB::table('wp_options')
+                            ->where('option_name', 'wt_last_order_number')
+                            ->update(['option_value' => $newValue]);
+                        return $newValue;
+                    });
+                    // $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
+                    // $currentValue = (int)$options[0]->option_value;
+                    // $newValue = $currentValue + 1;
+                    // DB::update("UPDATE wp_options SET option_value = ? WHERE option_name = 'wt_last_order_number'", [$newValue]);
                     $orderId = DB::table('wp_posts')->insertGetId([
                         'post_author' => $user->ID,
                         'post_date' => now(),
