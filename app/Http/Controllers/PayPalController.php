@@ -333,10 +333,17 @@ class PayPalController extends Controller
                     //         ->update(['option_value' => $newValue]);
                     //     return $newValue;
                     // });
-                    $newValue = DB::table('wp_options')
-    ->where('option_name', 'wt_last_order_number')
-    ->lockForUpdate()
-    ->increment('option_value', 1); // This will increment the value by 1 atomically
+                    $newValue = DB::transaction(function () {
+                        // Increment the value directly in the database
+                        DB::table('wp_options')
+                            ->where('option_name', 'wt_last_order_number')
+                            ->increment('option_value', 1);
+                    
+                        // Retrieve the new updated value
+                        return DB::table('wp_options')
+                            ->where('option_name', 'wt_last_order_number')
+                            ->value('option_value');
+                    });
 
                     
                     // $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
@@ -1112,10 +1119,19 @@ class PayPalController extends Controller
                     //         ->update(['option_value' => $newValue]);
                     //     return $newValue;
                     // });
-                    $newValue = DB::table('wp_options')
-    ->where('option_name', 'wt_last_order_number')
-    ->lockForUpdate()
-    ->increment('option_value', 1); 
+
+                    $newValue = DB::transaction(function () {
+                        // Increment the value directly in the database
+                        DB::table('wp_options')
+                            ->where('option_name', 'wt_last_order_number')
+                            ->increment('option_value', 1);
+                    
+                        // Retrieve the new updated value
+                        return DB::table('wp_options')
+                            ->where('option_name', 'wt_last_order_number')
+                            ->value('option_value');
+                    });
+                    
                     // $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
                     // $currentValue = (int)$options[0]->option_value;
                     // $newValue = $currentValue + 1;
