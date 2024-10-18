@@ -322,17 +322,22 @@ class PayPalController extends Controller
                 try {
                     DB::beginTransaction();
 
-                    $newValue = DB::transaction(function () {
-                        $currentValue = DB::table('wp_options')
-                            ->where('option_name', 'wt_last_order_number')
-                            ->lockForUpdate()
-                            ->value('option_value');
-                        $newValue = (int)$currentValue + 1;
-                        DB::table('wp_options')
-                            ->where('option_name', 'wt_last_order_number')
-                            ->update(['option_value' => $newValue]);
-                        return $newValue;
-                    });
+                    // $newValue = DB::transaction(function () {
+                    //     $currentValue = DB::table('wp_options')
+                    //         ->where('option_name', 'wt_last_order_number')
+                    //         ->lockForUpdate()
+                    //         ->value('option_value');
+                    //     $newValue = (int)$currentValue + 1;
+                    //     DB::table('wp_options')
+                    //         ->where('option_name', 'wt_last_order_number')
+                    //         ->update(['option_value' => $newValue]);
+                    //     return $newValue;
+                    // });
+                    $newValue = DB::table('wp_options')
+    ->where('option_name', 'wt_last_order_number')
+    ->lockForUpdate()
+    ->increment('option_value', 1); // This will increment the value by 1 atomically
+
                     
                     // $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
                     // $currentValue = (int)$options[0]->option_value;
@@ -1096,17 +1101,21 @@ class PayPalController extends Controller
                 try {
                     DB::beginTransaction();
 
-                    $newValue = DB::transaction(function () {
-                        $currentValue = DB::table('wp_options')
-                            ->where('option_name', 'wt_last_order_number')
-                            ->lockForUpdate()
-                            ->value('option_value');
-                        $newValue = (int)$currentValue + 1;
-                        DB::table('wp_options')
-                            ->where('option_name', 'wt_last_order_number')
-                            ->update(['option_value' => $newValue]);
-                        return $newValue;
-                    });
+                    // $newValue = DB::transaction(function () {
+                    //     $currentValue = DB::table('wp_options')
+                    //         ->where('option_name', 'wt_last_order_number')
+                    //         ->lockForUpdate()
+                    //         ->value('option_value');
+                    //     $newValue = (int)$currentValue + 1;
+                    //     DB::table('wp_options')
+                    //         ->where('option_name', 'wt_last_order_number')
+                    //         ->update(['option_value' => $newValue]);
+                    //     return $newValue;
+                    // });
+                    $newValue = DB::table('wp_options')
+    ->where('option_name', 'wt_last_order_number')
+    ->lockForUpdate()
+    ->increment('option_value', 1); 
                     // $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
                     // $currentValue = (int)$options[0]->option_value;
                     // $newValue = $currentValue + 1;

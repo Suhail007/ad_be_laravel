@@ -53,14 +53,15 @@ class ShippingBuffer extends Command
                                 ->where('post_id', $buffer->order_id)
                                 ->where('meta_key', '_order_shipping')
                                 ->update(['meta_value' => '15']);
-                            $value = DB::table('wp_posts')->where('id', $buffer->order_id)->value('post_status');
-                            if ($value !== 'wc-processing') {
-                                DB::table('buffers')
-                                    ->where('id', $buffer->id)
-                                    ->delete();
-                            }
+
 
                             Log::info($buffer->order_id . ' shipping charges updated');
+                        }
+                        $value = DB::table('wp_posts')->where('id', $buffer->order_id)->value('post_status');
+                        if ($value !== 'wc-processing') {
+                            DB::table('buffers')
+                                ->where('id', $buffer->id)
+                                ->delete();
                         }
                     }
                 } else {
