@@ -15,6 +15,7 @@ use App\Http\Controllers\Checkout\ProcessOrderController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CleanupController;
 use App\Http\Controllers\DiscountRuleController;
+use App\Http\Controllers\MenuController;
 use App\Http\Controllers\MyAcccountController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\Woo\PublicController;
@@ -42,6 +43,17 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
     //menu cleanup 
     Route::get('/cleanup',[CleanupController::class,'menuCleanUp']);
+    //brand list 
+    Route::get('brand-menus', [MenuController::class, 'index']);
+    Route::post('brand-menus', [MenuController::class, 'store']);
+    Route::get('brand-menus/{id}', [MenuController::class, 'show']);
+    Route::put('brand-menus/{id}', [MenuController::class, 'update']);
+    Route::delete('brand-menus/{id}', [MenuController::class, 'destroy']);
+    //brand custom list sync
+    Route::post('/fetch-brands', [MenuController::class, 'fetchAndSaveBrands']);
+    //get taxonomy by name/slug
+
+
     Route::get('/category-list/{value}',[CleanupController::class,'category']);
     Route::get('/brand-list/{value}',[CleanupController::class,'brand']);
     Route::get('/user-list/{value}',[CleanupController::class,'users']);
@@ -118,7 +130,7 @@ Route::get('products/{id}/related', [ProductController::class, 'getRelatedProduc
 //Sidebar menu
 Route::get('/sidebar', [ProductController::class, 'sidebar']);
 
-
+Route::get('/list', [MenuController::class, 'publiclist']);
 
 // Route::get('/cart', [WooCartController::class, 'index']);
 Route::get('/cart-products', [WooCartController::class, 'show']);
