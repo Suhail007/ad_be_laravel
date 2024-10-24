@@ -16,7 +16,8 @@ class MenuController extends Controller
     {
         $categories = Category::getCategoriesWithChildren();
         $brand = Brand::get();
-        $brandMenus = BrandMenu::all();
+        // $brandMenus = BrandMenu::all();
+        $brandMenus = BrandMenu::orderBy('order', 'asc')->get();
         return response()->json(['status'=>true, 'category' => $categories, 'brand' => $brand,'menu'=> $brandMenus]);
     }
     public function index()
