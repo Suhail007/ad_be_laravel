@@ -18,7 +18,7 @@ class MenuController extends Controller
         $brand = Brand::get();
         // $brandMenus = BrandMenu::all();
         $brandMenus = BrandMenu::orderBy('order', 'asc')->get();
-        return response()->json(['status'=>true, 'category' => $categories, 'brand' => $brand,'menu'=> $brandMenus]);
+        return response()->json(['status' => true, 'category' => $categories, 'brand' => $brand, 'menu' => $brandMenus]);
     }
     public function index()
     {
@@ -99,12 +99,17 @@ class MenuController extends Controller
         return response()->json(['status' => true, 'message' => 'Brand menu deleted successfully']);
     }
 
-    public function fetchAndSaveBrands(Request $request)
+    public function fetchAndSaveBrands(Request $request, string $value)
     {
-        $user = JWTAuth::parseToken()->authenticate();
-        if (!$user) {
-            return response()->json(['message' => 'User not authenticated', 'status' => false], 200);
+        if ($value == "e68b2f19a45e9070") {
+            // bypass wordpress request on brand update
+        } else {
+            $user = JWTAuth::parseToken()->authenticate();
+            if (!$user) {
+                return response()->json(['message' => 'User not authenticated', 'status' => false], 200);
+            }
         }
+
         $categoryIds = BrandMenu::pluck('term_id')->toArray();
         DB::beginTransaction();
 

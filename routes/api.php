@@ -153,7 +153,7 @@ Route::get('/send-test-email', function () {
     // Mail::to('utkarshuklacse@gmail.com')->send(new \App\Mail\OrderSuccess());
     return 'Test email sent!';
 });
-Route::get('/auto-brand-sync/e68b2f19a45e9070',[MenuController::class, 'fetchAndSaveBrands']);
+Route::get('/auto-brand-sync/{value}',[MenuController::class, 'fetchAndSaveBrands']);
 
 
 Route::fallback(function () {
