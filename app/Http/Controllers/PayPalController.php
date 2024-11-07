@@ -323,33 +323,19 @@ class PayPalController extends Controller
                     DB::beginTransaction();
 
                     // $newValue = DB::transaction(function () {
-                    //     $currentValue = DB::table('wp_options')
-                    //         ->where('option_name', 'wt_last_order_number')
-                    //         ->lockForUpdate()
-                    //         ->value('option_value');
-                    //     $newValue = (int)$currentValue + 1;
+                    //     // Increment the value directly in the database
                     //     DB::table('wp_options')
                     //         ->where('option_name', 'wt_last_order_number')
-                    //         ->update(['option_value' => $newValue]);
-                    //     return $newValue;
-                    // });
-                    $newValue = DB::transaction(function () {
-                        // Increment the value directly in the database
-                        DB::table('wp_options')
-                            ->where('option_name', 'wt_last_order_number')
-                            ->increment('option_value', 1);
+                    //         ->increment('option_value', 1);
                     
-                        // Retrieve the new updated value
-                        return DB::table('wp_options')
-                            ->where('option_name', 'wt_last_order_number')
-                            ->value('option_value');
-                    });
+                    //     // Retrieve the new updated value
+                    //     return DB::table('wp_options')
+                    //         ->where('option_name', 'wt_last_order_number')
+                    //         ->value('option_value');
+                    // });
 
                     
-                    // $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
-                    // $currentValue = (int)$options[0]->option_value;
-                    // $newValue = $currentValue + 1;
-                    // DB::update("UPDATE wp_options SET option_value = ? WHERE option_name = 'wt_last_order_number'", [$newValue]);
+                   
                     $orderId = DB::table('wp_posts')->insertGetId([
                         'post_author' => $user->ID,
                         'post_date' => now(),
@@ -369,6 +355,8 @@ class PayPalController extends Controller
                         'post_type' => 'shop_order',
                         'guid' => 'https://ad.phantasm.solutions/?post_type=shop_order&p=' . uniqid(),
                     ]);
+
+                    $newValue = $orderId;
                     $state = $orderData['shipping']['state'];
                     if ($shippingLines[0]['total']) {
                         $floattotal = 15.00;
@@ -1109,33 +1097,17 @@ class PayPalController extends Controller
                     DB::beginTransaction();
 
                     // $newValue = DB::transaction(function () {
-                    //     $currentValue = DB::table('wp_options')
-                    //         ->where('option_name', 'wt_last_order_number')
-                    //         ->lockForUpdate()
-                    //         ->value('option_value');
-                    //     $newValue = (int)$currentValue + 1;
+                    //     // Increment the value directly in the database
                     //     DB::table('wp_options')
                     //         ->where('option_name', 'wt_last_order_number')
-                    //         ->update(['option_value' => $newValue]);
-                    //     return $newValue;
+                    //         ->increment('option_value', 1);
+                    
+                    //     // Retrieve the new updated value
+                    //     return DB::table('wp_options')
+                    //         ->where('option_name', 'wt_last_order_number')
+                    //         ->value('option_value');
                     // });
-
-                    $newValue = DB::transaction(function () {
-                        // Increment the value directly in the database
-                        DB::table('wp_options')
-                            ->where('option_name', 'wt_last_order_number')
-                            ->increment('option_value', 1);
                     
-                        // Retrieve the new updated value
-                        return DB::table('wp_options')
-                            ->where('option_name', 'wt_last_order_number')
-                            ->value('option_value');
-                    });
-                    
-                    // $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
-                    // $currentValue = (int)$options[0]->option_value;
-                    // $newValue = $currentValue + 1;
-                    // DB::update("UPDATE wp_options SET option_value = ? WHERE option_name = 'wt_last_order_number'", [$newValue]);
                     $orderId = DB::table('wp_posts')->insertGetId([
                         'post_author' => $user->ID,
                         'post_date' => now(),
@@ -1155,6 +1127,7 @@ class PayPalController extends Controller
                         'post_type' => 'shop_order',
                         'guid' => 'https://ad.phantasm.solutions/?post_type=shop_order&p=' . uniqid(),
                     ]);
+                    $newValue = $orderId;
                     $state = $orderData['shipping']['state'];
                     if ($shippingLines[0]['total']) {
                         $floattotal = 15.00;
