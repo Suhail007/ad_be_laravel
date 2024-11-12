@@ -18,6 +18,7 @@ use App\Http\Controllers\DiscountRuleController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\MyAcccountController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\UserCouponController;
 use App\Http\Controllers\Woo\PublicController;
 use App\Http\Controllers\Woo\TestController;
 use App\Http\Controllers\Woo\WishlistController;
@@ -94,9 +95,18 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     // Route::post('/process-payment',[ProcessOrderController::class, 'processPayment']);
     // Route::post('/payment-process', [CheckoutController::class, 'processPayment']);
     
+    
     //discount api
     Route::get('/cart-discount',[DiscountRuleController::class,'index']);
     Route::get('/discount-product/{id}', [DiscountRuleController::class, 'show']);
+
+    Route::prefix('userCoupon')->group(function () {
+        Route::get('/', [UserCouponController::class, 'index']);
+        Route::get('{id}', [UserCouponController::class, 'show']);
+        Route::post('/', [UserCouponController::class, 'store']);
+        Route::put('{id}', [UserCouponController::class, 'update']);
+        Route::delete('{id}', [UserCouponController::class, 'destroy']);
+    });
 
 
     //wishlist
