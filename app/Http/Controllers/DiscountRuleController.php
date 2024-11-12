@@ -28,6 +28,20 @@ class DiscountRuleController extends Controller
         }
     }
 
+    public function singleDiscount(string $id)
+    {
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            if ($user) {
+                $discountRules = DiscountRule::where('id',$id )->get();
+                return response()->json(['status' => true, 'data'=>$discountRules]);
+            } else {
+                return response()->json(['status' => false, 'message' => 'You don\'t have any discount'], 401);
+            }
+        } catch (\Throwable $th) {
+            return response()->json(['status' => false, 'message' => $th->getMessage()], 401);
+        }
+    }
 
 
 

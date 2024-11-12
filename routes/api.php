@@ -98,6 +98,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     
     //discount api
     Route::get('/cart-discount',[DiscountRuleController::class,'index']);
+    Route::get('/cart-discount/{id}',[DiscountRuleController::class,'singleDiscount']);
     Route::get('/discount-product/{id}', [DiscountRuleController::class, 'show']);
 
     Route::prefix('userCoupon')->group(function () {
