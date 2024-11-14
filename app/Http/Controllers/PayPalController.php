@@ -12,6 +12,7 @@ use App\Models\OrderItemMeta;
 use App\Models\OrderMeta;
 use App\Models\ProductMeta;
 use App\Models\User;
+use App\Models\UserCoupon;
 use Exception;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
@@ -993,7 +994,20 @@ class PayPalController extends Controller
                     foreach ($orderNotes as $note) {
                         DB::table('wp_comments')->insert($note);
                     }
-
+                    $mail =$user->user_email;
+                    try {
+                        $coupon = UserCoupon::where('email', $mail)->first();
+                        if (!$coupon) {
+                            Log::info("$mail not have QR coupon");
+                        } 
+                        if ($coupon->canUse === false) {
+                            Log::info("$mail can not reuse");
+                        }
+                        $coupon->canUse = false;
+                        $coupon->save();
+                    } catch (\Throwable $th) {
+                        Log::info($th->getMessage());
+                    }
                     $checkout->delete();
                     DB::commit();
                     $email = $orderData['billing']['email'];
@@ -1789,7 +1803,20 @@ class PayPalController extends Controller
                     foreach ($orderNotes as $note) {
                         DB::table('wp_comments')->insert($note);
                     }
-
+                    $mail =$user->user_email;
+                    try {
+                        $coupon = UserCoupon::where('email', $mail)->first();
+                        if (!$coupon) {
+                            Log::info("$mail not have QR coupon");
+                        } 
+                        if ($coupon->canUse === false) {
+                            Log::info("$mail can not reuse");
+                        }
+                        $coupon->canUse = false;
+                        $coupon->save();
+                    } catch (\Throwable $th) {
+                        Log::info($th->getMessage());
+                    }
                     $checkout->delete();
                     // dd();
                     DB::commit();
