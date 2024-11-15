@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\DiscountRule;
 use App\Models\Product;
 use App\Models\ProductMeta;
+use App\Models\UserCoupon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -17,8 +18,18 @@ class DiscountRuleController extends Controller
             $user = JWTAuth::parseToken()->authenticate();
             if ($user) {
                 $discountRules = DiscountRule::where('enabled', 1)->where('deleted', 0)->get();
+                try {
+                    $existingCoupon = UserCoupon::where('email', $user->user_email)->where('canUse', true)->get();
+                } catch (\Throwable $th) {
+                    $existingCoupon = [];
+                }
                 
-                // $this->show($user, $id=0);
+                // Merge the existing coupon data with the discount rules
+                $discountRules = $discountRules->map(function ($discountRule) use ($existingCoupon) {
+                    // Add 'existingCoupon' to each discount rule
+                    $discountRule->existingCoupon = $existingCoupon;
+                    return $discountRule;
+                });
                 return response()->json($discountRules);
             } else {
                 return response()->json(['status' => 'failure', 'message' => 'You don\'t have any discount'], 401);
