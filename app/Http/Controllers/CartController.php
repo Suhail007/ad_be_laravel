@@ -698,7 +698,7 @@ class CartController extends Controller
         $isFreeze = $checkout ? $checkout->isFreeze : false;
         $freeze_time = $checkout ? $checkout->updated_at : false;
         try {
-            $existingCoupon = UserCoupon::where('email', $user->user_email)->get();
+            $existingCoupon = UserCoupon::where('email', $user->user_email)->where('canUse',true)->get();
         } catch (\Throwable $th) {
             $existingCoupon = [];
         }
