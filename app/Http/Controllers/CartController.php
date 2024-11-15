@@ -697,12 +697,17 @@ class CartController extends Controller
         $checkout = Checkout::where('user_id', $user->ID)->first();
         $isFreeze = $checkout ? $checkout->isFreeze : false;
         $freeze_time = $checkout ? $checkout->updated_at : false;
-        
+        try {
+            $existingCoupon = UserCoupon::where('email', $user->user_email)->where('canUse',true)->get();
+        } catch (\Throwable $th) {
+            $existingCoupon = [];
+        }
 
         return response()->json([
             'status' => true,
             'freeze' => $isFreeze,
             'username' => $user->user_login,
+            'qrCoupon'=> $existingCoupon??null,
             'user_mm_txc' => strtoupper($user->mmtax) == "EX" ? "EX" : null,
             'message' => 'Cart items',
             'data' => $userIp,
