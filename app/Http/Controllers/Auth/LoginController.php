@@ -179,7 +179,14 @@ class LoginController extends Controller
         }
         $email = $request->input('user_email');
         $username = User::generateUniqueUsername($email);
-
+        try {
+           $useralready= User::where('user_email',$email)->first();
+           if($useralready){
+            return response()->json(['status'=>false, 'message'=>'Already used for Email']);
+           }
+        } catch (\Throwable $th) {
+            return response()->json(['status'=>false, 'message'=>$th->getMessage()]);
+        }
         $user = User::create([
             'user_login' => $username,
             'user_pass' => WpPassword::make($request->input('password')),
