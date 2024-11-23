@@ -228,9 +228,44 @@ class PayPalController extends Controller
                             $cartDiscount += $item['discount_amt'];
 
                             $couponIDs[] = $item['applicable_rules'][0]['rule_id'];
+                           
+                            //coupon user limit validation and functionality 
+                            if($item['applicable_rules'][0]['userUseLimit'] == 1){
+                                Log::info('coupon validation started');
+                                $limitCouponID = $item['applicable_rules'][0]['rule_id'];
+                                $limitUserEmail= $user->user_email;
+                                $isApplicable = UserCoupon::where('discountRuleId',$limitCouponID)->where('email',$limitUserEmail)->first();
+                                $limitCouponLable = $item['applicable_rules'][0]['label']??'NONAME';
+                                $limitCouponRuleTitle = $item['applicable_rules'][0]['rule_title'];
+                                if($isApplicable && $isApplicable->canUse == false){
+                                    Log::info('coupon validation 1st if');
+                                    return response()->json(['status'=>false,'message'=>"Opps! You are not allowed to use $limitCouponLable again", 'reload'=>true]);
+                                } else if($isApplicable){
+                                    Log::info('coupon validation 2nd if');
+                                    $isApplicable->update([
+                                        'couponName' => $limitCouponRuleTitle,
+                                        'qrDetail' => $limitCouponLable,
+                                        'discountRuleId' => $limitCouponID,
+                                        'email' => $limitUserEmail,
+                                        'canUse' => false,
+                                        'meta' => null
+                                    ]);
+                                } else {
+                                    Log::info('coupon Readded ');
+                                    UserCoupon::create([
+                                        'couponName' => $limitCouponRuleTitle,
+                                        'qrDetail' => $limitCouponLable,
+                                        'discountRuleId' => $limitCouponID,
+                                        'email' => $limitUserEmail,
+                                        'canUse' => false,
+                                        'meta' => null
+                                    ]);
+                                }
+                            }
                             $isPercentageCoupone = true;
                         }
                     } catch (\Throwable $th) {
+                        Log::info($th->getMessage());
                     }
 
                     $float1 = $item['quantity'] * $subtotal;
@@ -1078,6 +1113,42 @@ class PayPalController extends Controller
                             $cartDiscount += $item['discount_amt'];
 
                             $couponIDs[] = $item['applicable_rules'][0]['rule_id'];
+
+                             //coupon user limit validation and functionality 
+                             if($item['applicable_rules'][0]['userUseLimit'] == 1){
+                                Log::info('coupon validation started');
+                                $limitCouponID = $item['applicable_rules'][0]['rule_id'];
+                                $limitUserEmail= $user->user_email;
+                                $isApplicable = UserCoupon::where('discountRuleId',$limitCouponID)->where('email',$limitUserEmail)->first();
+                                $limitCouponLable = $item['applicable_rules'][0]['label']??'NONAME';
+                                $limitCouponRuleTitle = $item['applicable_rules'][0]['rule_title'];
+                                if($isApplicable && $isApplicable->canUse == false){
+                                    Log::info('coupon validation 1st if');
+                                    return response()->json(['status'=>false,'message'=>"Opps! You are not allowed to use $limitCouponLable again", 'reload'=>true]);
+                                } else if($isApplicable){
+                                    Log::info('coupon validation 2nd if');
+                                    $isApplicable->update([
+                                        'couponName' => $limitCouponRuleTitle,
+                                        'qrDetail' => $limitCouponLable,
+                                        'discountRuleId' => $limitCouponID,
+                                        'email' => $limitUserEmail,
+                                        'canUse' => false,
+                                        'meta' => null
+                                    ]);
+                                } else {
+                                    Log::info('coupon Readded ');
+                                    UserCoupon::create([
+                                        'couponName' => $limitCouponRuleTitle,
+                                        'qrDetail' => $limitCouponLable,
+                                        'discountRuleId' => $limitCouponID,
+                                        'email' => $limitUserEmail,
+                                        'canUse' => false,
+                                        'meta' => null
+                                    ]);
+                                }
+                            }
+
+                            
                             $isPercentageCoupone = true;
                         }
                     } catch (\Throwable $th) {
