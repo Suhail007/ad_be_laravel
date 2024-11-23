@@ -1122,6 +1122,9 @@ class PayPalController extends Controller
                                 $isApplicable = UserCoupon::where('discountRuleId',$limitCouponID)->where('email',$limitUserEmail)->first();
                                 $limitCouponLable = $item['applicable_rules'][0]['label']??'NONAME';
                                 $limitCouponRuleTitle = $item['applicable_rules'][0]['rule_title'];
+                                $isApplicableMetaData = [
+                                    'useUserLimit' => true
+                                ];
                                 if($isApplicable && $isApplicable->canUse == false){
                                     Log::info('coupon validation 1st if');
                                     return response()->json(['status'=>false,'message'=>"Opps! You are not allowed to use $limitCouponLable again", 'reload'=>true]);
@@ -1133,7 +1136,7 @@ class PayPalController extends Controller
                                         'discountRuleId' => $limitCouponID,
                                         'email' => $limitUserEmail,
                                         'canUse' => false,
-                                        'meta' => null
+                                        'meta' => $isApplicableMetaData
                                     ]);
                                 } else {
                                     Log::info('coupon Readded ');
@@ -1143,12 +1146,12 @@ class PayPalController extends Controller
                                         'discountRuleId' => $limitCouponID,
                                         'email' => $limitUserEmail,
                                         'canUse' => false,
-                                        'meta' => null
+                                        'meta' => $isApplicableMetaData
                                     ]);
                                 }
                             }
 
-                            
+
                             $isPercentageCoupone = true;
                         }
                     } catch (\Throwable $th) {
