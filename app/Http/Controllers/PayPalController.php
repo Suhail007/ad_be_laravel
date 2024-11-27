@@ -135,26 +135,25 @@ class PayPalController extends Controller
     public function handleWebhook(Request $request)
     {
         try {
-            $signingKey = config('services.nmi.security'); 
-            $webhookBody = $request->getContent(); 
-            $headers = $request->headers->all(); 
-            $sigHeader = $headers['webhook-signature'][0] ?? null; 
+            $signingKey = config('services.nmi.security');
+            $webhookBody = $request->getContent();
+            $headers = $request->headers->all();
+            $sigHeader = $headers['webhook-signature'][0] ?? null;
             if (is_null($sigHeader) || strlen($sigHeader) < 1) {
                 throw new Exception("Invalid webhook - signature header missing");
             }
             if (preg_match('/t=(.*),s=(.*)/', $sigHeader, $matches)) {
-                $nonce = $matches[1]; 
-                $signature = $matches[2]; 
+                $nonce = $matches[1];
+                $signature = $matches[2];
             } else {
                 throw new Exception("Unrecognized webhook signature format");
             }
             if (!$this->webhookIsVerified($webhookBody, $signingKey, $nonce, $signature)) {
                 throw new Exception("Invalid webhook - signature verification failed");
             }
-            $webhookData = json_decode($webhookBody, true); 
+            $webhookData = json_decode($webhookBody, true);
 
-            return response()->json(['message' => 'Webhook processed successfully','usefulldata'=>$webhookData], 200);
-
+            return response()->json(['message' => 'Webhook processed successfully', 'usefulldata' => $webhookData], 200);
         } catch (Exception $e) {
             Log::error('Webhook error: ' . $e->getMessage());
             return response()->json(['message' => 'Webhook verification failed: ' . $e->getMessage()]);
@@ -228,19 +227,19 @@ class PayPalController extends Controller
                             $cartDiscount += $item['discount_amt'];
 
                             $couponIDs[] = $item['applicable_rules'][0]['rule_id'];
-                           
+
                             //coupon user limit validation and functionality 
-                            if($item['applicable_rules'][0]['userUseLimit'] == 1){
+                            if ($item['applicable_rules'][0]['userUseLimit'] == 1) {
                                 Log::info('coupon validation started');
                                 $limitCouponID = $item['applicable_rules'][0]['rule_id'];
-                                $limitUserEmail= $user->user_email;
-                                $isApplicable = UserCoupon::where('discountRuleId',$limitCouponID)->where('email',$limitUserEmail)->first();
-                                $limitCouponLable = $item['applicable_rules'][0]['label']??'NONAME';
+                                $limitUserEmail = $user->user_email;
+                                $isApplicable = UserCoupon::where('discountRuleId', $limitCouponID)->where('email', $limitUserEmail)->first();
+                                $limitCouponLable = $item['applicable_rules'][0]['label'] ?? 'NONAME';
                                 $limitCouponRuleTitle = $item['applicable_rules'][0]['rule_title'];
-                                if($isApplicable && $isApplicable->canUse == false){
+                                if ($isApplicable && $isApplicable->canUse == false) {
                                     Log::info('coupon validation 1st if');
-                                    return response()->json(['status'=>false,'message'=>"Opps! You are not allowed to use $limitCouponLable again", 'reload'=>true]);
-                                } else if($isApplicable){
+                                    return response()->json(['status' => false, 'message' => "Opps! You are not allowed to use $limitCouponLable again", 'reload' => true]);
+                                } else if ($isApplicable) {
                                     Log::info('coupon validation 2nd if');
                                     $isApplicable->update([
                                         'couponName' => $limitCouponRuleTitle,
@@ -344,8 +343,11 @@ class PayPalController extends Controller
                 $billingInfo = $restructuredBilling;
                 $saleData = $this->doSale($total, $payment_token, $billingInfo, $shippingInfo);
                 $paymentResult = $this->_doRequest($saleData);
-
-
+                try {
+                    Log::info('Payment Result: ' . json_encode($paymentResult, JSON_PRETTY_PRINT));
+                } catch (\Throwable $th) {
+                    
+                }
 
                 if (!$paymentResult['status']) {
                     return response()->json([
@@ -363,15 +365,15 @@ class PayPalController extends Controller
                     //     DB::table('wp_options')
                     //         ->where('option_name', 'wt_last_order_number')
                     //         ->increment('option_value', 1);
-                    
+
                     //     // Retrieve the new updated value
                     //     return DB::table('wp_options')
                     //         ->where('option_name', 'wt_last_order_number')
                     //         ->value('option_value');
                     // });
 
-                    
-                   
+
+
                     $orderId = DB::table('wp_posts')->insertGetId([
                         'post_author' => $user->ID,
                         'post_date' => now(),
@@ -1029,12 +1031,12 @@ class PayPalController extends Controller
                     foreach ($orderNotes as $note) {
                         DB::table('wp_comments')->insert($note);
                     }
-                    $mail =$user->user_email;
+                    $mail = $user->user_email;
                     try {
                         $coupon = UserCoupon::where('email', $mail)->first();
                         if (!$coupon) {
                             Log::info("$mail not have QR coupon");
-                        } 
+                        }
                         if ($coupon->canUse === false) {
                             Log::info("$mail can not reuse");
                         }
@@ -1114,21 +1116,21 @@ class PayPalController extends Controller
 
                             $couponIDs[] = $item['applicable_rules'][0]['rule_id'];
 
-                             //coupon user limit validation and functionality 
-                             if($item['applicable_rules'][0]['userUseLimit'] == 1){
+                            //coupon user limit validation and functionality 
+                            if ($item['applicable_rules'][0]['userUseLimit'] == 1) {
                                 Log::info('coupon validation started');
                                 $limitCouponID = $item['applicable_rules'][0]['rule_id'];
-                                $limitUserEmail= $user->user_email;
-                                $isApplicable = UserCoupon::where('discountRuleId',$limitCouponID)->where('email',$limitUserEmail)->first();
-                                $limitCouponLable = $item['applicable_rules'][0]['label']??'NONAME';
+                                $limitUserEmail = $user->user_email;
+                                $isApplicable = UserCoupon::where('discountRuleId', $limitCouponID)->where('email', $limitUserEmail)->first();
+                                $limitCouponLable = $item['applicable_rules'][0]['label'] ?? 'NONAME';
                                 $limitCouponRuleTitle = $item['applicable_rules'][0]['rule_title'];
                                 $isApplicableMetaData = [
                                     'useUserLimit' => true
                                 ];
-                                if($isApplicable && $isApplicable->canUse == false){
+                                if ($isApplicable && $isApplicable->canUse == false) {
                                     Log::info('coupon validation 1st if');
-                                    return response()->json(['status'=>false,'message'=>"Opps! You are not allowed to use $limitCouponLable again", 'reload'=>true]);
-                                } else if($isApplicable){
+                                    return response()->json(['status' => false, 'message' => "Opps! You are not allowed to use $limitCouponLable again", 'reload' => true]);
+                                } else if ($isApplicable) {
                                     Log::info('coupon validation 2nd if');
                                     $isApplicable->update([
                                         'couponName' => $limitCouponRuleTitle,
@@ -1189,13 +1191,13 @@ class PayPalController extends Controller
                     //     DB::table('wp_options')
                     //         ->where('option_name', 'wt_last_order_number')
                     //         ->increment('option_value', 1);
-                    
+
                     //     // Retrieve the new updated value
                     //     return DB::table('wp_options')
                     //         ->where('option_name', 'wt_last_order_number')
                     //         ->value('option_value');
                     // });
-                    
+
                     $orderId = DB::table('wp_posts')->insertGetId([
                         'post_author' => $user->ID,
                         'post_date' => now(),
@@ -1877,12 +1879,12 @@ class PayPalController extends Controller
                     foreach ($orderNotes as $note) {
                         DB::table('wp_comments')->insert($note);
                     }
-                    $mail =$user->user_email;
+                    $mail = $user->user_email;
                     try {
                         $coupon = UserCoupon::where('email', $mail)->first();
                         if (!$coupon) {
                             Log::info("$mail not have QR coupon");
-                        } 
+                        }
                         if ($coupon->canUse === false) {
                             Log::info("$mail can not reuse");
                         }
