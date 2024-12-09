@@ -63,6 +63,35 @@ class CleanupController extends Controller
         }
         return null;
     }
+    private function getVariations($productId, $priceTier = '')
+    {
+        $variations = Product::where('post_parent', $productId)
+            ->where('post_type', 'product_variation')
+            ->whereHas('meta', function ($query) {
+                // Filter variations to include only those in stock
+                $query->where('meta_key', '_stock_status')
+                    ->where('meta_value', 'instock');
+            })
+            ->with('meta')
+            ->get()
+            ->map(function ($variation) use ($priceTier) {
+                // Get meta data as an array
+                $metaData = $variation->meta->pluck('meta_value', 'meta_key')->toArray();
+
+                // Construct the regex pattern to include the price tier
+                $pattern = '/^(_sku|attribute_.*|_stock|_regular_price|_price|_stock_status' . preg_quote($priceTier, '/') . '|_thumbnail_id)$/';
+
+                // Filter meta data to include only the selected fields
+                $filteredMetaData = array_filter($metaData, function ($key) use ($pattern) {
+                    return preg_match($pattern, $key);
+                }, ARRAY_FILTER_USE_KEY);
+                $adPrice = $metaData[$priceTier] ?? $metaData['_price'] ?? $metaData['_regular_price'] ?? null;
+
+                return $adPrice;
+            });
+
+        return $variations;
+    }
     public function brandProducts(Request $request, string $slugs)
     {
         $perPage = $request->query('perPage', 500);
@@ -70,10 +99,11 @@ class CleanupController extends Controller
         $page = $request->query('page', 1);
 
         $slugArray = explode(',', $slugs);
-       
+        $auth = false;
         try {
             $user = JWTAuth::parseToken()->authenticate();
             if ($user->ID) {
+                $auth = true;
                 $priceTier = $user->price_tier ?? '';
                 $products = Product::with([
                     'meta' => function ($query) use ($priceTier) {
@@ -107,6 +137,7 @@ class CleanupController extends Controller
                     ->paginate($perPage, ['*'], 'page', $page);
             }
         } catch (\Throwable $th) {
+            $auth = true;
             $products = Product::with([
                 'meta' => function ($query) {
                     $query->select('post_id', 'meta_key', 'meta_value')
@@ -139,12 +170,23 @@ class CleanupController extends Controller
                 ->paginate($perPage, ['*'], 'page', $page);
         }
 
-        $products->getCollection()->transform(function ($product) {
+        $products->getCollection()->transform(function ($product)use ($priceTier) {
             $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
             $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
-
+            
+                try {
+                    $ad_price = $product->meta->where('meta_key', $priceTier)->pluck('meta_value')->first() ?? '';
+                    if ($ad_price == '') {
+                        $ad_price = $this->getVariations($product->ID, $priceTier);
+                        $ad_price = $ad_price[0];
+                    }
+                } catch (\Throwable $th) {
+                    $ad_price = null;
+                }
+            
             return [
                 'ID' => $product->ID,
+                'ad_price' => $ad_price,
                 'title' => $product->post_title,
                 'slug' => $product->post_name,
                 'thumbnail_url' => $thumbnailUrl,
