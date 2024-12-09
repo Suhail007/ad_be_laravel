@@ -100,6 +100,7 @@ class CleanupController extends Controller
 
         $slugArray = explode(',', $slugs);
         $auth = false;
+        $priceTier='';
         try {
             $user = JWTAuth::parseToken()->authenticate();
             if ($user->ID) {
