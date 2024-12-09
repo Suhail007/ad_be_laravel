@@ -171,7 +171,7 @@ class CleanupController extends Controller
                 ->paginate($perPage, ['*'], 'page', $page);
         }
 
-        $products->getCollection()->transform(function ($product)use ($priceTier) {
+        $products->getCollection()->transform(function ($product)use ($priceTier,$auth) {
             $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
             $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
             
@@ -184,7 +184,9 @@ class CleanupController extends Controller
                 } catch (\Throwable $th) {
                     $ad_price = null;
                 }
-            
+                if (!$auth) {
+                    $ad_price = null;
+                }
             return [
                 'ID' => $product->ID,
                 'ad_price' => $ad_price,
