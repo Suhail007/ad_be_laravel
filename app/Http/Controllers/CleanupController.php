@@ -70,15 +70,15 @@ class CleanupController extends Controller
         $page = $request->query('page', 1);
 
         $slugArray = explode(',', $slugs);
-        $priceTier='';
+       
         try {
             $user = JWTAuth::parseToken()->authenticate();
             if ($user->ID) {
                 $priceTier = $user->price_tier ?? '';
                 $products = Product::with([
-                    'meta' => function ($query) {
+                    'meta' => function ($query) use ($priceTier) {
                         $query->select('post_id', 'meta_key', 'meta_value')
-                            ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
+                           ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
                     },
                     'categories' => function ($query) {
                         $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
