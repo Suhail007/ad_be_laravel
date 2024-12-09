@@ -138,7 +138,7 @@ class CleanupController extends Controller
                     ->paginate($perPage, ['*'], 'page', $page);
             }
         } catch (\Throwable $th) {
-            $auth = true;
+            $auth = false;
             $products = Product::with([
                 'meta' => function ($query) {
                     $query->select('post_id', 'meta_key', 'meta_value')
