@@ -1953,15 +1953,17 @@ class PayPalController extends Controller
                     $dompdf->setPaper('A4', 'portrait');
                     $dompdf->render();
                     $pdfOutput = $dompdf->output();
+
                     $tempFilePath = "temp/order_invoice_{$orderId}.pdf";
                     Storage::put($tempFilePath, $pdfOutput);
+                    $absolutePath = Storage::path($tempFilePath);
                     SendOrderConfirmationEmail::dispatch(
                         $email,
                         $newValue,
                         $username,
                         $deliveryDate,
                         $businessAddress,
-                        $tempFilePath
+                        $absolutePath
                     );
                     // unlink($tempFilePath);
                 } catch (\Exception $e) {
