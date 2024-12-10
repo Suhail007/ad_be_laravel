@@ -51,7 +51,7 @@
                     <td>
                         <p style="position: relative; display: inline-block; color: rgb(0, 0, 0); font-weight: 600;">
                             {{-- Watermark Number --}}
-                            <span style="position: absolute; top: 85%; left: 50%; transform: translate(-50%, -50%); color: rgba(191, 191, 191, 0.4); font-size: 20px; pointer-events: none;">
+                            <span style="color: rgba(191, 191, 191, 0.4); font-size: 20px; pointer-events: none;">
                                 {{ $watermarkNumber }}
                             </span>
                             
