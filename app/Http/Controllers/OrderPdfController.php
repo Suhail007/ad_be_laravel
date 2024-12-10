@@ -6,11 +6,16 @@ use App\Models\Order;
 use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class OrderPdfController extends Controller
 {
-    public function generateOrderPdf($orderId)
+    public function generateOrderPdf(Request $request, string $orderId)
     {
+        $user = JWTAuth::parseToken()->authenticate();
+        if (!$user) {
+            return response()->json(['message' => 'User not authenticated', 'status' => false], 401);
+        }
         // Fetch the order and its related data-
         $order = Order::with(['meta', 'items.meta'])->findOrFail($orderId);
 
@@ -41,7 +46,7 @@ class OrderPdfController extends Controller
         $tax = $order->meta->where('meta_key', '_order_tax')->first()->meta_value ?? 0;
         $discount = $order->meta->where('meta_key', '_cart_discount')->first()->meta_value ?? 0;
         $total = $order->meta->where('meta_key', '_order_total')->first()->meta_value ?? 0;
-        $watermarkNumber= ' ';
+        $watermarkNumber= $user->account ?? ' ';
 
         // Generate the HTML for the PDF
         $html = View::make('pdf.order_invoice', compact(
