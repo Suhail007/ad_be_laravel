@@ -1061,12 +1061,59 @@ class PayPalController extends Controller
                     $username = $orderData['billing']['first_name'] . ' ' . $orderData['billing']['last_name'];
                     $deliveryDate = '3 working Days';
                     $businessAddress = implode(' ', $orderData['shipping']);
+                    $order = Order::with(['meta', 'items.meta'])->find($newValue);
+                    $shippingAddress = $businessAddress ?? 'N/A';
+                    $orderDate = $order->post_date;
+                    $paymentMethod = $order->meta->where('meta_key', '_payment_method_title')->first()->meta_value ?? 'N/A';
+                    $items = $order->items->where('order_item_type', 'line_item')->map(function ($item) {
+                        $sku = $item->meta->where('meta_key', '_sku')->first()->meta_value ?? 'N/A';
+                        $quantity = $item->meta->where('meta_key', '_qty')->first()->meta_value ?? 0;
+                        $subtotal = $item->meta->where('meta_key', '_line_subtotal')->first()->meta_value ?? 0;
+                        $total = $item->meta->where('meta_key', '_line_total')->first()->meta_value ?? 0;
+            
+                        return [
+                            'name' => $item->order_item_name,
+                            'sku' => $sku,
+                            'quantity' => $quantity,
+                            'subtotal' => $subtotal,
+                            'total' => $total,
+                        ];
+                    });
+                    $subtotal = $order->meta->where('meta_key', '_order_subtotal')->first()->meta_value ?? 0;
+                    $shipping = $order->meta->where('meta_key', '_order_shipping')->first()->meta_value ?? 0;
+                    $tax = $order->meta->where('meta_key', '_order_tax')->first()->meta_value ?? 0;
+                    $discount = $order->meta->where('meta_key', '_cart_discount')->first()->meta_value ?? 0;
+                    $total = $order->meta->where('meta_key', '_order_total')->first()->meta_value ?? 0;
+                    $watermarkNumber= $user->account ?? '  ';
+                    $html = View::make('pdf.order_invoice', compact(
+                        'order',
+                        'shippingAddress',
+                        'orderDate',
+                        'paymentMethod',
+                        'items',
+                        // 'subtotal',
+                        'shipping',
+                        'tax',
+                        'discount',
+                        'total',
+                        'watermarkNumber'
+                    ))->render();
+                    $dompdf = new Dompdf();
+                    $dompdf->loadHtml($html);
+                    $dompdf->setPaper('A4', 'portrait');
+                    $dompdf->render();
+                    $pdfOutput = $dompdf->output();
+                    $tempFilePath = "temp/order_invoice_{$orderId}.pdf";
+                    Log::info('file path in order '.$tempFilePath);
+                    Storage::put($tempFilePath, $pdfOutput);
+                    
                     SendOrderConfirmationEmail::dispatch(
                         $email,
                         $newValue,
                         $username,
                         $deliveryDate,
-                        $businessAddress
+                        $businessAddress,
+                        $tempFilePath
                     );
                 } catch (\Exception $e) {
                     DB::rollBack();
