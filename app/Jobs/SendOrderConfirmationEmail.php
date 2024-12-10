@@ -9,6 +9,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class SendOrderConfirmationEmail implements ShouldQueue
@@ -47,6 +48,7 @@ class SendOrderConfirmationEmail implements ShouldQueue
      */
     public function handle(): void
     {
+        Log::info('file path is '.$this->tempFilePath);
         Mail::to($this->email)->send(new OrderSuccess($this->orderNumber,$this->name,$this->deliveryDate,$this->businessAddress,$this->tempFilePath));
        
         // unlink($this->tempFilePath);

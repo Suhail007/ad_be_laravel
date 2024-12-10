@@ -9,6 +9,7 @@ use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class OrderSuccess extends Mailable
 {
@@ -66,6 +67,7 @@ class OrderSuccess extends Mailable
     public function attachments(): array
     {
         // return [];
+        Log::info('file path in mail '.$this->tempFilePath);
         return [
             Attachment::fromPath($this->tempFilePath),
         ];
