@@ -1954,6 +1954,7 @@ class PayPalController extends Controller
                     $dompdf->render();
                     $pdfOutput = $dompdf->output();
                     $tempFilePath = "temp/order_invoice_{$orderId}.pdf";
+                    Log::info('file path in order '.$tempFilePath);
                     Storage::put($tempFilePath, $pdfOutput);
                     
                     SendOrderConfirmationEmail::dispatch(
