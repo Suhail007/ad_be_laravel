@@ -41,6 +41,7 @@ class OrderPdfController extends Controller
         $tax = $order->meta->where('meta_key', '_order_tax')->first()->meta_value ?? 0;
         $discount = $order->meta->where('meta_key', '_cart_discount')->first()->meta_value ?? 0;
         $total = $order->meta->where('meta_key', '_order_total')->first()->meta_value ?? 0;
+        $watermarkNumber= ' ';
 
         // Generate the HTML for the PDF
         $html = View::make('pdf.order_invoice', compact(
@@ -53,7 +54,8 @@ class OrderPdfController extends Controller
             'shipping',
             'tax',
             'discount',
-            'total'
+            'total',
+            'watermarkNumber'
         ))->render();
 
         // Generate the PDF
