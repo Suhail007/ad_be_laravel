@@ -20,6 +20,7 @@ use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
 use PhpParser\Node\Stmt\TryCatch;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -1952,8 +1953,8 @@ class PayPalController extends Controller
                     $dompdf->setPaper('A4', 'portrait');
                     $dompdf->render();
                     $pdfOutput = $dompdf->output();
-                    $tempFilePath = storage_path("app/temp/order_invoice_{$orderId}.pdf");
-                    file_put_contents($tempFilePath, $pdfOutput);
+                    $tempFilePath = "temp/order_invoice_{$orderId}.pdf";
+                    Storage::put($tempFilePath, $pdfOutput);
                     SendOrderConfirmationEmail::dispatch(
                         $email,
                         $newValue,
