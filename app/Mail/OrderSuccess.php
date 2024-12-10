@@ -67,10 +67,10 @@ class OrderSuccess extends Mailable
     public function attachments(): array
     {
         // return [];
-        Log::info('file path in mail '.$this->tempFilePath);
+        // Log::info('file path in mail '.$this->tempFilePath);
         return [
             Attachment::fromStorage($this->tempFilePath)
-                ->as('orderPreInvoice.pdf')
+                ->as($this->name.'-order-no-'.$this->orderNumber)
                 ->withMime('application/pdf'),
         ];
     }

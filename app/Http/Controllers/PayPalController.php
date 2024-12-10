@@ -672,6 +672,7 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_sku', 'meta_value' => $item['sku']??'AD'],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_reduced_stock', 'meta_value' => $item['quantity']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
                             ['order_item_id' => $orderItemId, 'meta_key' => 'flavor', 'meta_value' => implode(',', $item['variation']) ?? ''],
@@ -1500,6 +1501,7 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_sku', 'meta_value' => $item['sku']??'AD'],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_reduced_stock', 'meta_value' => $item['quantity']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
                             ['order_item_id' => $orderItemId, 'meta_key' => 'flavor', 'meta_value' => implode(',', $item['variation']) ?? ''],
@@ -1936,17 +1938,19 @@ class PayPalController extends Controller
                     $tax = $order->meta->where('meta_key', '_order_tax')->first()->meta_value ?? 0;
                     $discount = $order->meta->where('meta_key', '_cart_discount')->first()->meta_value ?? 0;
                     $total = $order->meta->where('meta_key', '_order_total')->first()->meta_value ?? 0;
+                    $watermarkNumber= $user->account ?? '  ';
                     $html = View::make('pdf.order_invoice', compact(
                         'order',
                         'shippingAddress',
                         'orderDate',
                         'paymentMethod',
                         'items',
-                        'subtotal',
+                        // 'subtotal',
                         'shipping',
                         'tax',
                         'discount',
-                        'total'
+                        'total',
+                        'watermarkNumber'
                     ))->render();
                     $dompdf = new Dompdf();
                     $dompdf->loadHtml($html);

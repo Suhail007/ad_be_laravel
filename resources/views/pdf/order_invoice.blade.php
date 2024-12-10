@@ -49,33 +49,44 @@
                     </td>
                     <td>{{ $item['quantity'] }}</td>
                     <td>
-                        @if ($item['subtotal'] > $item['total'])
-                            <del>${{ number_format($item['subtotal'], 2) }}</del><br>
-                        @endif
-                        ${{ number_format($item['total'], 2) }}
+                        <p style="position: relative; display: inline-block; color: rgb(0, 0, 0); font-weight: 600;">
+                            {{-- Watermark Number --}}
+                            <span style="position: absolute; top: 85%; left: 50%; transform: translate(-50%, -50%); color: rgba(191, 191, 191, 0.4); font-size: 20px; pointer-events: none;">
+                                {{ $watermarkNumber }}
+                            </span>
+                            
+                            {{-- Subtotal (if applicable) --}}
+                            @if ($item['subtotal'] > $item['total'])
+                                <del>${{ number_format($item['subtotal'], 2) }}</del><br>
+                            @endif
+                            
+                            {{-- Total Price --}}
+                            ${{ number_format($item['total'], 2) }}
+                        </p>
                     </td>
                 </tr>
             @endforeach
         </tbody>
+        
     </table>
 
     <table class="total-table">
-        <tr>
+        {{-- <tr>
             <th>Subtotal:</th>
             <td>${{ number_format($subtotal, 2) }}</td>
-        </tr>
+        </tr> --}}
         <tr>
             <th>Shipping:</th>
             <td>${{ number_format($shipping, 2) }}</td>
         </tr>
-        <tr>
+        {{-- <tr>
             <th>Tax:</th>
             <td>${{ number_format($tax, 2) }}</td>
-        </tr>
-        <tr>
+        </tr> --}}
+        {{-- <tr>
             <th>Discount:</th>
             <td>${{ number_format($discount, 2) }}</td>
-        </tr>
+        </tr> --}}
         <tr>
             <th>Total:</th>
             <td>${{ number_format($total, 2) }}</td>
