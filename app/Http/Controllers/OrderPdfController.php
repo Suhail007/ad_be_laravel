@@ -12,10 +12,15 @@ class OrderPdfController extends Controller
 {
     public function generateOrderPdf(Request $request, string $orderId)
     {
-        $user = JWTAuth::parseToken()->authenticate();
-        if (!$user) {
-            return response()->json(['message' => 'User not authenticated', 'status' => false], 401);
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            if (!$user) {
+                return response()->json(['message' => 'User not authenticated', 'status' => false], 401);
+            }
+        } catch (\Throwable $th) {
+            return response()->json(['status'=>false,'message'=>"login to get this order item list"]);
         }
+       
         // Fetch the order and its related data-
         $order = Order::with(['meta', 'items.meta'])->findOrFail($orderId);
 
