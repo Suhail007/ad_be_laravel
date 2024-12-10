@@ -70,7 +70,7 @@ class OrderSuccess extends Mailable
         // Log::info('file path in mail '.$this->tempFilePath);
         return [
             Attachment::fromStorage($this->tempFilePath)
-                ->as($this->name.'-order-no-'.$this->orderNumber)
+                ->as($this->name.'-order-no-'.$this->orderNumber.'.pdf')
                 ->withMime('application/pdf'),
         ];
     }
