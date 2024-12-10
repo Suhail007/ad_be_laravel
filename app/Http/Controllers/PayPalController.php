@@ -8,16 +8,19 @@ use App\Models\Buffer;
 use App\Models\Cart;
 use App\Models\Checkout;
 use App\Models\DiscountRule;
+use App\Models\Order;
 use App\Models\OrderItemMeta;
 use App\Models\OrderMeta;
 use App\Models\ProductMeta;
 use App\Models\User;
 use App\Models\UserCoupon;
+use Dompdf\Dompdf;
 use Exception;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\View;
 use PhpParser\Node\Stmt\TryCatch;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -1900,19 +1903,66 @@ class PayPalController extends Controller
                         Log::info($th->getMessage());
                     }
                     $checkout->delete();
-                    // dd();
+                    //order data created in db
                     DB::commit();
                     $email = $orderData['billing']['email'];
                     $username = $orderData['billing']['first_name'] . ' ' . $orderData['billing']['last_name'];
                     $deliveryDate = '3 working Days';
                     $businessAddress = implode(' ', $orderData['shipping']);
+
+
+
+                    $order = Order::with(['meta', 'items.meta'])->find($newValue);
+                    $shippingAddress = $businessAddress ?? 'N/A';
+                    $orderDate = $order->post_date;
+                    $paymentMethod = $order->meta->where('meta_key', '_payment_method_title')->first()->meta_value ?? 'N/A';
+                    $items = $order->items->where('order_item_type', 'line_item')->map(function ($item) {
+                        $sku = $item->meta->where('meta_key', '_sku')->first()->meta_value ?? 'N/A';
+                        $quantity = $item->meta->where('meta_key', '_qty')->first()->meta_value ?? 0;
+                        $subtotal = $item->meta->where('meta_key', '_line_subtotal')->first()->meta_value ?? 0;
+                        $total = $item->meta->where('meta_key', '_line_total')->first()->meta_value ?? 0;
+            
+                        return [
+                            'name' => $item->order_item_name,
+                            'sku' => $sku,
+                            'quantity' => $quantity,
+                            'subtotal' => $subtotal,
+                            'total' => $total,
+                        ];
+                    });
+                    $subtotal = $order->meta->where('meta_key', '_order_subtotal')->first()->meta_value ?? 0;
+                    $shipping = $order->meta->where('meta_key', '_order_shipping')->first()->meta_value ?? 0;
+                    $tax = $order->meta->where('meta_key', '_order_tax')->first()->meta_value ?? 0;
+                    $discount = $order->meta->where('meta_key', '_cart_discount')->first()->meta_value ?? 0;
+                    $total = $order->meta->where('meta_key', '_order_total')->first()->meta_value ?? 0;
+                    $html = View::make('pdf.order_invoice', compact(
+                        'order',
+                        'shippingAddress',
+                        'orderDate',
+                        'paymentMethod',
+                        'items',
+                        'subtotal',
+                        'shipping',
+                        'tax',
+                        'discount',
+                        'total'
+                    ))->render();
+                    $dompdf = new Dompdf();
+                    $dompdf->loadHtml($html);
+                    $dompdf->setPaper('A4', 'portrait');
+                    $dompdf->render();
+                    $pdfOutput = $dompdf->output();
+                    $tempFilePath = storage_path("app/temp/order_invoice_{$orderId}.pdf");
+                    file_put_contents($tempFilePath, $pdfOutput);
                     SendOrderConfirmationEmail::dispatch(
                         $email,
                         $newValue,
                         $username,
                         $deliveryDate,
-                        $businessAddress
+                        $businessAddress,
+                        $tempFilePath
                     );
+                    // unlink($tempFilePath);
                 } catch (\Exception $e) {
                     DB::rollBack();
                     return response()->json(['error' => 'Order creation failed: ' . $e->getMessage()], 500);

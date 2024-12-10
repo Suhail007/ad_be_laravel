@@ -160,7 +160,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <img src="https://ad.phantasm.solutions/wp-content/uploads/2024/03/ad_logo.png" alt="Logo">
+           \ <img src="https://ad.phantasm.solutions/wp-content/uploads/2024/03/ad_logo.png" alt="Logo">
             <div class="title">
                 <h4>Order Confirmed</h4>
                 <h4>Order # <span class="order-number">{{ $orderNumber }}</span></h4>

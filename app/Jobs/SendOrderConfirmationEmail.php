@@ -20,6 +20,7 @@ class SendOrderConfirmationEmail implements ShouldQueue
     protected $deliveryDate;
     protected $businessAddress;
     protected $email;
+    protected $tempFilePath;
 
     /**
      * Create a new job instance.
@@ -30,13 +31,14 @@ class SendOrderConfirmationEmail implements ShouldQueue
      * @param string $deliveryDate
      * @param string $businessAddress
      */
-    public function __construct($email, $newValue, $username, $deliveryDate, $businessAddress)
+    public function __construct($email, $newValue, $username, $deliveryDate, $businessAddress, $tempFilePath)
     {
         $this->orderNumber = $newValue;
         $this->name = $username;
         $this->deliveryDate = $deliveryDate;
         $this->businessAddress = $businessAddress;
         $this->email = $email;
+        $this->tempFilePath = $tempFilePath;
     }
     
 
@@ -45,6 +47,11 @@ class SendOrderConfirmationEmail implements ShouldQueue
      */
     public function handle(): void
     {
-        Mail::to($this->email)->send(new OrderSuccess($this->orderNumber,$this->name,$this->deliveryDate,$this->businessAddress));
+        Mail::to($this->email)->send(new OrderSuccess($this->orderNumber,$this->name,$this->deliveryDate,$this->businessAddress,$this->tempFilePath));
+       
+        // unlink($this->tempFilePath);
+        if (file_exists($this->tempFilePath)) {
+            unlink($this->tempFilePath);
+        }
     }
 }

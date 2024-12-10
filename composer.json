@@ -16,7 +16,8 @@
         "mikemclin/laravel-wp-password": "~2.0.1",
         "symfony/http-client": "^7.1",
         "symfony/mailgun-mailer": "^7.1",
-        "tymon/jwt-auth": "^2.1"
+        "tymon/jwt-auth": "^2.1",
+        "dompdf/dompdf": "^2.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

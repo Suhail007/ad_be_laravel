@@ -5,6 +5,7 @@ namespace App\Mail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -18,15 +19,17 @@ class OrderSuccess extends Mailable
     protected $deliveryDate;
     protected $businessAddress;
     protected $email;
+    protected $tempFilePath;
     /**
      * Create a new message instance.
      */
-    public function __construct($orderNumber,$name,$deliveryDate,$businessAddress)
+    public function __construct($orderNumber, $name, $deliveryDate, $businessAddress, $tempFilePath)
     {
         $this->orderNumber = $orderNumber;
         $this->name = $name;
         $this->deliveryDate = $deliveryDate;
         $this->businessAddress = $businessAddress;
+        $this->tempFilePath = $tempFilePath;
     }
 
     /**
@@ -62,6 +65,9 @@ class OrderSuccess extends Mailable
      */
     public function attachments(): array
     {
-        return [];
+        // return [];
+        return [
+            Attachment::fromPath($this->tempFilePath),
+        ];
     }
 }
