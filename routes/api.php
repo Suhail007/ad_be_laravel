@@ -30,6 +30,8 @@ Route::get('/user', function (Request $request) {
 
 Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:login');
 Route::post('/register', [LoginController::class, 'register']);
+Route::post('password/emailLink', [LoginController::class, 'sendResetLinkEmail']);
+Route::post('password/reset', [LoginController::class, 'reset']);
 Route::post('/file-upload', [LayoutController::class, 'uploadFile']);
 Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('/change-password', [LoginController::class, 'changePassword']);
@@ -41,6 +43,9 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::put('/layout/{id}', [LayoutController::class, 'update']);
     Route::delete('/layout/{id}', [LayoutController::class, 'destroy']);
     Route::post('/mediafile', [LayoutController::class, 'uploadFile']);
+
+    Route::post('/adminUserLogin', [LoginController::class, 'adminlogin']);
+    Route::get('/userList/{value}', [LoginController::class, 'users']);
 
     //menu cleanup 
     Route::get('/cleanup',[CleanupController::class,'menuCleanUp']);

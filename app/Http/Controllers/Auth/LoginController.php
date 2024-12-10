@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Auth;
 
 use Illuminate\Http\Request;
+
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Http\Controllers\Controller;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use MikeMcLin\WpPassword\Facades\WpPassword;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class LoginController extends Controller
 {
@@ -72,7 +75,6 @@ class LoginController extends Controller
             ], 401);
         }
     }
-
 
 
     // public function login(Request $request)
@@ -283,5 +285,104 @@ class LoginController extends Controller
             'account_no' => $user->account,
         ];
         return response()->json(['status' => 'success', 'data' => $data]);
+    }
+    public function sendResetLinkEmail(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+        $user = User::where('user_email', $request->email)->first();
+        if (!$user) {
+            return response()->json(['status' => false,'message' => 'We cannot find a user with that email address.']);
+        }
+        $token = Str::random(60);
+        DB::table('wp_password_resets')->updateOrInsert(
+            ['email' => $request->email],
+            [
+                'email' => $request->email,
+                'token' => Hash::make($token),
+                'created_at' => Carbon::now()
+            ]
+        );
+        Mail::send('password-reset-mail', ['token' => $token, 'email' => $user->user_email], function ($message) use ($user) {
+            $message->to($user->user_email);
+            $message->subject('Password Reset Link');
+        });
+        return response()->json(['status' => true,'message' => 'We have emailed your password reset link!']);
+    }
+    public function reset(Request $request)
+    {
+        $request->validate([
+            'user_email' => 'required|email',
+            'token' => 'required',
+            'password' => 'required|min:6|confirmed',
+        ]);
+
+        $resetRecord = DB::table('wp_password_resets')->where('email', $request->user_email)->first();
+
+        if (!$resetRecord || !Hash::check($request->token, $resetRecord->token)) {
+            return response()->json(['status' => false,'message' => 'This password reset token is invalid.']);
+        }
+
+        if (Carbon::parse($resetRecord->created_at)->addMinutes(60)->isPast()) {
+            return response()->json(['status' => false,'message' => 'This password reset token has expired.']);
+        }
+
+        $user = User::where('user_email', $request->user_email)->first();
+
+        if (!$user) {
+            return response()->json(['status' => false,'message' => 'User not found.']);
+        }
+
+        $user->update([
+            'user_pass' => WpPassword::make($request->input('password')),
+        ]);
+
+        DB::table('wp_password_resets')->where('email', $request->user_email)->delete();
+
+        return response()->json(['status' => true,'message' => 'Your password has been reset!']);
+    }
+    public function adminlogin(Request $request)
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+        $data= $user->capabilities;
+        
+
+        foreach ($data as $key => $value) {
+           if($key=='administrator'){
+            $email = $request->json('user_email');
+            $user = User::where('user_email', $email)->orWhere('user_login', $email)->first();
+            if(!$user){
+                return response()->json([
+                    'status' => false,
+                    'message' => 'not found',
+                ]);
+            }
+            $data = [
+                'ID' => $user->ID,
+                'name' => $user->user_login,
+                'email' => $user->user_email,
+                'capabilities' => $user->capabilities,
+                'account_no' => $user->account
+            ];
+            if ($token = JWTAuth::fromUser($user)) {
+                return response()->json([
+                    
+                    'status' => true,
+                    'token' => $token,
+                    'data' => $data,
+                ]);
+            }
+           }
+        } 
+        return response()->json([
+            'status' => false,
+            'message' => 'You are not allowed',
+        ]);
+    }
+
+    public function users(string $value)
+    {
+        $data = User::where('user_login', 'LIKE', '%' . $value . '%')
+                    ->orWhere('user_email', 'LIKE', '%' . $value . '%')->limit(10)->get(['user_login','user_email']);
+        return response()->json(['status'=>true,'data'=>$data]);
     }
 }
