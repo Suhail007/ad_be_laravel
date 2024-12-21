@@ -235,17 +235,14 @@ class PayPalController extends Controller
                             //coupon user limit validation and functionality 
                             try {
                                 if ($item['applicable_rules'][0]['userUseLimit'] == 1 && $item['applicable_rules'][0]['label']=="Spaceman10") {
-                                    Log::info('coupon validation started');
                                     $limitCouponID = $item['applicable_rules'][0]['rule_id'];
                                     $limitUserEmail = $user->user_email;
                                     $isApplicable = UserCoupon::where('discountRuleId', $limitCouponID)->where('email', $limitUserEmail)->first();
                                     $limitCouponLable = $item['applicable_rules'][0]['label'] ?? 'NONAME';
                                     $limitCouponRuleTitle = $item['applicable_rules'][0]['rule_title'];
                                     if ($isApplicable && $isApplicable->canUse == false) {
-                                        Log::info('coupon validation 1st if');
                                         return response()->json(['status' => false, 'message' => "Opps! You are not allowed to use $limitCouponLable again", 'reload' => true]);
                                     } else if ($isApplicable) {
-                                        Log::info('coupon validation 2nd if');
                                         $isApplicable->update([
                                             'couponName' => $limitCouponRuleTitle,
                                             'qrDetail' => $limitCouponLable,
@@ -255,7 +252,6 @@ class PayPalController extends Controller
                                             'meta' => null
                                         ]);
                                     } else {
-                                        Log::info('coupon Readded ');
                                         UserCoupon::create([
                                             'couponName' => $limitCouponRuleTitle,
                                             'qrDetail' => $limitCouponLable,
@@ -1045,10 +1041,8 @@ class PayPalController extends Controller
                     try {
                         $coupon = UserCoupon::where('email', $mail)->first();
                         if (!$coupon) {
-                            Log::info("$mail not have QR coupon");
                         }
                         if ($coupon->canUse === false) {
-                            Log::info("$mail can not reuse");
                         }
                         $coupon->canUse = false;
                         $coupon->save();
@@ -1104,7 +1098,6 @@ class PayPalController extends Controller
                     $dompdf->render();
                     $pdfOutput = $dompdf->output();
                     $tempFilePath = "temp/order_invoice_{$orderId}.pdf";
-                    Log::info('file path in order '.$tempFilePath);
                     Storage::put($tempFilePath, $pdfOutput);
                     
                     SendOrderConfirmationEmail::dispatch(
@@ -1176,17 +1169,14 @@ class PayPalController extends Controller
                              //coupon user limit validation and functionality 
                              try {
                                 if ($item['applicable_rules'][0]['userUseLimit'] == 1 && $item['applicable_rules'][0]['label']=="Spaceman10") {
-                                    Log::info('coupon validation started');
                                     $limitCouponID = $item['applicable_rules'][0]['rule_id'];
                                     $limitUserEmail = $user->user_email;
                                     $isApplicable = UserCoupon::where('discountRuleId', $limitCouponID)->where('email', $limitUserEmail)->first();
                                     $limitCouponLable = $item['applicable_rules'][0]['label'] ?? 'NONAME';
                                     $limitCouponRuleTitle = $item['applicable_rules'][0]['rule_title'];
                                     if ($isApplicable && $isApplicable->canUse == false) {
-                                        Log::info('coupon validation 1st if');
                                         return response()->json(['status' => false, 'message' => "Opps! You are not allowed to use $limitCouponLable again", 'reload' => true]);
                                     } else if ($isApplicable) {
-                                        Log::info('coupon validation 2nd if');
                                         $isApplicable->update([
                                             'couponName' => $limitCouponRuleTitle,
                                             'qrDetail' => $limitCouponLable,
@@ -1196,7 +1186,6 @@ class PayPalController extends Controller
                                             'meta' => null
                                         ]);
                                     } else {
-                                        Log::info('coupon Readded ');
                                         UserCoupon::create([
                                             'couponName' => $limitCouponRuleTitle,
                                             'qrDetail' => $limitCouponLable,
@@ -1941,12 +1930,10 @@ class PayPalController extends Controller
                     $mail = $user->user_email;
                     try {
                         $coupon = UserCoupon::where('email', $mail)->first();
-                        if (!$coupon) {
-                            Log::info("$mail not have QR coupon");
-                        }
-                        if ($coupon->canUse === false) {
-                            Log::info("$mail can not reuse");
-                        }
+                        // if (!$coupon) {
+                        // }
+                        // if ($coupon->canUse === false) {
+                        // }
                         $coupon->canUse = false;
                         $coupon->save();
                     } catch (\Throwable $th) {
@@ -2005,7 +1992,6 @@ class PayPalController extends Controller
                     $dompdf->render();
                     $pdfOutput = $dompdf->output();
                     $tempFilePath = "temp/order_invoice_{$orderId}.pdf";
-                    Log::info('file path in order '.$tempFilePath);
                     Storage::put($tempFilePath, $pdfOutput);
                     
                     SendOrderConfirmationEmail::dispatch(
@@ -2016,7 +2002,6 @@ class PayPalController extends Controller
                         $businessAddress,
                         $tempFilePath
                     );
-                    // unlink($tempFilePath);
                 } catch (\Exception $e) {
                     DB::rollBack();
                     return response()->json(['error' => 'Order creation failed: ' . $e->getMessage()], 500);
