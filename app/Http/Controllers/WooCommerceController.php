@@ -71,7 +71,9 @@ class WooCommerceController extends Controller
             ];
         });
 
-        $categories = $product->categories->map(function ($category) {
+        $categories = $product->categories->filter(function ($category) {
+            return $this->getTaxonomyType($category->taxonomies) === 'category';
+        })->map(function ($category) {
             return [
                 'id' => $category->term_id,
                 'name' => $category->name,
