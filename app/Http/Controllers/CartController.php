@@ -17,9 +17,10 @@ use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
-    public function couponProductID(){
+    public function couponProductID()
+    {
         //hardcoded coupon product's variation id's 
-        return [206835,206836];
+        return [206835, 206836];
     }
     private function cartTotal($cartItems, $priceTier)
     {
@@ -41,9 +42,9 @@ class CartController extends Controller
                     ->value('meta_value');
                 $taxID = ProductMeta::where('post_id', $product->ID)->where('meta_key', 'mm_indirect_tax_type')->value('meta_value');
             }
-            if($wholesalePrice==""){
+            if ($wholesalePrice == "") {
                 $wholesalePrice = 0;
-            } else if($wholesalePrice==" "){
+            } else if ($wholesalePrice == " ") {
                 $wholesalePrice = 0;
             }
             $total += round($wholesalePrice * $cartItem->quantity, 2);
@@ -186,7 +187,7 @@ class CartController extends Controller
         $variations = $request->variations;
 
         $cartItems = [];
-        $newMsgShow=false;
+        $newMsgShow = false;
 
         $count = 0;
         foreach ($variations as $variation) {
@@ -249,7 +250,7 @@ class CartController extends Controller
                         if ($isApplicable) {
                             $newMsg = "Opps! It seems like you already claimed Gift";
                             return response()->json([
-                                'status'=>false,
+                                'status' => false,
                                 'username' => $user->user_login,
                                 'message' => $newMsg,
                                 // 'data' => $userIp,
@@ -257,8 +258,7 @@ class CartController extends Controller
                                 'cart_count' => 0,
                                 'cart_items' => [],
                             ], 200);
-                        }
-                         else {
+                        } else {
                             UserCoupon::create([
                                 'couponName' => $limitCouponRuleTitle,
                                 'qrDetail' => $limitCouponLable,
@@ -383,7 +383,7 @@ class CartController extends Controller
                 'taxonomies' => $categoryIds
             ];
         }
-        $message= ($count > 0) ? $count . " items are not added due to purchase Limit" : 'Products added to cart';
+        $message = ($count > 0) ? $count . " items are not added due to purchase Limit" : 'Products added to cart';
         return response()->json([
             'status' => true,
             'success' => $message,
@@ -477,7 +477,7 @@ class CartController extends Controller
                         if ($isApplicable) {
                             $newMsg = "Opps! It seems like you already claimed Gift";
                             return response()->json([
-                                'status'=>false,
+                                'status' => false,
                                 'username' => $user->user_login,
                                 'message' => $newMsg,
                                 // 'data' => $userIp,
@@ -485,8 +485,7 @@ class CartController extends Controller
                                 'cart_count' => 0,
                                 'cart_items' => [],
                             ], 200);
-                        }
-                         else {
+                        } else {
                             UserCoupon::create([
                                 'couponName' => $limitCouponRuleTitle,
                                 'qrDetail' => $limitCouponLable,
@@ -673,11 +672,11 @@ class CartController extends Controller
                 $wholesalePrice = $wholesalePrice ?? ProductMeta::where('post_id', $variation->ID)
                     ->where('meta_key', '_price')
                     ->value('meta_value');
-                    try {
-                        //code...
-                    } catch (\Throwable $th) {
-                        //throw $th;
-                    }
+                try {
+                    //code...
+                } catch (\Throwable $th) {
+                    //throw $th;
+                }
             } else {
                 $wholesalePrice = ProductMeta::where('post_id', $product->ID)
                     ->where('meta_key', $priceTier)
@@ -928,10 +927,18 @@ class CartController extends Controller
 
         $cartItems = Cart::where('user_id', $user_id)->get();
 
-        if ($isFreeze) {
-            foreach ($cartItems as $cartItem) {
+        foreach ($cartItems as $cartItem) {
+            if ($isFreeze) {
                 $this->increaseStock($cartItem);
             }
+            try {//code...
+                if($cartItem->variation_id && in_array($cartItem->variation_id,$this->couponProductID())){
+                    UserCoupon::where('qrDetail', 'GiftProduct')->where('email',$user->user_email)->delete();
+                } 
+            } catch (\Throwable $th) {
+                
+            }
+            
         }
 
         Cart::where('user_id', $user_id)->delete();
