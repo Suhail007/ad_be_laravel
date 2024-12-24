@@ -1031,7 +1031,7 @@ class ProductController extends Controller
                     $query->where('meta_key', 'visibility')
                         ->where('meta_value', 'protected');
                 })
-                ->where('post_type', 'product');
+                ->where('post_type', 'product')->where('post_status', 'publish');
 
             if (!empty($searchTerm)) {
                 $searchWords = preg_split('/\s+/', $searchTerm);
