@@ -178,7 +178,6 @@ class CartController extends Controller
         $variations = $request->variations;
 
         $cartItems = [];
-        $newMsgShow=false;
 
         $count = 0;
         foreach ($variations as $variation) {
@@ -186,7 +185,6 @@ class CartController extends Controller
                 ->where('product_id', $product_id)
                 ->where('variation_id', $variation['variation_id'])
                 ->first();
-
             if ($cartItem) {
                 $newQty = $variation['quantity'];
                 $oldQty = $cartItem->quantity;
@@ -231,47 +229,7 @@ class CartController extends Controller
                         $count++;
                     }
                 }
-                try {
-                    if ($variation['productType'] == 'GiftProduct') {
-                        $limitCouponID = $product_id;
-                        $limitUserEmail = $user->user_email;
-                        $isApplicable = UserCoupon::where('discountRuleId', $limitCouponID)->where('email', $limitUserEmail)->first();
-                        $limitCouponLable = 'GiftProduct' ?? 'NONAME';
-                        $limitCouponRuleTitle = "Free AD Gift";
-                        if ($isApplicable && $isApplicable->canUse == false) {
-                            $newMsgShow = true;
-                            $newMsg = "Opps! You are not allowed to use $limitCouponRuleTitle again";
-                            return response()->json([
-                                'status'=>false,
-                                'username' => $user->user_login,
-                                'message' => $newMsg,
-                                // 'data' => $userIp,
-                                'time' => now()->toDateTimeString(),
-                                'cart_count' => 0,
-                                'cart_items' => [],
-                            ], 200);
-                        } else if ($isApplicable) {
-                            $isApplicable->update([
-                                'couponName' => $limitCouponRuleTitle,
-                                'qrDetail' => $limitCouponLable,
-                                'discountRuleId' => $limitCouponID,
-                                'email' => $limitUserEmail,
-                                'canUse' => false,
-                                'meta' => null
-                            ]);
-                        } else {
-                            UserCoupon::create([
-                                'couponName' => $limitCouponRuleTitle,
-                                'qrDetail' => $limitCouponLable,
-                                'discountRuleId' => $limitCouponID,
-                                'email' => $limitUserEmail,
-                                'canUse' => false,
-                                'meta' => null
-                            ]);
-                        }
-                    }
-                } catch (\Throwable $th) {
-                }
+
                 $cartItem = Cart::create([
                     'user_id' => $user_id,
                     'product_id' => $product_id,
@@ -384,10 +342,10 @@ class CartController extends Controller
                 'taxonomies' => $categoryIds
             ];
         }
-        $message= ($count > 0) ? $count . " items are not added due to purchase Limit" : 'Products added to cart';
+
         return response()->json([
             'status' => true,
-            'success' => $message,
+            'success' => ($count > 0) ? $count . " items are not added due to purchase Limit" : 'Products added to cart',
             'data' => $userIp,
             'cart' => $cartData,
             'cart_total' => $total,
@@ -740,7 +698,7 @@ class CartController extends Controller
         $isFreeze = $checkout ? $checkout->isFreeze : false;
         $freeze_time = $checkout ? $checkout->updated_at : false;
         try {
-            $existingCoupon = UserCoupon::where('email', $user->user_email)->where('canUse', true)->get();
+            $existingCoupon = UserCoupon::where('email', $user->user_email)->where('canUse',true)->get();
         } catch (\Throwable $th) {
             $existingCoupon = [];
         }
@@ -749,7 +707,7 @@ class CartController extends Controller
             'status' => true,
             'freeze' => $isFreeze,
             'username' => $user->user_login,
-            'qrCoupon' => $existingCoupon ?? null,
+            'qrCoupon'=> $existingCoupon??null,
             'user_mm_txc' => strtoupper($user->mmtax) == "EX" ? "EX" : null,
             'message' => 'Cart items',
             'data' => $userIp,
