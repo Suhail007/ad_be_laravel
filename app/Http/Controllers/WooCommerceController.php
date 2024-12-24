@@ -239,7 +239,6 @@ class WooCommerceController extends Controller
         $couponProductIds = (new CartController())->couponProductID(); 
         $variations = Product::where('post_parent', $productId)
             ->where('post_type', 'product_variation')
-            ->whereNotIn('ID', $couponProductIds) 
             ->whereHas('meta', function ($query) {
                 // Filter variations to include only those in stock
                 $query->where('meta_key', '_stock_status')
@@ -247,7 +246,7 @@ class WooCommerceController extends Controller
             })
             ->with('meta')
             ->get()
-            ->map(function ($variation) use ($priceTier) {
+            ->map(function ($variation) use ($priceTier,$couponProductIds) {
                 // Get meta data as an array
                 $metaData = $variation->meta->pluck('meta_value', 'meta_key')->toArray();
 
@@ -264,6 +263,7 @@ class WooCommerceController extends Controller
 
                 return [
                     'id' => $variation->ID,
+                    'isCouponProduct'=>in_array($variation->ID, $couponProductIds) ? true : false,
                     'date' => $variation->post_modified_gmt,
                     'meta' => $filteredMetaData,
                     'ad_price' => $adPrice,  // Include ad_price here
