@@ -17,6 +17,10 @@ use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
+    public function couponProductID(){
+        //hardcoded coupon product's variation id's 
+        return [206835,206836];
+    }
     private function cartTotal($cartItems, $priceTier)
     {
         $total = 0;
@@ -236,15 +240,14 @@ class CartController extends Controller
                     }
                 }
                 try {
-                    if ($variation['productType'] == 'GiftProduct') {
+                    if (in_array($variation['variation_id'], $this->couponProductID())) {
                         $limitCouponID = $product_id;
                         $limitUserEmail = $user->user_email;
                         $isApplicable = UserCoupon::where('qrDetail', 'GiftProduct')->where('email', $limitUserEmail)->first();
                         $limitCouponLable = 'GiftProduct' ?? 'NONAME';
                         $limitCouponRuleTitle = "Free AD Gift";
                         if ($isApplicable) {
-                            $newMsgShow = true;
-                            $newMsg = "Opps! You are not allowed to use $limitCouponRuleTitle again";
+                            $newMsg = "Opps! It seems like you already claimed Gift";
                             return response()->json([
                                 'status'=>false,
                                 'username' => $user->user_login,
@@ -255,16 +258,6 @@ class CartController extends Controller
                                 'cart_items' => [],
                             ], 200);
                         }
-                        //  else if ($isApplicable) {
-                        //     $isApplicable->update([
-                        //         'couponName' => $limitCouponRuleTitle,
-                        //         'qrDetail' => $limitCouponLable,
-                        //         'discountRuleId' => $limitCouponID,
-                        //         'email' => $limitUserEmail,
-                        //         'canUse' => false,
-                        //         'meta' => null
-                        //     ]);
-                        // }
                          else {
                             UserCoupon::create([
                                 'couponName' => $limitCouponRuleTitle,
@@ -474,6 +467,38 @@ class CartController extends Controller
                         return response()->json(['status' => false, 'message' => 'Quantity cannot be more than ' . $max]);
                     }
                 }
+                try {
+                    if (in_array($variation_id, $this->couponProductID())) {
+                        $limitCouponID = $product_id;
+                        $limitUserEmail = $user->user_email;
+                        $isApplicable = UserCoupon::where('qrDetail', 'GiftProduct')->where('email', $limitUserEmail)->first();
+                        $limitCouponLable = 'GiftProduct' ?? 'NONAME';
+                        $limitCouponRuleTitle = "Free AD Gift";
+                        if ($isApplicable) {
+                            $newMsg = "Opps! It seems like you already claimed Gift";
+                            return response()->json([
+                                'status'=>false,
+                                'username' => $user->user_login,
+                                'message' => $newMsg,
+                                // 'data' => $userIp,
+                                'time' => now()->toDateTimeString(),
+                                'cart_count' => 0,
+                                'cart_items' => [],
+                            ], 200);
+                        }
+                         else {
+                            UserCoupon::create([
+                                'couponName' => $limitCouponRuleTitle,
+                                'qrDetail' => $limitCouponLable,
+                                'discountRuleId' => $limitCouponID,
+                                'email' => $limitUserEmail,
+                                'canUse' => false,
+                                'meta' => null
+                            ]);
+                        }
+                    }
+                } catch (\Throwable $th) {
+                }
                 $cartItem = Cart::create([
                     'user_id' => $user_id,
                     'product_id' => $product_id,
@@ -648,6 +673,11 @@ class CartController extends Controller
                 $wholesalePrice = $wholesalePrice ?? ProductMeta::where('post_id', $variation->ID)
                     ->where('meta_key', '_price')
                     ->value('meta_value');
+                    try {
+                        //code...
+                    } catch (\Throwable $th) {
+                        //throw $th;
+                    }
             } else {
                 $wholesalePrice = ProductMeta::where('post_id', $product->ID)
                     ->where('meta_key', $priceTier)
@@ -726,9 +756,7 @@ class CartController extends Controller
                 'stock' => $stockLevel,
                 'stock_status' => $stockStatus,
                 'quantity' => $cartItem->quantity,
-                // 'min' => $cartItem->min,
-                // 'max' => $cartItem->max,
-                // 'isLimit' => $cartItem->isLimit,
+                'isCouponProduct' => $variation && in_array($variation->ID, $this->couponProductID()) ? true : false,
                 'variation_id' => $variation ? $variation->ID : null,
                 'variation' => $variationAttributes,
                 'taxonomies' => $categoryIds,
