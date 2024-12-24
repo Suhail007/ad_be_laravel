@@ -239,10 +239,10 @@ class CartController extends Controller
                     if ($variation['productType'] == 'GiftProduct') {
                         $limitCouponID = $product_id;
                         $limitUserEmail = $user->user_email;
-                        $isApplicable = UserCoupon::where('discountRuleId', $limitCouponID)->where('email', $limitUserEmail)->first();
+                        $isApplicable = UserCoupon::where('qrDetail', 'GiftProduct')->where('email', $limitUserEmail)->first();
                         $limitCouponLable = 'GiftProduct' ?? 'NONAME';
                         $limitCouponRuleTitle = "Free AD Gift";
-                        if ($isApplicable && $isApplicable->canUse == false) {
+                        if ($isApplicable) {
                             $newMsgShow = true;
                             $newMsg = "Opps! You are not allowed to use $limitCouponRuleTitle again";
                             return response()->json([
@@ -254,16 +254,18 @@ class CartController extends Controller
                                 'cart_count' => 0,
                                 'cart_items' => [],
                             ], 200);
-                        } else if ($isApplicable) {
-                            $isApplicable->update([
-                                'couponName' => $limitCouponRuleTitle,
-                                'qrDetail' => $limitCouponLable,
-                                'discountRuleId' => $limitCouponID,
-                                'email' => $limitUserEmail,
-                                'canUse' => false,
-                                'meta' => null
-                            ]);
-                        } else {
+                        }
+                        //  else if ($isApplicable) {
+                        //     $isApplicable->update([
+                        //         'couponName' => $limitCouponRuleTitle,
+                        //         'qrDetail' => $limitCouponLable,
+                        //         'discountRuleId' => $limitCouponID,
+                        //         'email' => $limitUserEmail,
+                        //         'canUse' => false,
+                        //         'meta' => null
+                        //     ]);
+                        // }
+                         else {
                             UserCoupon::create([
                                 'couponName' => $limitCouponRuleTitle,
                                 'qrDetail' => $limitCouponLable,
