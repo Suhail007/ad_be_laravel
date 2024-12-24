@@ -236,8 +236,10 @@ class WooCommerceController extends Controller
 
     private function getVariations($productId, $priceTier = '')
     {
+        $couponProductIds = (new CartController())->couponProductID(); 
         $variations = Product::where('post_parent', $productId)
             ->where('post_type', 'product_variation')
+            ->whereNotIn('ID', $couponProductIds) 
             ->whereHas('meta', function ($query) {
                 // Filter variations to include only those in stock
                 $query->where('meta_key', '_stock_status')
