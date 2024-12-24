@@ -241,6 +241,15 @@ class CartController extends Controller
                         if ($isApplicable && $isApplicable->canUse == false) {
                             $newMsgShow = true;
                             $newMsg = "Opps! You are not allowed to use $limitCouponRuleTitle again";
+                            return response()->json([
+                                'status'=>false,
+                                'username' => $user->user_login,
+                                'message' => $newMsg,
+                                // 'data' => $userIp,
+                                'time' => now()->toDateTimeString(),
+                                'cart_count' => 0,
+                                'cart_items' => [],
+                            ], 200);
                         } else if ($isApplicable) {
                             $isApplicable->update([
                                 'couponName' => $limitCouponRuleTitle,
@@ -376,12 +385,6 @@ class CartController extends Controller
             ];
         }
         $message= ($count > 0) ? $count . " items are not added due to purchase Limit" : 'Products added to cart';
-        try {
-            if($newMsgShow){
-                $message= $newMsg;
-            }
-        } catch (\Throwable $th) {
-        }
         return response()->json([
             'status' => true,
             'success' => $message,
