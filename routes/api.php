@@ -60,8 +60,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     //get taxonomy by name/slug
 
 
-    Route::get('/category-list/{value}',[CleanupController::class,'category']);
-    Route::get('/brand-list/{value}',[CleanupController::class,'brand']);
+    Route::get('/category-list/{value?}',[CleanupController::class,'category']);
+    Route::get('/brand-list/{value?}',[CleanupController::class,'brand']);
     Route::get('/user-list/{value}',[CleanupController::class,'users']);
     //media 
     Route::post('/media/upload', [MediaController::class, 'uploadFile']);

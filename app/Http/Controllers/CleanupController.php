@@ -30,6 +30,22 @@ class CleanupController extends Controller
             })
             ->get();
 
+        if ($data->isEmpty()) {
+            $data = Category::with([
+                'categorymeta' => function ($query) {
+                    $query->where('meta_key', 'visibility');
+                },
+                'taxonomy' => function ($query) {
+                    $query->select('term_id', 'taxonomy');
+                }
+            ])
+                ->whereHas('taxonomy', function ($query) {
+                    $query->where('taxonomy', 'product_cat');
+                })
+                ->take(10)
+                ->get();
+        }
+
         return response()->json($data);
     }
     public function brand(string $value)
@@ -50,6 +66,22 @@ class CleanupController extends Controller
                 $query->where('taxonomy', 'product_brand');
             })
             ->get();
+            
+        if ($data->isEmpty()) {
+            $data = Category::with([
+                'categorymeta' => function ($query) {
+                    $query->where('meta_key', 'visibility');
+                },
+                'taxonomy' => function ($query) {
+                    $query->select('term_id', 'taxonomy');
+                }
+            ])
+                ->whereHas('taxonomy', function ($query) {
+                    $query->where('taxonomy', 'product_brand');
+                })
+                ->take(10)
+                ->get();
+        }
         return response()->json($data);
     }
     private function getThumbnailUrl($thumbnailId)
@@ -100,7 +132,7 @@ class CleanupController extends Controller
 
         $slugArray = explode(',', $slugs);
         $auth = false;
-        $priceTier='';
+        $priceTier = '';
         try {
             $user = JWTAuth::parseToken()->authenticate();
             if ($user->ID) {
@@ -109,7 +141,7 @@ class CleanupController extends Controller
                 $products = Product::with([
                     'meta' => function ($query) use ($priceTier) {
                         $query->select('post_id', 'meta_key', 'meta_value')
-                           ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
+                            ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
                     },
                     'categories' => function ($query) {
                         $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
@@ -171,22 +203,22 @@ class CleanupController extends Controller
                 ->paginate($perPage, ['*'], 'page', $page);
         }
 
-        $products->getCollection()->transform(function ($product)use ($priceTier,$auth) {
+        $products->getCollection()->transform(function ($product) use ($priceTier, $auth) {
             $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
             $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
-            
-                try {
-                    $ad_price = $product->meta->where('meta_key', $priceTier)->pluck('meta_value')->first() ?? '';
-                    if ($ad_price == '') {
-                        $ad_price = $this->getVariations($product->ID, $priceTier);
-                        $ad_price = $ad_price[0];
-                    }
-                } catch (\Throwable $th) {
-                    $ad_price = null;
+
+            try {
+                $ad_price = $product->meta->where('meta_key', $priceTier)->pluck('meta_value')->first() ?? '';
+                if ($ad_price == '') {
+                    $ad_price = $this->getVariations($product->ID, $priceTier);
+                    $ad_price = $ad_price[0];
                 }
-                if (!$auth) {
-                    $ad_price = null;
-                }
+            } catch (\Throwable $th) {
+                $ad_price = null;
+            }
+            if (!$auth) {
+                $ad_price = null;
+            }
             return [
                 'ID' => $product->ID,
                 'ad_price' => $ad_price,
