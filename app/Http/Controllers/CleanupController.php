@@ -11,7 +11,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class CleanupController extends Controller
 {
-    public function category(string $value)
+    public function category(string $value=null)
     {
         $data = Category::with([
             'categorymeta' => function ($query) {
@@ -48,7 +48,7 @@ class CleanupController extends Controller
 
         return response()->json($data);
     }
-    public function brand(string $value)
+    public function brand(string $value=null)
     {
         $data = Category::with([
             'categorymeta' => function ($query) {
@@ -66,7 +66,7 @@ class CleanupController extends Controller
                 $query->where('taxonomy', 'product_brand');
             })
             ->get();
-            
+
         if ($data->isEmpty()) {
             $data = Category::with([
                 'categorymeta' => function ($query) {
