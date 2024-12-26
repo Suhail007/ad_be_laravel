@@ -11,8 +11,24 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class CleanupController extends Controller
 {
-    public function category(string $value=null)
+    public function category(string $value = null)
     {
+        if ($value == null) {
+            $data = Category::with([
+                'categorymeta' => function ($query) {
+                    $query->where('meta_key', 'visibility');
+                },
+                'taxonomy' => function ($query) {
+                    $query->select('term_id', 'taxonomy');
+                }
+            ])
+                ->whereHas('taxonomy', function ($query) {
+                    $query->where('taxonomy', 'product_cat');
+                })
+                ->take(10)
+                ->get();
+            return response()->json($data);
+        }
         $data = Category::with([
             'categorymeta' => function ($query) {
                 $query->where('meta_key', 'visibility');
@@ -29,8 +45,11 @@ class CleanupController extends Controller
                 $query->where('taxonomy', 'product_cat');
             })
             ->get();
-
-        if ($data->isEmpty()) {
+        return response()->json($data);
+    }
+    public function brand(string $value = null)
+    {
+        if ($value == null) {
             $data = Category::with([
                 'categorymeta' => function ($query) {
                     $query->where('meta_key', 'visibility');
@@ -40,16 +59,14 @@ class CleanupController extends Controller
                 }
             ])
                 ->whereHas('taxonomy', function ($query) {
-                    $query->where('taxonomy', 'product_cat');
+                    $query->where('taxonomy', 'product_brand');
                 })
                 ->take(10)
                 ->get();
+
+            return response()->json($data);
         }
 
-        return response()->json($data);
-    }
-    public function brand(string $value=null)
-    {
         $data = Category::with([
             'categorymeta' => function ($query) {
                 $query->where('meta_key', 'visibility');
@@ -66,22 +83,6 @@ class CleanupController extends Controller
                 $query->where('taxonomy', 'product_brand');
             })
             ->get();
-
-        if ($data->isEmpty()) {
-            $data = Category::with([
-                'categorymeta' => function ($query) {
-                    $query->where('meta_key', 'visibility');
-                },
-                'taxonomy' => function ($query) {
-                    $query->select('term_id', 'taxonomy');
-                }
-            ])
-                ->whereHas('taxonomy', function ($query) {
-                    $query->where('taxonomy', 'product_brand');
-                })
-                ->take(10)
-                ->get();
-        }
         return response()->json($data);
     }
     private function getThumbnailUrl($thumbnailId)
