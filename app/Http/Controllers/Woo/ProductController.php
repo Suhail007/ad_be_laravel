@@ -1555,45 +1555,46 @@ class ProductController extends Controller
                         ->orWhereHas('categories.taxonomies', function ($query) use ($catIDArray) {
                             $query->whereIn('term_id', $catIDArray);
                         });
-                        $searchProducts = Product::with([
-                            'meta' => function ($query) use ($priceTier) {
-                                $query->select('post_id', 'meta_key', 'meta_value')
-                                    ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
-                            },
-                            'categories' => function ($query) {
-                                $query->select('wp_terms.term_id', 'wp_terms.name')
-                                    ->with([
-                                        'categorymeta' => function ($query) {
-                                            $query->select('term_id', 'meta_key', 'meta_value')
-                                                ->where('meta_key', 'visibility');
-                                        },
-                                        'taxonomies' => function ($query) {
-                                            $query->select('term_id', 'taxonomy');
-                                        }
-                                    ]);
-                            }
-                        ])
-                            ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
-                            ->where('post_type', 'product')->where('post_status', 'publish');
+                        // $searchProducts = Product::with([
+                        //     'meta' => function ($query) use ($priceTier) {
+                        //         $query->select('post_id', 'meta_key', 'meta_value')
+                        //             ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
+                        //     },
+                        //     'categories' => function ($query) {
+                        //         $query->select('wp_terms.term_id', 'wp_terms.name')
+                        //             ->with([
+                        //                 'categorymeta' => function ($query) {
+                        //                     $query->select('term_id', 'meta_key', 'meta_value')
+                        //                         ->where('meta_key', 'visibility');
+                        //                 },
+                        //                 'taxonomies' => function ($query) {
+                        //                     $query->select('term_id', 'taxonomy');
+                        //                 }
+                        //             ]);
+                        //     }
+                        // ])
+                        //     ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+                        //     ->where('post_type', 'product')->where('post_status', 'publish');
             
-                        if ($searchTerm!=null || $searchTerm !='') {
-                            $searchWords = preg_split('/\s+/', $searchTerm);
-                            $regexPattern = implode('.*', array_map(function ($word) {
-                                return "(?=.*" . preg_quote($word) . ")";
-                            }, $searchWords));
+                        // if ($searchTerm!=null || $searchTerm !='') {
+                        //     $searchWords = preg_split('/\s+/', $searchTerm);
+                        //     $regexPattern = implode('.*', array_map(function ($word) {
+                        //         return "(?=.*" . preg_quote($word) . ")";
+                        //     }, $searchWords));
             
-                            $searchProducts->where(function ($query) use ($regexPattern) {
-                                $query->where('post_title', 'REGEXP', $regexPattern)
-                                    ->orWhereHas('meta', function ($query) use ($regexPattern) {
-                                        $query->where('meta_key', '_sku')
-                                            ->where('meta_value', 'REGEXP', $regexPattern);
-                                    });
-                            });
-                        }
-                        $products = $products->get();
-                        $searchProducts = $searchProducts->get();
+                        //     $searchProducts->where(function ($query) use ($regexPattern) {
+                        //         $query->where('post_title', 'REGEXP', $regexPattern)
+                        //             ->orWhereHas('meta', function ($query) use ($regexPattern) {
+                        //                 $query->where('meta_key', '_sku')
+                        //                     ->where('meta_value', 'REGEXP', $regexPattern);
+                        //             });
+                        //     });
+                        // }
+                        // $products = $products->get();
+                        // $searchProducts = $searchProducts->get();
                 
-                        $combinedProducts = $products->merge($searchProducts)->unique('ID');
+                        // $combinedProducts = $products->merge($searchProducts)->unique('ID');
+                        $combinedProducts= $products;
                     switch ($sortBy) {
                         case 'popul':
                             $combinedProducts->with(['meta' => function ($query) {
