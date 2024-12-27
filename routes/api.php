@@ -138,7 +138,7 @@ Route::get('/categoryProduct/{slug}', [ProductController::class, 'categoryProduc
 Route::get('/brandProduct/{slug}', [ProductController::class, 'brandProducts']);
 Route::get('/searchProducts', [ProductController::class,'searchProductsAll']);  //'searchProducts']); 
 Route::get('/searchProductsALL', [ProductController::class, 'searchProductsAll']); //in pro sku cat
-Route::get('/productList', [ProductController::class, 'productList']); //in pro sku cat
+Route::post('/productList', [ProductController::class, 'productList']); //in pro sku cat
 
 //product page
 Route::get('/product/{slug}', [WooCommerceController::class, 'show']);
