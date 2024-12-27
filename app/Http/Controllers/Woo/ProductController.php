@@ -1524,7 +1524,7 @@ class ProductController extends Controller
         $perPage = $request->query('perPage', 15);
         $sortBy = $request->query('sort', 'latest');
         $page = $request->query('page', 1);
-        $searchTerm = $request->input('searchTerm', '');
+        $searchTerm = $request->input('searchTerm', null);
         $auth = false;
         $catIDArray = $request->input('catIDs', []);
         try {
@@ -1576,7 +1576,7 @@ class ProductController extends Controller
                             ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                             ->where('post_type', 'product')->where('post_status', 'publish');
             
-                        if (!empty($searchTerm)) {
+                        if ($searchTerm!=null || $searchTerm !='') {
                             $searchWords = preg_split('/\s+/', $searchTerm);
                             $regexPattern = implode('.*', array_map(function ($word) {
                                 return "(?=.*" . preg_quote($word) . ")";
