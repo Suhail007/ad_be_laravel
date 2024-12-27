@@ -1552,7 +1552,7 @@ class ProductController extends Controller
                     ])
                         ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                         ->where('post_type', 'product')
-                        ->orWhereHas('categories.taxonomies', function ($query) use ($catIDArray) {
+                        ->orWhereHas('categories', function ($query) use ($catIDArray) {
                             $query->whereIn('term_id', $catIDArray);
                         });
                         // $searchProducts = Product::with([
