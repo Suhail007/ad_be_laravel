@@ -1292,126 +1292,232 @@ class ProductController extends Controller
 
         return $variations;
     }
-    // public function searchProductsBySKU(Request $request)
-    // {
-    //     $searchTerm = $request->input('searchTerm', '');
-    //     $perPage = 20;
-    //     $products = Product::with([
-    //         'meta' => function ($query) {
-    //             $query->select('post_id', 'meta_key', 'meta_value')
-    //                 ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id']);
-    //         },
-    //         'categories' => function ($query) {
-    //             $query->select('wp_terms.term_id', 'wp_terms.name')
-    //                 ->with([
-    //                     'categorymeta' => function ($query) {
-    //                         $query->select('term_id', 'meta_key', 'meta_value')
-    //                             ->where('meta_key', 'visibility');
-    //                     }
-    //                 ]);
-    //         }
-    //     ])
-    //         ->select('ID', 'post_title', 'post_modified', 'post_name')
-    //         ->where('post_type', 'product')
-    //         ->where(function ($query) use ($searchTerm) {
-    //             $query->whereHas('meta', function ($query) use ($searchTerm) {
-    //                 $query->where('meta_key', '_sku')->where('meta_value', 'LIKE', '%' . $searchTerm . '%');
-    //             });
-    //         })
-    //         ->orderBy('post_modified', 'desc')
-    //         ->paginate($perPage);
+    public function productList(Request $request)
+    {
+        $perPage = $request->query('perPage', 15);
+        $sortBy = $request->query('sort', 'latest');
+        $page = $request->query('page', 1);
+        $auth = false;
+        $productIDArray = $request->input('productIDs', []);
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            $priceTier = $user->price_tier ?? '';
+            if ($user->ID) {
+                $auth = true;
+                    $products = Product::with([
+                        'meta' => function ($query) use ($priceTier) {
+                            $query->select('post_id', 'meta_key', 'meta_value')
+                                ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
+                        },
+                        'categories' => function ($query) {
+                            $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                                ->with([
+                                    'categorymeta' => function ($query) {
+                                        $query->select('term_id', 'meta_key', 'meta_value')
+                                            ->where('meta_key', 'visibility');
+                                    },
+                                    'taxonomies' => function ($query) {
+                                        $query->select('term_id', 'taxonomy');
+                                    }
+                                ]);
+                        }
+                    ])
+                        ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+                        ->where('post_type', 'product')
+                        ->whereIn('ID',$productIDArray)
+                        ->whereHas('meta', function ($query) {
+                            $query->where('meta_key', '_stock_status')
+                                ->where('meta_value', 'instock');
+                        });
+                    switch ($sortBy) {
+                        case 'popul':
+                            $products->with(['meta' => function ($query) {
+                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                            }])
+                                ->orderByRaw("
+                                        CAST((SELECT meta_value FROM wp_postmeta 
+                                              WHERE wp_postmeta.post_id = wp_posts.ID 
+                                              AND wp_postmeta.meta_key = 'total_sales' 
+                                              LIMIT 1) AS UNSIGNED) DESC
+                                    ");
+                            break;
 
-    //     $products->getCollection()->transform(function ($product) {
-    //         $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
-    //         $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
+                        case 'plh':
+                            $products->with(['meta' => function ($query) {
+                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                            }])
+                                ->orderByRaw("
+                                        CAST((SELECT MIN(meta_value) FROM wp_postmeta 
+                                              WHERE wp_postmeta.post_id = wp_posts.ID 
+                                              AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) ASC
+                                    ");
+                            break;
 
-    //         return [
-    //             'ID' => $product->ID,
-    //             'title' => $product->post_title,
-    //             'slug' => $product->post_name,
-    //             'thumbnail_url' => $thumbnailUrl,
-    //             'categories' => $product->categories->map(function ($category) {
-    //                 $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
-    //                 return [
-    //                     'term_id' => $category->term_id,
-    //                     'name' => $category->name,
-    //                     'visibility' => $visibility ? $visibility : 'public',
-    //                 ];
-    //             }),
-    //             'meta' => $product->meta->map(function ($meta) {
-    //                 return [
-    //                     'meta_key' => $meta->meta_key,
-    //                     'meta_value' => $meta->meta_value
-    //                 ];
-    //             }),
-    //             'post_modified' => $product->post_modified
-    //         ];
-    //     });
+                        case 'phl':
+                            $products->with(['meta' => function ($query) {
+                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                            }])
+                                ->orderByRaw("
+                                        CAST((SELECT MAX(meta_value) FROM wp_postmeta 
+                                              WHERE wp_postmeta.post_id = wp_posts.ID 
+                                              AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) DESC
+                                    ");
+                            break;
 
-    //     return response()->json($products);
-    // }
-    // public function searchProductsByCAT(Request $request)
-    // {
-    //     $searchTerm = $request->input('searchTerm', '');
-    //     $perPage = 20;
+                        default:
+                            $products->orderBy('post_date', 'desc');
+                            break;
+                    }
+                    $products = $products->paginate($perPage, ['*'], 'page', $page);
+            }
+        } catch (\Throwable $th) {
+            $priceTier = '';
+                $products = Product::with([
+                    'meta' => function ($query) {
+                        $query->select('post_id', 'meta_key', 'meta_value')
+                            ->whereIn('meta_key', ['_stock_status', '_sku', '_thumbnail_id']);
+                    },
+                    'categories' => function ($query) {
+                        $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                            ->with([
+                                'categorymeta' => function ($query) {
+                                    $query->select('term_id', 'meta_key', 'meta_value')
+                                        ->where('meta_key', 'visibility');
+                                },
+                                'taxonomies' => function ($query) {
+                                    $query->select('term_id', 'taxonomy');
+                                }
+                            ]);
+                    }
+                ])
+                    ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+                    ->where('post_type', 'product')
+                    ->whereIn('ID',$productIDArray)
+                    ->whereHas('meta', function ($query) {
+                        $query->where('meta_key', '_stock_status')
+                            ->where('meta_value', 'instock');
+                    })
+                    ->whereDoesntHave('categories.categorymeta', function ($query) {
+                        $query->where('meta_key', 'visibility')
+                            ->where('meta_value', 'protected');
+                    });
+                switch ($sortBy) {
+                    case 'popul':
+                        $products->with(['meta' => function ($query) {
+                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                        }])
+                            ->orderByRaw("
+                                    CAST((SELECT meta_value FROM wp_postmeta 
+                                          WHERE wp_postmeta.post_id = wp_posts.ID 
+                                          AND wp_postmeta.meta_key = 'total_sales' 
+                                          LIMIT 1) AS UNSIGNED) DESC
+                                ");
+                        break;
 
-    //     $products = Product::with([
-    //         'meta' => function ($query) {
-    //             $query->select('post_id', 'meta_key', 'meta_value')
-    //                 ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id']);
-    //         },
-    //         'categories' => function ($query) {
-    //             $query->select('wp_terms.term_id', 'wp_terms.name')
-    //                 ->with([
-    //                     'categorymeta' => function ($query) {
-    //                         $query->select('term_id', 'meta_key', 'meta_value')
-    //                             ->where('meta_key', 'visibility');
-    //                     }
-    //                 ]);
-    //         }
-    //     ])
-    //         ->select('ID', 'post_title', 'post_modified', 'post_name')
-    //         ->where('post_type', 'product')
-    //         ->where(function ($query) use ($searchTerm) {
-    //             $query //->where('post_title', 'LIKE', '%' . $searchTerm . '%')
-    //                 // ->orWhereHas('meta', function ($query) use ($searchTerm) {
-    //                 //     $query->where('meta_key', '_sku')
-    //                 //         ->where('meta_value', 'LIKE', '%' . $searchTerm . '%');
-    //                 // })
-    //                 ->whereHas('categories', function ($query) use ($searchTerm) {
-    //                     $query->where('name', 'LIKE', '%' . $searchTerm . '%');
-    //                 });
-    //         })
-    //         ->orderBy('post_modified', 'desc')
-    //         ->paginate($perPage);
+                    case 'plh':
+                        $products->with(['meta' => function ($query) {
+                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                        }])
+                            ->orderByRaw("
+                                    CAST((SELECT MIN(meta_value) FROM wp_postmeta 
+                                          WHERE wp_postmeta.post_id = wp_posts.ID 
+                                          AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) ASC
+                                ");
+                        break;
 
-    //     $products->getCollection()->transform(function ($product) {
-    //         $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
-    //         $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
+                    case 'phl':
+                        $products->with(['meta' => function ($query) {
+                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                        }])
+                            ->orderByRaw("
+                                    CAST((SELECT MAX(meta_value) FROM wp_postmeta 
+                                          WHERE wp_postmeta.post_id = wp_posts.ID 
+                                          AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) DESC
+                                ");
+                        break;
 
-    //         return [
-    //             'ID' => $product->ID,
-    //             'title' => $product->post_title,
-    //             'slug' => $product->post_name,
-    //             'thumbnail_url' => $thumbnailUrl,
-    //             'categories' => $product->categories->map(function ($category) {
-    //                 $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
-    //                 return [
-    //                     'term_id' => $category->term_id,
-    //                     'name' => $category->name,
-    //                     'visibility' => $visibility ? $visibility : 'public',
-    //                 ];
-    //             }),
-    //             'meta' => $product->meta->map(function ($meta) {
-    //                 return [
-    //                     'meta_key' => $meta->meta_key,
-    //                     'meta_value' => $meta->meta_value
-    //                 ];
-    //             }),
-    //             'post_modified' => $product->post_modified
-    //         ];
-    //     });
+                    default:
+                        $products->orderBy('post_date', 'desc');
+                        break;
+                }
+                $products = $products->paginate($perPage, ['*'], 'page', $page);
+        }
 
-    //     return response()->json($products);
-    // }
+        try {
+            $products->getCollection()->transform(function ($product) use ($priceTier, $auth) {
+                $thumbnailId = $product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first();
+                if (!$auth) {
+                    $ad_price = null;
+                } else {
+                    try {
+                        $ad_price = $product->meta->where('meta_key', $priceTier)->pluck('meta_value')->first() ?? '';
+                        if ($ad_price == '') {
+                            $ad_price = $this->getVariations($product->ID, $priceTier);
+                            $ad_price = $ad_price[0];
+                        }
+                    } catch (\Throwable $th) {
+                        $ad_price = null;
+                    }
+                }
+                $thumbnailUrl = $this->getThumbnailUrl($thumbnailId);
+                $metaArray = $product->meta->map(function ($meta) {
+                    return [
+                        'meta_key' => $meta->meta_key,
+                        'meta_value' => $meta->meta_value
+                    ];
+                })->toArray(); // Ensure metaArray is a plain array
+
+                // Filter meta based on authentication status
+                $filteredMeta = $auth ? $metaArray : array_values(array_filter($metaArray, function ($meta) {
+                    return $meta['meta_key'] !== '_price';
+                }));
+
+                return [
+                    'ID' => $product->ID,
+                    'ad_price' => $ad_price,
+                    'title' => $product->post_title,
+                    'slug' => $product->post_name,
+                    'thumbnail_url' => $thumbnailUrl,
+                    'categories' => $product->categories->map(function ($category) {
+                        $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                        $taxonomy = $category->taxonomies->taxonomy;
+                        return [
+                            'term_id' => $category->term_id,
+                            'name' => $category->name,
+                            'slug' => $category->slug,
+                            'visibility' => $visibility ? $visibility : 'public',
+                            'taxonomy' => $taxonomy ? $taxonomy : 'public',
+                        ];
+                    }),
+                    'meta' => $filteredMeta,
+                    'post_modified' => $product->post_modified
+                ];
+            });
+        } catch (\Throwable $th) {
+            return response()->json($th);
+        }
+
+        // //cache
+        // if ($auth) {
+        //     $userId = $user->ID;
+        //     $productModifiedTimestamps = $products->pluck('post_modified')->toArray();
+        //     $etag = md5($userId . implode(',', $productModifiedTimestamps));
+        // } else {
+        //     $etag = md5(implode(',', $products->pluck('post_modified')->toArray()));
+        // }
+
+        // if ($request->header('If-None-Match') === $etag) {
+        //     return response()->json($products, Response::HTTP_NOT_MODIFIED);
+        // }
+        // $response = response()->json($products);
+        // $response->header('ETag', $etag);
+
+        // if ($auth) {
+        //     $response->header('Cache-Control', 'no-cache, no-store, must-revalidate');
+        //     // $response->header('Cache-Control', 'public, max-age=300');
+        // }
+        // return $response;
+        return response()->json($products);
+    }
+    
 }
