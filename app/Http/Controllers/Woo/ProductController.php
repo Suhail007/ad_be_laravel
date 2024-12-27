@@ -1304,78 +1304,10 @@ class ProductController extends Controller
             $priceTier = $user->price_tier ?? '';
             if ($user->ID) {
                 $auth = true;
-                    $products = Product::with([
-                        'meta' => function ($query) use ($priceTier) {
-                            $query->select('post_id', 'meta_key', 'meta_value')
-                                ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
-                        },
-                        'categories' => function ($query) {
-                            $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
-                                ->with([
-                                    'categorymeta' => function ($query) {
-                                        $query->select('term_id', 'meta_key', 'meta_value')
-                                            ->where('meta_key', 'visibility');
-                                    },
-                                    'taxonomies' => function ($query) {
-                                        $query->select('term_id', 'taxonomy');
-                                    }
-                                ]);
-                        }
-                    ])
-                        ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
-                        ->where('post_type', 'product')
-                        ->whereIn('ID',$productIDArray)
-                        ->whereHas('meta', function ($query) {
-                            $query->where('meta_key', '_stock_status')
-                                ->where('meta_value', 'instock');
-                        });
-                    switch ($sortBy) {
-                        case 'popul':
-                            $products->with(['meta' => function ($query) {
-                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
-                            }])
-                                ->orderByRaw("
-                                        CAST((SELECT meta_value FROM wp_postmeta 
-                                              WHERE wp_postmeta.post_id = wp_posts.ID 
-                                              AND wp_postmeta.meta_key = 'total_sales' 
-                                              LIMIT 1) AS UNSIGNED) DESC
-                                    ");
-                            break;
-
-                        case 'plh':
-                            $products->with(['meta' => function ($query) {
-                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
-                            }])
-                                ->orderByRaw("
-                                        CAST((SELECT MIN(meta_value) FROM wp_postmeta 
-                                              WHERE wp_postmeta.post_id = wp_posts.ID 
-                                              AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) ASC
-                                    ");
-                            break;
-
-                        case 'phl':
-                            $products->with(['meta' => function ($query) {
-                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
-                            }])
-                                ->orderByRaw("
-                                        CAST((SELECT MAX(meta_value) FROM wp_postmeta 
-                                              WHERE wp_postmeta.post_id = wp_posts.ID 
-                                              AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) DESC
-                                    ");
-                            break;
-
-                        default:
-                            $products->orderBy('post_date', 'desc');
-                            break;
-                    }
-                    $products = $products->paginate($perPage, ['*'], 'page', $page);
-            }
-        } catch (\Throwable $th) {
-            $priceTier = '';
                 $products = Product::with([
-                    'meta' => function ($query) {
+                    'meta' => function ($query) use ($priceTier) {
                         $query->select('post_id', 'meta_key', 'meta_value')
-                            ->whereIn('meta_key', ['_stock_status', '_sku', '_thumbnail_id']);
+                            ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
                     },
                     'categories' => function ($query) {
                         $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
@@ -1392,14 +1324,10 @@ class ProductController extends Controller
                 ])
                     ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                     ->where('post_type', 'product')
-                    ->whereIn('ID',$productIDArray)
+                    ->whereIn('ID', $productIDArray)
                     ->whereHas('meta', function ($query) {
                         $query->where('meta_key', '_stock_status')
                             ->where('meta_value', 'instock');
-                    })
-                    ->whereDoesntHave('categories.categorymeta', function ($query) {
-                        $query->where('meta_key', 'visibility')
-                            ->where('meta_value', 'protected');
                     });
                 switch ($sortBy) {
                     case 'popul':
@@ -1407,11 +1335,11 @@ class ProductController extends Controller
                             $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
                         }])
                             ->orderByRaw("
-                                    CAST((SELECT meta_value FROM wp_postmeta 
-                                          WHERE wp_postmeta.post_id = wp_posts.ID 
-                                          AND wp_postmeta.meta_key = 'total_sales' 
-                                          LIMIT 1) AS UNSIGNED) DESC
-                                ");
+                                        CAST((SELECT meta_value FROM wp_postmeta 
+                                              WHERE wp_postmeta.post_id = wp_posts.ID 
+                                              AND wp_postmeta.meta_key = 'total_sales' 
+                                              LIMIT 1) AS UNSIGNED) DESC
+                                    ");
                         break;
 
                     case 'plh':
@@ -1419,10 +1347,10 @@ class ProductController extends Controller
                             $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
                         }])
                             ->orderByRaw("
-                                    CAST((SELECT MIN(meta_value) FROM wp_postmeta 
-                                          WHERE wp_postmeta.post_id = wp_posts.ID 
-                                          AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) ASC
-                                ");
+                                        CAST((SELECT MIN(meta_value) FROM wp_postmeta 
+                                              WHERE wp_postmeta.post_id = wp_posts.ID 
+                                              AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) ASC
+                                    ");
                         break;
 
                     case 'phl':
@@ -1430,10 +1358,10 @@ class ProductController extends Controller
                             $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
                         }])
                             ->orderByRaw("
-                                    CAST((SELECT MAX(meta_value) FROM wp_postmeta 
-                                          WHERE wp_postmeta.post_id = wp_posts.ID 
-                                          AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) DESC
-                                ");
+                                        CAST((SELECT MAX(meta_value) FROM wp_postmeta 
+                                              WHERE wp_postmeta.post_id = wp_posts.ID 
+                                              AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) DESC
+                                    ");
                         break;
 
                     default:
@@ -1441,6 +1369,78 @@ class ProductController extends Controller
                         break;
                 }
                 $products = $products->paginate($perPage, ['*'], 'page', $page);
+            }
+        } catch (\Throwable $th) {
+            $priceTier = '';
+            $products = Product::with([
+                'meta' => function ($query) {
+                    $query->select('post_id', 'meta_key', 'meta_value')
+                        ->whereIn('meta_key', ['_stock_status', '_sku', '_thumbnail_id']);
+                },
+                'categories' => function ($query) {
+                    $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                        ->with([
+                            'categorymeta' => function ($query) {
+                                $query->select('term_id', 'meta_key', 'meta_value')
+                                    ->where('meta_key', 'visibility');
+                            },
+                            'taxonomies' => function ($query) {
+                                $query->select('term_id', 'taxonomy');
+                            }
+                        ]);
+                }
+            ])
+                ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+                ->where('post_type', 'product')
+                ->whereIn('ID', $productIDArray)
+                ->whereHas('meta', function ($query) {
+                    $query->where('meta_key', '_stock_status')
+                        ->where('meta_value', 'instock');
+                })
+                ->whereDoesntHave('categories.categorymeta', function ($query) {
+                    $query->where('meta_key', 'visibility')
+                        ->where('meta_value', 'protected');
+                });
+            switch ($sortBy) {
+                case 'popul':
+                    $products->with(['meta' => function ($query) {
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    }])
+                        ->orderByRaw("
+                                    CAST((SELECT meta_value FROM wp_postmeta 
+                                          WHERE wp_postmeta.post_id = wp_posts.ID 
+                                          AND wp_postmeta.meta_key = 'total_sales' 
+                                          LIMIT 1) AS UNSIGNED) DESC
+                                ");
+                    break;
+
+                case 'plh':
+                    $products->with(['meta' => function ($query) {
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    }])
+                        ->orderByRaw("
+                                    CAST((SELECT MIN(meta_value) FROM wp_postmeta 
+                                          WHERE wp_postmeta.post_id = wp_posts.ID 
+                                          AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) ASC
+                                ");
+                    break;
+
+                case 'phl':
+                    $products->with(['meta' => function ($query) {
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    }])
+                        ->orderByRaw("
+                                    CAST((SELECT MAX(meta_value) FROM wp_postmeta 
+                                          WHERE wp_postmeta.post_id = wp_posts.ID 
+                                          AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) DESC
+                                ");
+                    break;
+
+                default:
+                    $products->orderBy('post_date', 'desc');
+                    break;
+            }
+            $products = $products->paginate($perPage, ['*'], 'page', $page);
         }
 
         try {
@@ -1519,7 +1519,7 @@ class ProductController extends Controller
         // return $response;
         return response()->json($products);
     }
-    public function combineProducts(Request $request, string $slug=null)
+    public function combineProducts(Request $request, string $slug = null)
     {
         $perPage = $request->query('perPage', 15);
         $sortBy = $request->query('sort', 'latest');
@@ -1532,116 +1532,10 @@ class ProductController extends Controller
             $priceTier = $user->price_tier ?? '';
             if ($user->ID) {
                 $auth = true;
-                    $products = Product::with([
-                        'meta' => function ($query) use ($priceTier) {
-                            $query->select('post_id', 'meta_key', 'meta_value')
-                                ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
-                        },
-                        'categories' => function ($query) {
-                            $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
-                                ->with([
-                                    'categorymeta' => function ($query) {
-                                        $query->select('term_id', 'meta_key', 'meta_value')
-                                            ->where('meta_key', 'visibility');
-                                    },
-                                    'taxonomies' => function ($query) {
-                                        $query->select('term_id', 'taxonomy');
-                                    }
-                                ]);
-                        }
-                    ])
-                        ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
-                        ->where('post_type', 'product')
-                        ->orWhereHas('categories', function ($query) use ($catIDArray) {
-                            $query->whereIn('term_id', $catIDArray);
-                        });
-                        // $searchProducts = Product::with([
-                        //     'meta' => function ($query) use ($priceTier) {
-                        //         $query->select('post_id', 'meta_key', 'meta_value')
-                        //             ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
-                        //     },
-                        //     'categories' => function ($query) {
-                        //         $query->select('wp_terms.term_id', 'wp_terms.name')
-                        //             ->with([
-                        //                 'categorymeta' => function ($query) {
-                        //                     $query->select('term_id', 'meta_key', 'meta_value')
-                        //                         ->where('meta_key', 'visibility');
-                        //                 },
-                        //                 'taxonomies' => function ($query) {
-                        //                     $query->select('term_id', 'taxonomy');
-                        //                 }
-                        //             ]);
-                        //     }
-                        // ])
-                        //     ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
-                        //     ->where('post_type', 'product')->where('post_status', 'publish');
-            
-                        // if ($searchTerm!=null || $searchTerm !='') {
-                        //     $searchWords = preg_split('/\s+/', $searchTerm);
-                        //     $regexPattern = implode('.*', array_map(function ($word) {
-                        //         return "(?=.*" . preg_quote($word) . ")";
-                        //     }, $searchWords));
-            
-                        //     $searchProducts->where(function ($query) use ($regexPattern) {
-                        //         $query->where('post_title', 'REGEXP', $regexPattern)
-                        //             ->orWhereHas('meta', function ($query) use ($regexPattern) {
-                        //                 $query->where('meta_key', '_sku')
-                        //                     ->where('meta_value', 'REGEXP', $regexPattern);
-                        //             });
-                        //     });
-                        // }
-                        // $products = $products->get();
-                        // $searchProducts = $searchProducts->get();
-                
-                        // $combinedProducts = $products->merge($searchProducts)->unique('ID');
-                        $combinedProducts= $products;
-                    switch ($sortBy) {
-                        case 'popul':
-                            $combinedProducts->with(['meta' => function ($query) {
-                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
-                            }])
-                                ->orderByRaw("
-                                        CAST((SELECT meta_value FROM wp_postmeta 
-                                              WHERE wp_postmeta.post_id = wp_posts.ID 
-                                              AND wp_postmeta.meta_key = 'total_sales' 
-                                              LIMIT 1) AS UNSIGNED) DESC
-                                    ");
-                            break;
-
-                        case 'plh':
-                            $combinedProducts->with(['meta' => function ($query) {
-                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
-                            }])
-                                ->orderByRaw("
-                                        CAST((SELECT MIN(meta_value) FROM wp_postmeta 
-                                              WHERE wp_postmeta.post_id = wp_posts.ID 
-                                              AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) ASC
-                                    ");
-                            break;
-
-                        case 'phl':
-                            $combinedProducts->with(['meta' => function ($query) {
-                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
-                            }])
-                                ->orderByRaw("
-                                        CAST((SELECT MAX(meta_value) FROM wp_postmeta 
-                                              WHERE wp_postmeta.post_id = wp_posts.ID 
-                                              AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) DESC
-                                    ");
-                            break;
-
-                        default:
-                            $combinedProducts->orderBy('post_date', 'desc');
-                            break;
-                    }
-                    $products = $combinedProducts->paginate($perPage, ['*'], 'page', $page);
-            }
-        } catch (\Throwable $th) {
-            $priceTier = '';
-                $products = Product::with([
-                    'meta' => function ($query) {
+                $productsQuery = Product::with([
+                    'meta' => function ($query) use ($priceTier) {
                         $query->select('post_id', 'meta_key', 'meta_value')
-                            ->whereIn('meta_key', ['_stock_status', '_sku', '_thumbnail_id']);
+                            ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
                     },
                     'categories' => function ($query) {
                         $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
@@ -1658,54 +1552,163 @@ class ProductController extends Controller
                 ])
                     ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                     ->where('post_type', 'product')
-                    ->whereHas('meta', function ($query) {
-                        $query->where('meta_key', '_stock_status')
-                            ->where('meta_value', 'instock');
-                    })
-                    ->whereDoesntHave('categories.categorymeta', function ($query) {
-                        $query->where('meta_key', 'visibility')
-                            ->where('meta_value', 'protected');
+                    ->where('post_status', 'publish');
+
+                $searchProducts = Product::with([
+                    'meta' => function ($query) use ($priceTier) {
+                        $query->select('post_id', 'meta_key', 'meta_value')
+                            ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
+                    },
+                    'categories' => function ($query) {
+                        $query->select('wp_terms.term_id', 'wp_terms.name')
+                            ->with([
+                                'categorymeta' => function ($query) {
+                                    $query->select('term_id', 'meta_key', 'meta_value')
+                                        ->where('meta_key', 'visibility');
+                                },
+                                'taxonomies' => function ($query) {
+                                    $query->select('term_id', 'taxonomy');
+                                }
+                            ]);
+                    }
+                ])
+                    ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+                    ->where('post_type', 'product')->where('post_status', 'publish');
+
+                // Apply category filter
+                if (!empty($catIDArray)) {
+                    $productsQuery->whereHas('categories.taxonomies', function ($query) use ($catIDArray) {
+                        $query->whereIn('term_id', $catIDArray)
+                            ->where('taxonomy', 'product_cat');
                     });
+                }
+
+                // Apply search filter
+                if ($searchTerm) {
+                    $searchWords = preg_split('/\s+/', $searchTerm);
+                    $regexPattern = implode('.*', array_map(function ($word) {
+                        return "(?=.*" . preg_quote($word) . ")";
+                    }, $searchWords));
+
+                    $productsQuery->where(function ($query) use ($regexPattern) {
+                        $query->where('post_title', 'REGEXP', $regexPattern)
+                            ->orWhereHas('meta', function ($query) use ($regexPattern) {
+                                $query->where('meta_key', '_sku')
+                                    ->where('meta_value', 'REGEXP', $regexPattern);
+                            });
+                    });
+                }
                 switch ($sortBy) {
                     case 'popul':
-                        $products->with(['meta' => function ($query) {
+                        $productsQuery->with(['meta' => function ($query) {
                             $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
                         }])
                             ->orderByRaw("
+                                        CAST((SELECT meta_value FROM wp_postmeta 
+                                              WHERE wp_postmeta.post_id = wp_posts.ID 
+                                              AND wp_postmeta.meta_key = 'total_sales' 
+                                              LIMIT 1) AS UNSIGNED) DESC
+                                    ");
+                        break;
+
+                    case 'plh':
+                        $productsQuery->with(['meta' => function ($query) {
+                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                        }])
+                            ->orderByRaw("
+                                        CAST((SELECT MIN(meta_value) FROM wp_postmeta 
+                                              WHERE wp_postmeta.post_id = wp_posts.ID 
+                                              AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) ASC
+                                    ");
+                        break;
+
+                    case 'phl':
+                        $productsQuery->with(['meta' => function ($query) {
+                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                        }])
+                            ->orderByRaw("
+                                        CAST((SELECT MAX(meta_value) FROM wp_postmeta 
+                                              WHERE wp_postmeta.post_id = wp_posts.ID 
+                                              AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) DESC
+                                    ");
+                        break;
+
+                    default:
+                        $productsQuery->orderBy('post_date', 'desc');
+                        break;
+                }
+                $products = $productsQuery->paginate($perPage, ['*'], 'page', $page);
+            }
+        } catch (\Throwable $th) {
+            $priceTier = '';
+            $products = Product::with([
+                'meta' => function ($query) {
+                    $query->select('post_id', 'meta_key', 'meta_value')
+                        ->whereIn('meta_key', ['_stock_status', '_sku', '_thumbnail_id']);
+                },
+                'categories' => function ($query) {
+                    $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                        ->with([
+                            'categorymeta' => function ($query) {
+                                $query->select('term_id', 'meta_key', 'meta_value')
+                                    ->where('meta_key', 'visibility');
+                            },
+                            'taxonomies' => function ($query) {
+                                $query->select('term_id', 'taxonomy');
+                            }
+                        ]);
+                }
+            ])
+                ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+                ->where('post_type', 'product')
+                ->whereHas('meta', function ($query) {
+                    $query->where('meta_key', '_stock_status')
+                        ->where('meta_value', 'instock');
+                })
+                ->whereDoesntHave('categories.categorymeta', function ($query) {
+                    $query->where('meta_key', 'visibility')
+                        ->where('meta_value', 'protected');
+                });
+            switch ($sortBy) {
+                case 'popul':
+                    $products->with(['meta' => function ($query) {
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    }])
+                        ->orderByRaw("
                                     CAST((SELECT meta_value FROM wp_postmeta 
                                           WHERE wp_postmeta.post_id = wp_posts.ID 
                                           AND wp_postmeta.meta_key = 'total_sales' 
                                           LIMIT 1) AS UNSIGNED) DESC
                                 ");
-                        break;
+                    break;
 
-                    case 'plh':
-                        $products->with(['meta' => function ($query) {
-                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
-                        }])
-                            ->orderByRaw("
+                case 'plh':
+                    $products->with(['meta' => function ($query) {
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    }])
+                        ->orderByRaw("
                                     CAST((SELECT MIN(meta_value) FROM wp_postmeta 
                                           WHERE wp_postmeta.post_id = wp_posts.ID 
                                           AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) ASC
                                 ");
-                        break;
+                    break;
 
-                    case 'phl':
-                        $products->with(['meta' => function ($query) {
-                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
-                        }])
-                            ->orderByRaw("
+                case 'phl':
+                    $products->with(['meta' => function ($query) {
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    }])
+                        ->orderByRaw("
                                     CAST((SELECT MAX(meta_value) FROM wp_postmeta 
                                           WHERE wp_postmeta.post_id = wp_posts.ID 
                                           AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) DESC
                                 ");
-                        break;
+                    break;
 
-                    default:
-                        $products->orderBy('post_date', 'desc');
-                        break;
-                }
-                $products = $products->paginate($perPage, ['*'], 'page', $page);
+                default:
+                    $products->orderBy('post_date', 'desc');
+                    break;
+            }
+            $products = $products->paginate($perPage, ['*'], 'page', $page);
         }
 
         try {
@@ -1784,5 +1787,4 @@ class ProductController extends Controller
         // return $response;
         return response()->json($products);
     }
-    
 }
