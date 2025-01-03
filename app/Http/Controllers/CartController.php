@@ -313,10 +313,12 @@ class CartController extends Controller
 
         $cartTotalItems = Cart::where('user_id', $user->ID)->get();
         $total = $this->cartTotal($cartTotalItems, $priceTier);
+        $itemCount= 0;
         foreach ($cartItems as $cartItem) {
             $product = $cartItem->product;
             $variation = $cartItem->variation;
             $wholesalePrice = 0;
+            $itemCount++;
 
             if ($variation) {
                 $wholesalePrice = ProductMeta::where('post_id', $variation->ID)
@@ -390,6 +392,7 @@ class CartController extends Controller
             'data' => $userIp,
             'cart' => $cartData,
             'cart_total' => $total,
+            'itemCount' => $itemCount,
             // 'pagination' => [
             //     'total' => $cartItems->total(),
             //     'per_page' => $cartItems->perPage(),
