@@ -186,13 +186,9 @@ class PayPalController extends Controller
         $shippingLines = $request->input('shipping_lines');
 
         $paytype = $request->input('paymentType');
-
-
         if ($paytype == 'card') {
             $payment_token = $request->input('payment_token');
             try {
-                // $this->validateBilling($billingInfo);
-                // $this->validateShipping($shippingInfo);
                 $total = 0;
                 $checkout->update(
                     [
@@ -202,7 +198,6 @@ class PayPalController extends Controller
                     ]
                 );
                 $orderData = Checkout::where('user_id', $user->ID)->first();
-
                 //total item with unit tax with per unit discount
                 $isVape = false;
                 $order_tax = 0;
@@ -214,6 +209,9 @@ class PayPalController extends Controller
                 $couponIDs = [];
                 $isPercentageCoupone = false;
                 foreach ($orderData['extra'] as $item) {
+                    if ($item['quantity'] < 0) {
+                        $item['quantity'] = 1;
+                    }
                     $ordertotalQTY += $item['quantity'];
                     $subtotal = $item['product_price'];
 
@@ -354,7 +352,14 @@ class PayPalController extends Controller
 
                 }
 
+                try {
+                    Log::info("Payment Status is: ".  $paymentResult['status'] );
+                } catch (\Throwable $th) {
+                    Log::info('Failed to check payment status');
+                }
+
                 if (!$paymentResult['status']) {
+                    
                     return response()->json([
                         'status' => false,
                         'message' => $paymentResult,
@@ -622,6 +627,9 @@ class PayPalController extends Controller
                     $taxAmmountWC = 0;
                     $temp = false;
                     foreach ($orderData['extra'] as $item) {
+                        if ($item['quantity'] < 0) {
+                            $item['quantity'] = 1; 
+                        }
                         $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,
                             'order_item_name' => $item['product_name'],
@@ -639,7 +647,7 @@ class PayPalController extends Controller
                         $initialPrice = 0;
 
                         if ($item['isVape'] == true) {
-
+                            
                             $iLTax = $item['quantity'] * $item['taxPerUnit'];
                             $iLTax = round($iLTax, 2);
                         } else {
@@ -1051,63 +1059,69 @@ class PayPalController extends Controller
                     }
                     $checkout->delete();
                     DB::commit();
-                    $email = $orderData['billing']['email'];
-                    $username = $orderData['billing']['first_name'] . ' ' . $orderData['billing']['last_name'];
-                    $deliveryDate = '3 working Days';
-                    $businessAddress = implode(' ', $orderData['shipping']);
-                    $order = Order::with(['meta', 'items.meta'])->find($newValue);
-                    $shippingAddress = $businessAddress ?? 'N/A';
-                    $orderDate = $order->post_date;
-                    $paymentMethod = $order->meta->where('meta_key', '_payment_method_title')->first()->meta_value ?? 'N/A';
-                    $items = $order->items->where('order_item_type', 'line_item')->map(function ($item) {
-                        $sku = $item->meta->where('meta_key', '_sku')->first()->meta_value ?? 'N/A';
-                        $quantity = $item->meta->where('meta_key', '_qty')->first()->meta_value ?? 0;
-                        $subtotal = $item->meta->where('meta_key', '_line_subtotal')->first()->meta_value ?? 0;
-                        $total = $item->meta->where('meta_key', '_line_total')->first()->meta_value ?? 0;
-            
-                        return [
-                            'name' => $item->order_item_name,
-                            'sku' => $sku,
-                            'quantity' => $quantity,
-                            'subtotal' => $subtotal,
-                            'total' => $total,
-                        ];
-                    });
-                    $subtotal = $order->meta->where('meta_key', '_order_subtotal')->first()->meta_value ?? 0;
-                    $shipping = $order->meta->where('meta_key', '_order_shipping')->first()->meta_value ?? 0;
-                    $tax = $order->meta->where('meta_key', '_order_tax')->first()->meta_value ?? 0;
-                    $discount = $order->meta->where('meta_key', '_cart_discount')->first()->meta_value ?? 0;
-                    $total = $order->meta->where('meta_key', '_order_total')->first()->meta_value ?? 0;
-                    $watermarkNumber= $user->account ?? '  ';
-                    $html = View::make('pdf.order_invoice', compact(
-                        'order',
-                        'shippingAddress',
-                        'orderDate',
-                        'paymentMethod',
-                        'items',
-                        // 'subtotal',
-                        'shipping',
-                        'tax',
-                        'discount',
-                        'total',
-                        'watermarkNumber'
-                    ))->render();
-                    $dompdf = new Dompdf();
-                    $dompdf->loadHtml($html);
-                    $dompdf->setPaper('A4', 'portrait');
-                    $dompdf->render();
-                    $pdfOutput = $dompdf->output();
-                    $tempFilePath = "temp/order_invoice_{$orderId}.pdf";
-                    Storage::put($tempFilePath, $pdfOutput);
+                    try {
+                        $email = $orderData['billing']['email'];
+                        $username = $orderData['billing']['first_name'] . ' ' . $orderData['billing']['last_name'];
+                        $deliveryDate = '3 working Days';
+                        $businessAddress = implode(' ', $orderData['shipping']);
+                        $order = Order::with(['meta', 'items.meta'])->find($newValue);
+                        $shippingAddress = $businessAddress ?? 'N/A';
+                        $orderDate = $order->post_date;
+                        $paymentMethod = $order->meta->where('meta_key', '_payment_method_title')->first()->meta_value ?? 'N/A';
+                        $items = $order->items->where('order_item_type', 'line_item')->map(function ($item) {
+                            $sku = $item->meta->where('meta_key', '_sku')->first()->meta_value ?? 'N/A';
+                            $quantity = $item->meta->where('meta_key', '_qty')->first()->meta_value ?? 0;
+                            $subtotal = $item->meta->where('meta_key', '_line_subtotal')->first()->meta_value ?? 0;
+                            $total = $item->meta->where('meta_key', '_line_total')->first()->meta_value ?? 0;
+                
+                            return [
+                                'name' => $item->order_item_name,
+                                'sku' => $sku,
+                                'quantity' => $quantity,
+                                'subtotal' => $subtotal,
+                                'total' => $total,
+                            ];
+                        });
+                        $subtotal = $order->meta->where('meta_key', '_order_subtotal')->first()->meta_value ?? 0;
+                        $shipping = $order->meta->where('meta_key', '_order_shipping')->first()->meta_value ?? 0;
+                        $tax = $order->meta->where('meta_key', '_order_tax')->first()->meta_value ?? 0;
+                        $discount = $order->meta->where('meta_key', '_cart_discount')->first()->meta_value ?? 0;
+                        $total = $order->meta->where('meta_key', '_order_total')->first()->meta_value ?? 0;
+                        $watermarkNumber= $user->account ?? '  ';
+                        $html = View::make('pdf.order_invoice', compact(
+                            'order',
+                            'shippingAddress',
+                            'orderDate',
+                            'paymentMethod',
+                            'items',
+                            // 'subtotal',
+                            'shipping',
+                            'tax',
+                            'discount',
+                            'total',
+                            'watermarkNumber'
+                        ))->render();
+                        $dompdf = new Dompdf();
+                        $dompdf->loadHtml($html);
+                        $dompdf->setPaper('A4', 'portrait');
+                        $dompdf->render();
+                        $pdfOutput = $dompdf->output();
+                        $tempFilePath = "temp/order_invoice_{$orderId}.pdf";
+                        Storage::put($tempFilePath, $pdfOutput);
+                        
+                        SendOrderConfirmationEmail::dispatch(
+                            $email,
+                            $newValue,
+                            $username,
+                            $deliveryDate,
+                            $businessAddress,
+                            $tempFilePath
+                        );
+                    } catch (\Throwable $th) {
+                        Log::info("Failed to send mail for $orderId because:");
+                        Log::info($th->getMessage());
+                    }
                     
-                    SendOrderConfirmationEmail::dispatch(
-                        $email,
-                        $newValue,
-                        $username,
-                        $deliveryDate,
-                        $businessAddress,
-                        $tempFilePath
-                    );
                 } catch (\Exception $e) {
                     DB::rollBack();
                     return response()->json(['error' => 'Order creation failed: ' . $e->getMessage()], 500);
@@ -1148,6 +1162,9 @@ class PayPalController extends Controller
                 $couponIDs = [];
                 $isPercentageCoupone = false;
                 foreach ($orderData['extra'] as $item) {
+                    if ($item['quantity'] < 0) {
+                        $item['quantity'] = 1; 
+                    }
                     $ordertotalQTY += $item['quantity'];
                     $subtotal = $item['product_price'];
                     $productnames[] = $item['product_name'];
@@ -1490,6 +1507,9 @@ class PayPalController extends Controller
                     $dd = [];
                     $temp = false;
                     foreach ($orderData['extra'] as $item) {
+                        if ($item['quantity'] < 0) {
+                            $item['quantity'] = 1; 
+                        }
                         $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,
                             'order_item_name' => $item['product_name'],
