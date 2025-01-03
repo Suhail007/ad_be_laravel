@@ -39,7 +39,7 @@ class LoginController extends Controller
 
         $check = WpPassword::check($hashedPassword, $user->user_pass);
         if ($check == true) {
-            if ($user->approved == "0") {
+            if ($user->approved != "1") {
                 return response()->json([
                     'status' => false,
                     'message' => 'Your Register Request Not Approved',
