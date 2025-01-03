@@ -351,18 +351,10 @@ class PayPalController extends Controller
                 } catch (\Throwable $th) {
 
                 }
-
-                try {
-                    Log::info("Payment Status is: ".  $paymentResult['status'] );
-                } catch (\Throwable $th) {
-                    Log::info('Failed to check payment status');
-                }
-
-                if (!$paymentResult['status']) {
-                    
+                if ($paymentResult['status'] ===false || $paymentResult['responsetext'] !== 'Approved') {
                     return response()->json([
                         'status' => false,
-                        'message' => $paymentResult,
+                        'message' => $paymentResult['responsetext'], // Send the response text as the message
                         'uniqueId' => null
                     ], 200);
                 }
