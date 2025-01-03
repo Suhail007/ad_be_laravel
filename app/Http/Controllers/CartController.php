@@ -541,12 +541,13 @@ class CartController extends Controller
         $cartData = [];
         $cartTotalItems = Cart::where('user_id', $user->ID)->get();
         $total = $this->cartTotal($cartTotalItems, $priceTier);
-        $itemCount = $this->cartItemCount($cartTotalItems);
+        $itemCount = 0;//$this->cartItemCount($cartTotalItems);
+    
         foreach ($cartItems as $cartItem) {
             $product = $cartItem->product;
             $variation = $cartItem->variation;
             $wholesalePrice = 0;
-
+            $itemCount++;
             if ($variation) {
                 $wholesalePrice = ProductMeta::where('post_id', $variation->ID)
                     ->where('meta_key', $priceTier)
@@ -621,6 +622,7 @@ class CartController extends Controller
             'cart_total' => $total[0],
             'location_tax' => $total[1],
             'cart_count' => $itemCount,
+            'itemCount' => $itemCount,
             // 'pagination' => [
             //     'total' => $cartItems->total(),
             //     'per_page' => $cartItems->perPage(),
@@ -663,11 +665,12 @@ class CartController extends Controller
 
         $cartData = [];
         $total = $this->cartTotal($cartItems, $priceTier);
-        $itemCount = $this->cartItemCount($cartItems);
+        $itemCount =0;// $this->cartItemCount($cartItems);
         foreach ($cartItems as $cartItem) {
             $product = $cartItem->product;
             $variation = $cartItem->variation;
             $wholesalePrice = 0;
+            $itemCount++;
             if ($variation) {
                 $wholesalePrice = ProductMeta::where('post_id', $variation->ID)
                     ->where('meta_key', $priceTier)
@@ -794,6 +797,7 @@ class CartController extends Controller
             'cart_total' => $total[0],
             'location_tax' => $total[1],
             'cart_count' => $itemCount,
+            'itemCount' => $itemCount,
             'cart_items' => $cartData,
         ], 200);
     }
@@ -821,12 +825,14 @@ class CartController extends Controller
         }
         $cartTotalItems = Cart::where('user_id', $user->ID)->get();
         $total = $this->cartTotal($cartTotalItems, $priceTier);
-        $itemCount = $this->cartItemCount($cartTotalItems);
+        $itemCount = 0;//$this->cartItemCount($cartTotalItems);
+        $itemCount = Cart::where('user_id', $user->ID)->count();
         return response()->json([
             'status' => true,
             'cart_total' => $total[0],
             'location_tax' => $total[1],
             'cart_count' => $itemCount,
+            'itemCount' => $itemCount,
             'success' => 'Product removed from cart'
         ], 200);
     }
