@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Woo\ProductController;
 use App\Models\Cart;
 use App\Models\Product;
 use App\Models\ProductMeta;
@@ -30,17 +31,34 @@ class WooCommerceController extends Controller
         try {
             $user = JWTAuth::parseToken()->authenticate();
             if ($user->ID) {
-                $product = Product::with([
-                    'meta',
-                    'categories.taxonomies',
-                    'categories.children',
-                    'categories.categorymeta'
-                ])->where('post_name', $slug) 
-                ->whereHas('meta', function ($query) {
-                    $query->where('meta_key', '_stock_status')
-                        ->where('meta_value', 'instock');
-                })
-                ->firstOrFail();
+                if ($user->ID == 5417) {
+                    $dummyProductList = (new ProductController())->dummyProductList();
+                    $product = Product::with([
+                        'meta',
+                        'categories.taxonomies',
+                        'categories.children',
+                        'categories.categorymeta'
+                    ])->where('post_name', $slug) ->where('post_status', 'trash')
+
+                    ->whereIn('ID', $dummyProductList) 
+                    ->whereHas('meta', function ($query) {
+                        $query->where('meta_key', '_stock_status')
+                            ->where('meta_value', 'instock');
+                    })
+                    ->firstOrFail();
+                } else {
+                    $product = Product::with([
+                        'meta',
+                        'categories.taxonomies',
+                        'categories.children',
+                        'categories.categorymeta'
+                    ])->where('post_name', $slug) ->where('post_status', 'publish')
+                    ->whereHas('meta', function ($query) {
+                        $query->where('meta_key', '_stock_status')
+                            ->where('meta_value', 'instock');
+                    })
+                    ->firstOrFail();
+                }
             }
         } catch (\Throwable $th) {
             $product = Product::with([
