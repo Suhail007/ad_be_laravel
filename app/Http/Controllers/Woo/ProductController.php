@@ -1553,28 +1553,6 @@ class ProductController extends Controller
                     ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                     ->where('post_type', 'product')
                     ->where('post_status', 'publish');
-
-                $searchProducts = Product::with([
-                    'meta' => function ($query) use ($priceTier) {
-                        $query->select('post_id', 'meta_key', 'meta_value')
-                            ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
-                    },
-                    'categories' => function ($query) {
-                        $query->select('wp_terms.term_id', 'wp_terms.name')
-                            ->with([
-                                'categorymeta' => function ($query) {
-                                    $query->select('term_id', 'meta_key', 'meta_value')
-                                        ->where('meta_key', 'visibility');
-                                },
-                                'taxonomies' => function ($query) {
-                                    $query->select('term_id', 'taxonomy');
-                                }
-                            ]);
-                    }
-                ])
-                    ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
-                    ->where('post_type', 'product')->where('post_status', 'publish');
-
                 // Apply category filter
                 if (!empty($catIDArray)) {
                     $productsQuery->whereHas('categories.taxonomies', function ($query) use ($catIDArray) {
@@ -1641,10 +1619,10 @@ class ProductController extends Controller
             }
         } catch (\Throwable $th) {
             $priceTier = '';
-            $products = Product::with([
-                'meta' => function ($query) {
+            $productsQuery = Product::with([
+                'meta' => function ($query) use ($priceTier) {
                     $query->select('post_id', 'meta_key', 'meta_value')
-                        ->whereIn('meta_key', ['_stock_status', '_sku', '_thumbnail_id']);
+                        ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
                 },
                 'categories' => function ($query) {
                     $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
@@ -1661,6 +1639,7 @@ class ProductController extends Controller
             ])
                 ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                 ->where('post_type', 'product')
+                ->where('post_status', 'publish')
                 ->whereHas('meta', function ($query) {
                     $query->where('meta_key', '_stock_status')
                         ->where('meta_value', 'instock');
@@ -1669,9 +1648,33 @@ class ProductController extends Controller
                     $query->where('meta_key', 'visibility')
                         ->where('meta_value', 'protected');
                 });
+            // Apply category filter
+            if (!empty($catIDArray)) {
+                $productsQuery->whereHas('categories.taxonomies', function ($query) use ($catIDArray) {
+                    $query->whereIn('term_id', $catIDArray)
+                        ->where('taxonomy', 'product_cat');
+                });
+            }
+
+            // Apply search filter
+            if ($searchTerm) {
+                $searchWords = preg_split('/\s+/', $searchTerm);
+                $regexPattern = implode('.*', array_map(function ($word) {
+                    return "(?=.*" . preg_quote($word) . ")";
+                }, $searchWords));
+
+                $productsQuery->where(function ($query) use ($regexPattern) {
+                    $query->where('post_title', 'REGEXP', $regexPattern)
+                        ->orWhereHas('meta', function ($query) use ($regexPattern) {
+                            $query->where('meta_key', '_sku')
+                                ->where('meta_value', 'REGEXP', $regexPattern);
+                        });
+                });
+            }
+
             switch ($sortBy) {
                 case 'popul':
-                    $products->with(['meta' => function ($query) {
+                    $productsQuery->with(['meta' => function ($query) {
                         $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
                     }])
                         ->orderByRaw("
@@ -1683,7 +1686,7 @@ class ProductController extends Controller
                     break;
 
                 case 'plh':
-                    $products->with(['meta' => function ($query) {
+                    $productsQuery->with(['meta' => function ($query) {
                         $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
                     }])
                         ->orderByRaw("
@@ -1694,7 +1697,7 @@ class ProductController extends Controller
                     break;
 
                 case 'phl':
-                    $products->with(['meta' => function ($query) {
+                    $productsQuery->with(['meta' => function ($query) {
                         $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
                     }])
                         ->orderByRaw("
@@ -1705,10 +1708,10 @@ class ProductController extends Controller
                     break;
 
                 default:
-                    $products->orderBy('post_date', 'desc');
+                    $productsQuery->orderBy('post_date', 'desc');
                     break;
             }
-            $products = $products->paginate($perPage, ['*'], 'page', $page);
+            $products = $productsQuery->paginate($perPage, ['*'], 'page', $page);
         }
 
         try {
