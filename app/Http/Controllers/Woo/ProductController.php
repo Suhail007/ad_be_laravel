@@ -40,7 +40,7 @@ class ProductController extends Controller
     }
 
     public function dummyProductList(){
-        return [208554,208555,208558];
+        return [209210,209212,209218,209216,209228,209219,209230,209220,209232,209227,209235];
     }
 
     public function categoryProduct(Request $request, string $slug)
