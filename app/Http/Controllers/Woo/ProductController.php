@@ -19,58 +19,6 @@ use Illuminate\Http\Response;
 class ProductController extends Controller
 {
     protected $woocommerce;
-
-    public function __construct(Client $woocommerce)
-    {
-        $this->woocommerce = $woocommerce;
-    }
-
-    public function shos($id)
-    {
-        try {
-            $product = $this->woocommerce->get("products/{$id}");
-            return response()->json($product);
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Product not found'], 404);
-        }
-    }
-    public function showProduct($id)
-    {
-        $product = Product::with([
-            'meta' => function ($query) {
-                $query->select('post_id', 'meta_key', 'meta_value')
-                    ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id']);
-            },
-            'categories' => function ($query) {
-                $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
-                    ->with([
-                        'categorymeta' => function ($query) {
-                            $query->select('term_id', 'meta_key', 'meta_value')
-                                ->where('meta_key', 'visibility');
-                        },
-                        'taxonomies' => function ($query) {
-                            $query->select('term_id', 'taxonomy');
-                        }
-                    ]);
-            }
-        ])->find($id);
-
-        if (!$product) {
-            return response()->json(['message' => 'Product not found'], 404);
-        }
-
-        $productData = [
-            'ID' => $product->ID,
-            'title' => $product->post_title,
-            'slug' => $product->post_name,
-            'thumbnail_url' => $this->getThumbnailUrl($product->meta->where('meta_key', '_thumbnail_id')->pluck('meta_value')->first()),
-            'sku' => $product->meta->where('meta_key', '_sku')->pluck('meta_value')->first(),
-            'price' => $product->meta->where('meta_key', '_price')->pluck('meta_value')->first(),
-            'description' => $product->post_content,
-        ];
-
-        return response()->json($productData);
-    }
     private function getThumbnailUrl($thumbnailId)
     {
         if (!$thumbnailId) {
@@ -84,39 +32,17 @@ class ProductController extends Controller
     }
     public function sidebar()
     {
-        //     $slug='glass';
-        //     $category = Category::where('slug', $slug)
-        //     ->with([
-        //         'taxonomy' => function ($query) {
-        //             $query->select('term_taxonomy_id', 'term_id', 'parent', 'count');
-        //         },
-        //         'categorymeta' => function ($query) {
-        //             $query->select('meta_id', 'term_id', 'meta_key', 'meta_value')
-        //                   ->where('meta_key', 'visibility');
-        //         },
-        //         'taxonomy.childTerms.term' => function ($query) {
-        //             $query->select('term_id', 'name', 'slug')
-        //                   ->with([
-        //                       'categorymeta' => function ($query) {
-        //                           $query->select('meta_id', 'term_id', 'meta_key', 'meta_value')
-        //                                 ->where('meta_key', 'visibility');
-        //                       }
-        //                   ]);
-        //         }
-        //     ])
-        //     ->select('term_id', 'name', 'slug')
-        //     ->first();
-
-        // // Check if category exists
-        // if (!$category) {
-        //     return response()->json(['message' => 'Category not found'], 404);
-        // }
         $category = CustomCategory::get();
         $brand = CustomBrand::where('category', '!=', '')->get();
         $response = response()->json(['category' => $category, 'brands' => $brand]);
         $response->header('Cache-Control', 'public, max-age=600');
         return $response;
     }
+
+    public function dummyProductList(){
+        return [208554,208555,208558];
+    }
+
     public function categoryProduct(Request $request, string $slug)
     {
         $perPage = $request->query('perPage', 15);
@@ -159,6 +85,10 @@ class ProductController extends Controller
                             $query->where('slug', $slug)
                                 ->where('taxonomy', 'product_cat');
                         });
+                        if ($user->ID == 5417) {
+                            $products->whereIn('ID', $this->dummyProductList());
+                        }
+
                     switch ($sortBy) {
                         case 'popul':
                             $products->with(['meta' => function ($query) {
@@ -230,6 +160,10 @@ class ProductController extends Controller
                             $query->where('slug', $slug)
                                 ->where('taxonomy', 'product_cat');
                         });
+
+                        if ($user->ID == 5417) {
+                            $products->whereIn('ID', $this->dummyProductList());
+                        }
                     switch ($sortBy) {
                         case 'popul':
                             $products->with(['meta' => function ($query) {
@@ -575,6 +509,9 @@ class ProductController extends Controller
                         $query->where('slug', $slug)
                             ->where('taxonomy', 'product_brand');
                     });
+                    if ($user->ID == 5417) {
+                        $products->whereIn('ID', $this->dummyProductList());
+                    }
                 switch ($sortBy) {
                     case 'popul':
                         $products->with(['meta' => function ($query) {
@@ -945,6 +882,9 @@ class ProductController extends Controller
                     $query->where('meta_key', '_stock_status')
                         ->where('meta_value', 'instock');
                 });
+                if ($user->ID == 5417) {
+                    $query->whereIn('ID', $this->dummyProductList());
+                }
 
             if (!empty($searchTerm)) {
                 $searchWords = preg_split('/\s+/', $searchTerm);
@@ -1151,8 +1091,6 @@ class ProductController extends Controller
                 return response()->json(['status' => 'auth', 'user' => $user, 'products' => $products]);
             }
         } catch (\Throwable $th) {
-            Log::error('Error processing authenticated request: ' . $th->getMessage());
-
             try {
                 $originalCollection = $products->getCollection();
 
@@ -1212,7 +1150,6 @@ class ProductController extends Controller
 
                 return response()->json(['status' => 'no-auth', 'products' => $products]);
             } catch (\Throwable $th) {
-                Log::error('Error processing unauthenticated request: ' . $th->getMessage());
                 return response()->json(['status' => 'no-auth', 'message' => $th->getMessage()], 500);
             }
         }
@@ -1222,7 +1159,7 @@ class ProductController extends Controller
     {
         // Fetch the product
         $product = Product::find($id);
-
+        
         if (!$product) {
             return response()->json(['error' => 'Product not found'], 404);
         }
@@ -1240,7 +1177,14 @@ class ProductController extends Controller
         $relatedProducts = Product::whereHas('categories', function ($query) use ($subcatIds) {
             $query->whereIn('term_taxonomy_id', $subcatIds);
         })->orderBy('post_date', 'desc')->take(20)->get();
-
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            if ($user->ID == 5417) {
+                $relatedProducts->whereIn('ID', $this->dummyProductList());
+            }
+        } catch (\Throwable $th) {
+            //throw $th;
+        }
         if ($relatedProducts->isEmpty()) {
             return response()->json(['error' => 'No related products found'], 404);
         }
@@ -1329,6 +1273,9 @@ class ProductController extends Controller
                         $query->where('meta_key', '_stock_status')
                             ->where('meta_value', 'instock');
                     });
+                    if ($user->ID == 5417) {
+                        $products->whereIn('ID', $this->dummyProductList());
+                    }
                 switch ($sortBy) {
                     case 'popul':
                         $products->with(['meta' => function ($query) {
@@ -1553,6 +1500,10 @@ class ProductController extends Controller
                     ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                     ->where('post_type', 'product')
                     ->where('post_status', 'publish');
+
+                    if ($user->ID == 5417) {
+                        $productsQuery->whereIn('ID', $this->dummyProductList());
+                    }
                 // Apply category filter
                 if (!empty($catIDArray)) {
                     $productsQuery->whereHas('categories.taxonomies', function ($query) use ($catIDArray) {
