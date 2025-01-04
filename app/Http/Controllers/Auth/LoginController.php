@@ -283,15 +283,20 @@ class LoginController extends Controller
     }
     public function me(Request $request)
     {
-        $user = JWTAuth::parseToken()->authenticate();
-        $data = [
-            'ID' => $user->ID,
-            'name' => $user->user_login,
-            'email' => $user->user_email,
-            'capabilities' => $user->capabilities,
-            'account_no' => $user->account,
-        ];
-        return response()->json(['status' => 'success', 'data' => $data]);
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            $data = [
+                'ID' => $user->ID,
+                'name' => $user->user_login,
+                'email' => $user->user_email,
+                'capabilities' => $user->capabilities,
+                'account_no' => $user->account,
+            ];
+            return response()->json(['status' => 'success', 'data' => $data]);
+        } catch (\Throwable $th) {
+            return response()->json(['status'=>false, 'message'=>'Session Expired! Login Again.']);
+        }
+       
     }
     public function sendResetLinkEmail(Request $request)
     {

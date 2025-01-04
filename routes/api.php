@@ -31,12 +31,12 @@ Route::get('/user', function (Request $request) {
 Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:login');
 Route::post('/register', [LoginController::class, 'register']);
 Route::post('password/emailLink', [LoginController::class, 'sendResetLinkEmail']);
+Route::get('/profile', [LoginController::class, 'me']);
 Route::post('password/reset', [LoginController::class, 'reset']);
 Route::post('/file-upload', [LayoutController::class, 'uploadFile']);
 Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('/change-password', [LoginController::class, 'changePassword']);
     Route::post('/logout', [LoginController::class, 'logout']);
-    Route::get('/profile', [LoginController::class, 'me']);
 
     //admin layout
     Route::post('/layout', [LayoutController::class, 'store']);
