@@ -1176,11 +1176,13 @@ class ProductController extends Controller
 
         $relatedProducts = Product::whereHas('categories', function ($query) use ($subcatIds) {
             $query->whereIn('term_taxonomy_id', $subcatIds);
-        })->orderBy('post_date', 'desc')->take(20)->get();
+        })->where('ID',$this->dummyProductList())->orderBy('post_date', 'desc')->take(20)->get();
         try {
             $user = JWTAuth::parseToken()->authenticate();
             if ($user->ID == 5417) {
-                $relatedProducts->whereIn('ID', $this->dummyProductList());
+                $relatedProducts = Product::whereHas('categories', function ($query) use ($subcatIds) {
+                    $query->whereIn('term_taxonomy_id', $subcatIds);
+                })->where('ID',$this->dummyProductList())->orderBy('post_date', 'desc')->take(20)->get();
             }
         } catch (\Throwable $th) {
             //throw $th;
