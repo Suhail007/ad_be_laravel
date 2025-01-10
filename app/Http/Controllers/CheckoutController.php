@@ -237,7 +237,7 @@ class CheckoutController extends Controller
                     'product_name' => $product->post_title,
                     'product_image' => $product->thumbnail_url,
                     'variation' => $variationAttributes,
-                    'message' => 'Product is not published and has been removed from the cart',
+                    'message' => 'Product is not published on web',
                 ];
                 continue;
             }
@@ -249,12 +249,20 @@ class CheckoutController extends Controller
             $originalQuantity = $cartItem->quantity;
             if ($stockLevel == "0") {
                 $cartItem->delete();
+                $variationAttributes = [];
+                if ($variation) {
+                    $attributes = DB::select("SELECT meta_value FROM wp_postmeta WHERE post_id = ? AND meta_key LIKE 'attribute_%'", [$variation->ID]);
+                    foreach ($attributes as $attribute) {
+                        $variationAttributes[] = $attribute->meta_value;
+                    }
+                }
                 $adjustedItems[] = [
                     'product_id' => $product->ID,
                     'variation_id' => $variation ? $variation->ID : null,
                     'product_name' => $product->post_title,
                     'product_image' => $product->thumbnail_url,
-                    'message' => 'Product is out of stock and has been removed from the cart',
+                    'variation' => $variationAttributes,
+                    'message' => 'Product is out of stock',
                 ];
                 continue;
             }
@@ -295,7 +303,7 @@ class CheckoutController extends Controller
                     'requested_quantity' => $originalQuantity,
                     'available_quantity' => $stockLevel,
                     'variation'=>$variationAttributes,
-                    'message' => 'Quantity adjusted due to stock availability',
+                    'message' => 'Qty adjusted due to low stock',
                 ];
             }
             if (empty($adjustedItems)) {
@@ -325,7 +333,7 @@ class CheckoutController extends Controller
 
         if (!empty($adjustedItems)) {
             $response['adjusted_items'] = $adjustedItems;
-            $response['message'] = 'Some items were adjusted due to stock availability or publication status';
+            $response['message'] = 'Some items were adjusted due to low stock';
         }
 
         return response()->json($response);
