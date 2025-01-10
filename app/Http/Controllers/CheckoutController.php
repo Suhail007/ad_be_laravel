@@ -224,11 +224,19 @@ class CheckoutController extends Controller
 
             if ($product->post_status !== 'publish') {
                 $cartItem->delete();
+                $variationAttributes = [];
+                if ($variation) {
+                    $attributes = DB::select("SELECT meta_value FROM wp_postmeta WHERE post_id = ? AND meta_key LIKE 'attribute_%'", [$variation->ID]);
+                    foreach ($attributes as $attribute) {
+                        $variationAttributes[] = $attribute->meta_value;
+                    }
+                }
                 $adjustedItems[] = [
                     'product_id' => $product->ID,
                     'variation_id' => $variation ? $variation->ID : null,
                     'product_name' => $product->post_title,
                     'product_image' => $product->thumbnail_url,
+                    'variation' => $variationAttributes,
                     'message' => 'Product is not published and has been removed from the cart',
                 ];
                 continue;
@@ -272,6 +280,13 @@ class CheckoutController extends Controller
             ];
 
             if ($adjusted) {
+                $variationAttributes = [];
+                if ($variation) {
+                    $attributes = DB::select("SELECT meta_value FROM wp_postmeta WHERE post_id = ? AND meta_key LIKE 'attribute_%'", [$variation->ID]);
+                    foreach ($attributes as $attribute) {
+                        $variationAttributes[] = $attribute->meta_value;
+                    }
+                }
                 $adjustedItems[] = [
                     'product_id' => $product->ID,
                     'variation_id' => $variation ? $variation->ID : null,
@@ -279,6 +294,7 @@ class CheckoutController extends Controller
                     'product_image' => $product->thumbnail_url,
                     'requested_quantity' => $originalQuantity,
                     'available_quantity' => $stockLevel,
+                    'variation'=>$variationAttributes,
                     'message' => 'Quantity adjusted due to stock availability',
                 ];
             }
