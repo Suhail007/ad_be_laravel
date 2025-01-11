@@ -237,6 +237,8 @@ class CheckoutController extends Controller
                     'product_name' => $product->post_title,
                     'product_image' => $product->thumbnail_url,
                     'variation' => $variationAttributes,
+                    'requested_quantity'=>$cartItem->quantity,
+                    'available_quantity'=>0,
                     'message' => 'Product is not published on web',
                 ];
                 continue;
@@ -261,6 +263,8 @@ class CheckoutController extends Controller
                     'variation_id' => $variation ? $variation->ID : null,
                     'product_name' => $product->post_title,
                     'product_image' => $product->thumbnail_url,
+                    'requested_quantity' => $originalQuantity,
+                    'available_quantity'=>0,
                     'variation' => $variationAttributes,
                     'message' => 'Product is out of stock',
                 ];
