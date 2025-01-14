@@ -173,6 +173,9 @@ Route::get('/send-test-email', function () {
 });
 Route::get('/auto-brand-sync/{value}',[MenuController::class, 'fetchAndSaveBrands']);
 
+Route::get('/sync-category',[PublicController::class,'syncWoocat']);
+Route::get('/sync-brands',[PublicController::class,'syncWooBrand']);
+Route::get('/sync-product/{slug?}',[PublicController::class,'wooProduct']);
 
 Route::fallback(function () {
     return response()->json([
