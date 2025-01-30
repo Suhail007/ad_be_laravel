@@ -47,6 +47,7 @@ class WooCommerceController extends Controller
                     })
                     ->firstOrFail();
                 } else {
+                    $role=  key($user->capabilities); // "mm_price_2"
                     $product = Product::with([
                         'meta',
                         'categories.taxonomies',
@@ -58,6 +59,18 @@ class WooCommerceController extends Controller
                             ->where('meta_value', 'instock');
                     })
                     ->firstOrFail();
+
+                    //user role match with category visibility 
+                    foreach($product->categories as $cat){
+                        foreach($cat->categorymeta as $meta){
+                            if($meta->meta_key == "user_roles"){
+                                $user_roles = unserialize($meta->meta_value);
+                                if (!in_array($role, $user_roles)) {
+                                    return response()->json(['status'=>false, 'message'=>'Product not available for you']);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         } catch (\Throwable $th) {
