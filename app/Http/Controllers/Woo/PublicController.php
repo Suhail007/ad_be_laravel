@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductMeta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class PublicController extends Controller
@@ -33,13 +34,13 @@ class PublicController extends Controller
                 $query->where('meta_key', 'visibility')
                     ->where('meta_value', 'protected');
             })
-            ->where('post_name', $slug)->first();
-            if(!$product){
+                ->where('post_name', $slug)->first();
+            if (!$product) {
                 return response()->json(['status' => false, 'message' => 'Product Not Found, Login to see Products']);
             }
         }
 
-       
+
         // $product = Product::with([
         //     'meta',
         //     'categories.taxonomies',
@@ -66,7 +67,7 @@ class PublicController extends Controller
         //         'children' => $category->children,
         //     ];
         // });
-        
+
         // $brands = $product->categories->filter(function ($category) {
         //     // Check if the category's taxonomy type is 'brand'
         //     return $this->getTaxonomyType($category->taxonomies) === 'brand';
@@ -84,19 +85,19 @@ class PublicController extends Controller
         $thumbnailUrl = $this->getThumbnailUrl($product->ID);
         $price = $metaData->where('key', '_price')->first()['value'] ?? '';
 
-        
-        $priceTier ='';
+
+        $priceTier = '';
         $variations = $this->getVariations($product->ID, $priceTier);
         $descriptionHtml = $product->post_content;
 
-// Strip HTML tags to get plain text
-$descriptionPlainText = strip_tags($descriptionHtml);
+        // Strip HTML tags to get plain text
+        $descriptionPlainText = strip_tags($descriptionHtml);
 
-// Optionally, you might want to replace multiple new lines with a single line break
-$descriptionPlainText = preg_replace('/\s+/', ' ', $descriptionPlainText);
+        // Optionally, you might want to replace multiple new lines with a single line break
+        $descriptionPlainText = preg_replace('/\s+/', ' ', $descriptionPlainText);
 
-// You can also trim the content to remove extra spaces at the beginning and end
-$descriptionPlainText = trim($descriptionPlainText);
+        // You can also trim the content to remove extra spaces at the beginning and end
+        $descriptionPlainText = trim($descriptionPlainText);
         $response = [
             'id' => $product->ID,
             'name' => $product->post_title,
@@ -105,7 +106,7 @@ $descriptionPlainText = trim($descriptionPlainText);
             'type' => $product->post_type,
             'status' => $product->post_status,
             'min_quantity' => $metaData->where('key', 'min_quantity')->first()['value'] ?? false,
-            'max_quantity' => $metaData->where('key', 'max_quantity')->first()['value'] ?? false,
+            'max_quantity' => $metaData->where('key', 'max_quantity')->first()['value'] ?? null,
             'description' => $descriptionPlainText,
             'short_description' => $product->post_excerpt,
             'sku' => $metaData->where('key', '_sku')->first()['value'] ?? '',
@@ -224,7 +225,7 @@ $descriptionPlainText = trim($descriptionPlainText);
         });
         return response()->json($nestedCategories);
     }
-    private function getThumbnail($thumbnailId)
+    public function getThumbnail($thumbnailId)
     {
         if (!$thumbnailId) {
             return null;
@@ -232,16 +233,11 @@ $descriptionPlainText = trim($descriptionPlainText);
         $attachment = DB::table('wp_posts')->where('ID', $thumbnailId)->first();
         if ($attachment) {
             $imageUrl = $attachment->guid;
-            if (substr($imageUrl, 0, 18) === '/wp-content/uploads/') {
-                $imageUrl = 'https://ad.phantasm.solutions' . $imageUrl;
+            $new_domain = 'https://ad.phantasm.solutions';
+            $position = strpos($imageUrl, '/wp-content/uploads/');
+            if ($position !== false) {
+                $imageUrl = $new_domain . substr($imageUrl, $position);
             }
-            $parsedUrl = parse_url($imageUrl);
-            if (isset($parsedUrl['host']) && filter_var($parsedUrl['host'], FILTER_VALIDATE_IP)) {
-                $imageUrl = str_replace($parsedUrl['scheme'] . '://' . $parsedUrl['host'], 'https://ad.phantasm.solutions', $imageUrl);
-            }
-            $imageUrl = (substr($imageUrl, 0, 18) === '/wp-content/uploads/')
-                ? 'https://ad.phantasm.solutions' . $imageUrl
-                : $imageUrl;
             return $imageUrl;
         }
         return null;
@@ -340,7 +336,7 @@ $descriptionPlainText = trim($descriptionPlainText);
             'categories.taxonomies',
             'categories.children',
             'categories.categorymeta'
-        ])->where('post_name', $slug)
+        ])->where('ID', $slug)
             ->whereHas('meta', function ($query) {
                 $query->where('meta_key', '_stock_status')
                     ->where('meta_value', 'instock');
@@ -356,22 +352,40 @@ $descriptionPlainText = trim($descriptionPlainText);
         $categories = $product->categories->filter(function ($category) {
             return $this->getTaxonomyType($category->taxonomies) === 'category';
         })->map(function ($category) {
+
+            $displayType = null;
+
+            foreach ($category->categorymeta as $meta) {
+                if ($meta->meta_key === 'visibility') {
+                    $displayType = $meta->meta_value;
+                    break;
+                }
+            }
             return [
                 'id' => $category->term_id,
                 'name' => $category->name,
                 'slug' => $category->slug,
+                'visibility' => $displayType
             ];
         });
         $brands = $product->categories->filter(function ($category) {
             return $this->getTaxonomyType($category->taxonomies) === 'brand';
         })->map(function ($category) {
+            $displayType = null;
+            foreach ($category->categorymeta as $meta) {
+                if ($meta->meta_key === 'thumbnail_id') {
+                    $displayType = (int) $meta->meta_value;
+                    break;
+                }
+            }
             return [
                 'id' => $category->term_id,
                 'name' => $category->name,
                 'slug' => $category->slug,
+                'thumbnail_id' => $displayType
             ];
         });
-        $thumbnailUrl = $this->getThumbnail($product->ID);
+        $thumbnailUrl = $this->getThumbnail($metaData->where('key', '_thumbnail_id')->first()['value']);
         $galleryImagesUrls = $this->getGalleryImages($product->ID);
         $variations = $this->getVariation($product->ID);
         $response = [
@@ -392,6 +406,9 @@ $descriptionPlainText = trim($descriptionPlainText);
             'description' => $product->post_content,
             'short_description' => $product->post_excerpt,
             'sku' => $metaData->where('key', '_sku')->first()['value'] ?? '',
+            'mm_product_upc' => $metaData->where('key', 'mm_product_upc')->first()['value'] ??  uniqid('product_', true),
+            'ml' => $metaData->where('key', 'mm_product_basis_1')->first()['value'] ?? null,
+            'ct' => $metaData->where('key', 'mm_product_basis_2')->first()['value'] ?? null,
             'price' => $metaData->where('key', '_price')->first()['value'] ?? '',
             'regular_price' => $metaData->where('key', '_regular_price')->first()['value'] ?? '',
             'purchasable' => $product->post_status === 'publish',
@@ -420,10 +437,18 @@ $descriptionPlainText = trim($descriptionPlainText);
             'thumbnail_url' => $thumbnailUrl,
             'variations' => $variations,
             'stock_status' => $metaData->where('key', '_stock_status')->first()['value'] ?? 'instock',
+            'meta' => $metaData ?? [],
         ];
-        $nextProduct = Product::where('post_parent', 0)
-            ->where('ID', '>', $product->ID)
-            ->orderBy('ID', 'asc')
+        $nextProduct = Product::with(['meta'])
+            ->whereHas('meta', function ($query) {
+                $query->where('meta_key', '_stock_status')
+                    ->where('meta_value', 'instock');
+            })
+            ->where('post_parent', 0)
+            ->where('ID', '<', $product->ID)
+            ->where('post_type', 'product')
+            ->where('post_status', 'publish')
+            ->orderBy('ID', 'desc')
             ->first();
         $nextProductSlug = $nextProduct ? $nextProduct->post_name : null;
         return response()->json(['product' => $response, 'nextProduct' => $nextProductSlug]);
@@ -440,5 +465,94 @@ $descriptionPlainText = trim($descriptionPlainText);
             ->with('meta')
             ->get();
         return $variations;
+    }
+    private function syncPorductVarients($productId)
+    {
+        $variations = Product::where('post_parent', $productId)
+            ->where('post_type', 'product_variation')
+            ->whereHas('meta', function ($query) {
+                $query->where('meta_key', '_stock_status')
+                    ->where('meta_value', 'instock');
+            })
+            ->with(['meta' => function ($query) {
+                $query->whereIn('meta_key', [
+                    '_sku',
+                    'mm_indirect_tax_type',
+                    // 'mm_product_basis_1',
+                    // 'mm_product_basis_2',
+                ]);
+            }])
+            ->get();
+        return $variations->map(function ($variation) {
+            return [
+                'sku' => $variation->meta->where('meta_key', '_sku')->first()->meta_value ?? null,
+                'mm_indirect_tax_type' => $variation->meta->where('meta_key', 'mm_indirect_tax_type')->first()->meta_value ?? null,
+                // 'product_basis_1' => $variation->meta->where('meta_key', 'mm_product_basis_1')->first()->meta_value ?? null,
+                // 'product_basis_2' => $variation->meta->where('meta_key', 'mm_product_basis_2')->first()->meta_value ?? null,
+            ];
+        });
+    }
+
+    public function syncProductMeta($id)
+    {
+        $product = Product::with(['meta' => function ($query) {
+            $query->whereIn('meta_key', [
+                'mm_indirect_tax_type',
+                '_sku',
+                'mm_product_basis_1',
+                'mm_product_basis_2',
+                'mm_product_basis_3',
+            ]);
+        }])->find($id);
+        $skuResults = [];
+        $skku = $product->post_name??null;
+        $value = null;
+        $variations = $this->syncPorductVarients($product->ID);
+        $mmIndirectTaxType = null;
+        foreach ($variations as $variation) {
+            if (!empty($variation['mm_indirect_tax_type'])) {
+                $mmIndirectTaxType = $variation['mm_indirect_tax_type'];
+                break;
+            }
+        }
+        if (!$mmIndirectTaxType) {
+            $productMeta = $product->meta->where('meta_key', 'mm_indirect_tax_type')->first();
+
+            if ($productMeta) {
+                $mmIndirectTaxType = $productMeta->meta_value;
+            }
+        }
+        if ($mmIndirectTaxType) {
+            if ($mmIndirectTaxType == "14346") {
+                $value = 1;
+            } elseif ($mmIndirectTaxType == "14347") {
+                $value = 6;
+            } elseif ($mmIndirectTaxType == "14344") {
+                $value = 2;
+            } elseif ($mmIndirectTaxType == "14343") {
+                $value = 5;
+            } elseif ($mmIndirectTaxType == "14345") {
+                $value = 3;
+            }
+        } 
+        $nextProduct = Product::with(['meta'])
+            ->whereHas('meta', function ($query) {
+                $query->where('meta_key', '_stock_status')
+                    ->where('meta_value', 'instock');
+            })
+            ->where('post_parent', 0)
+            ->where('ID', '<', $product->ID)
+            ->where('post_type', 'product')
+            ->where('post_status', 'publish')
+            ->orderBy('ID', 'desc')
+            ->first();
+        $nextPro = $nextProduct ? $nextProduct->ID : null;
+        try {
+            //code...
+            return response()->json(['value'=>$value, 'next'=>$nextPro, 'sku'=>$skku]);
+        } catch (\Throwable $th) {
+            //throw $th;
+            return response()->json(['value'=>$value, 'next'=>$nextPro]);
+        }
     }
 }

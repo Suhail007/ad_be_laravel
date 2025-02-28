@@ -709,13 +709,15 @@ class CartController extends Controller
                     'mm_product_basis_2',
                     'mm_product_basis_3',
                     'max_quantity_var',
-                    'min_quantity_var'
+                    'min_quantity_var',
+                    'mm_product_cost',
                 ])
                 ->pluck('meta_value', 'meta_key');
 
             $stockLevel = $productMeta->get('_stock', null);
             $stockStatus = $productMeta->get('_stock_status', null);
             $taxID = $productMeta->get('mm_indirect_tax_type', null);
+            $taxON = $productMeta->get('mm_product_cost', null);
 
             $taxClass = $productMeta->get('_tax_class', null);
             if ($taxClass == 'parent') {
@@ -768,6 +770,7 @@ class CartController extends Controller
                 'location_tax' => $taxID,
                 'tax_class' => $taxClass,
                 'sku' => $sku,
+                'taxON' =>$taxON,
                 'ml1' => $ml1taxID,
                 'ml2' => $ml2taxID,
                 'ml3' => $ml3taxID,

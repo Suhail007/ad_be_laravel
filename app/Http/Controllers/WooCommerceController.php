@@ -61,13 +61,21 @@ class WooCommerceController extends Controller
                     ->firstOrFail();
 
                     //user role match with category visibility 
+                    $check1 = false;
+                    $check2 = false;
                     foreach($product->categories as $cat){
                         foreach($cat->categorymeta as $meta){
                             if($meta->meta_key == "user_roles"){
                                 $user_roles = unserialize($meta->meta_value);
                                 if (!in_array($role, $user_roles)) {
-                                    return response()->json(['status'=>false, 'message'=>'Product not available for you']);
+                                    $check1 = true;
                                 }
+                            }
+                            if($meta->meta_key == "visibility" && $meta->meta_value =="protected"){
+                                $check2 = true;
+                            }
+                            if($check1 == true && $check2 == true){
+                                return response()->json(['status'=>false, 'message'=>'Product not available for you']);
                             }
                         }
                     }

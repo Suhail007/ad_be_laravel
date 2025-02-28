@@ -176,6 +176,8 @@ Route::get('/auto-brand-sync/{value}',[MenuController::class, 'fetchAndSaveBrand
 Route::get('/sync-category',[PublicController::class,'syncWoocat']);
 Route::get('/sync-brands',[PublicController::class,'syncWooBrand']);
 Route::get('/sync-product/{slug?}',[PublicController::class,'wooProduct']);
+Route::get('/thumbnail/{thumbnailId?}',[PublicController::class,'getThumbnail']);
+Route::get('/synProductMeta/{id}',[PublicController::class,'syncProductMeta']);
 
 Route::fallback(function () {
     return response()->json([

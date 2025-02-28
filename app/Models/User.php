@@ -16,8 +16,8 @@ class User extends Authenticatable implements JWTSubject
 
     protected $primaryKey = 'ID'; // Set the primary key to 'ID'
 
-    public $timestamps = false;
     protected $guarded = [];
+    public $timestamps = false;
 
     protected $hidden = [
         'user_pass', // Hide the password field
