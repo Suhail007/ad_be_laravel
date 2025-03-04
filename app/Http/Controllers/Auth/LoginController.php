@@ -130,20 +130,16 @@ class LoginController extends Controller
 {
     try {
         $user = JWTAuth::parseToken()->authenticate();
-
-        // Check if user is null (authentication failed)
         if (!$user) {
             return response()->json(['status' => false, 'message' => 'User not authenticated']);
         }
-
         $data = $user->capabilities;
-
         foreach ($data as $key => $value) {
             if ($key == 'administrator') {
                 return response()->json(['status' => false, 'message' => 'You are not allowed']);
             } else {
-                $vuser = User::find($user->id);
-                $vuserMeta = UserMeta::where('meta_key', $vuser->id);
+                $vuser = User::find($user->ID);
+                $vuserMeta = UserMeta::where('user_id', $vuser->ID);
                 if ($vuser) {
                     $vuserMeta->delete();
                     $vuser->delete();
