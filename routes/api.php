@@ -37,7 +37,7 @@ Route::post('/file-upload', [LayoutController::class, 'uploadFile']);
 Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('/change-password', [LoginController::class, 'changePassword']);
     Route::post('/logout', [LoginController::class, 'logout']);
-    Route::delete('/delete-my-account', [LoginController::class, 'deleteMyAccount']);
+    Route::post('/delete-my-account', [LoginController::class, 'deleteMyAccount']);
 
     //admin layout
     Route::post('/layout', [LayoutController::class, 'store']);

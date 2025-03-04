@@ -129,7 +129,6 @@ class LoginController extends Controller
     public function deleteMyAccount(Request $request)
 {
     try {
-        // Authenticate the user
         $user = JWTAuth::parseToken()->authenticate();
 
         // Check if user is null (authentication failed)
