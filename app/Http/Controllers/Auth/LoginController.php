@@ -127,28 +127,37 @@ class LoginController extends Controller
     // }
 
     public function deleteMyAccount(Request $request)
-    {
-        try {
-            $user = JWTAuth::parseToken()->authenticate();
-            $data = $user->capabilities;
-            foreach ($data as $key => $value) {
-                if ($key == 'administrator') {
-                    return response()->json(['status' => false, 'message' => 'You are not allowed']);
-                } else {
-                    $vuser = User::find($user->id);
-                    $vuserMeta = UserMeta::where('meta_key', $vuser->id);
-                    if ($vuser) {
-                        $vuserMeta->delete();
-                        $vuser->delete();
-                        return response()->json(['status' => true, 'message' => 'Account deleted successfully.']);
-                    }
+{
+    try {
+        // Authenticate the user
+        $user = JWTAuth::parseToken()->authenticate();
+
+        // Check if user is null (authentication failed)
+        if (!$user) {
+            return response()->json(['status' => false, 'message' => 'User not authenticated']);
+        }
+
+        $data = $user->capabilities;
+
+        foreach ($data as $key => $value) {
+            if ($key == 'administrator') {
+                return response()->json(['status' => false, 'message' => 'You are not allowed']);
+            } else {
+                $vuser = User::find($user->id);
+                $vuserMeta = UserMeta::where('meta_key', $vuser->id);
+                if ($vuser) {
+                    $vuserMeta->delete();
+                    $vuser->delete();
+                    return response()->json(['status' => true, 'message' => 'Account deleted successfully.']);
                 }
             }
-            return response()->json(['status' => false, 'message' => 'You are not allowed']);
-        } catch (\Throwable $th) {
-            return response()->json(['status' => false, 'message' => 'Failed ' . $th->getMessage()]);
         }
+        return response()->json(['status' => false, 'message' => 'You are not allowed']);
+    } catch (\Throwable $th) {
+        return response()->json(['status' => false, 'message' => 'Failed ' . $th->getMessage()]);
     }
+}
+
 
     public function logout(Request $request)
     {
