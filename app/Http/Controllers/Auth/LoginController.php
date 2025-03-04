@@ -283,7 +283,7 @@ class LoginController extends Controller
         UserMeta::create([
             'user_id' => $user->ID,
             'meta_key' => 'wp_capabilities',
-            'meta_value' => serialize(['customer' => true]),
+            'meta_value' => serialize(['mm_price_2' => true]), // rollback to customer
         ]);
         UserMeta::create([
             'user_id' => $user->ID,

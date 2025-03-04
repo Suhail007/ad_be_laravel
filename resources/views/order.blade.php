@@ -160,7 +160,7 @@
 <body>
     <div class="container">
         <div class="header">
-           \ <img src="https://ad.phantasm.solutions/wp-content/uploads/2024/03/ad_logo.png" alt="Logo">
+           <img src="https://ad.phantasm.solutions/wp-content/uploads/2024/03/ad_logo.png" alt="Logo">
             <div class="title">
                 <h4>Order Confirmed</h4>
                 <h4>Order # <span class="order-number">{{ $orderNumber }}</span></h4>
@@ -181,9 +181,9 @@
                 <h5>Your order will be sent to:</h5>
                 <h5><b>{{ $orderaddress }}</b></h5>
             </div>
-            <a href="https://express.americandistributorsllc.com/myaccount?tab=Orders" class="cta-button">
-                Order Details
-            </a>
+            {{-- <a href="https://express.americandistributorsllc.com/myaccount?tab=Orders" class="cta-button">
+                Order Details // rollback
+            </a> --}}
         </div>
     </div>
 </body>
