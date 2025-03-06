@@ -53,8 +53,8 @@ class ProductController extends Controller
         $slug = explode(',', $slug);
         $auth = false;
         $priceRange = [
-            'min' => $priceRangeMin,
-            'max' => $priceRangeMax
+            'min' =>(int) $priceRangeMin,
+            'max' =>(int) $priceRangeMax
         ];
         try {
             $user = JWTAuth::parseToken()->authenticate();
@@ -99,21 +99,26 @@ class ProductController extends Controller
                         $query->whereIn('slug', $slug)
                             ->where('taxonomy', 'product_cat');
                     });
-
+                    
                 if (isset($priceRange['min']) && isset($priceRange['max'])) {
                     $products->where(function ($query) use ($priceRange, $priceTier) {
-                        // Filter by priceTier first (variations)
+                        // $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
+                        //     $variationQuery->where('meta_key', $priceTier)
+                        //         ->whereBetween('meta_value', [$priceRange['min'], $priceRange['max']]);
+                        // });
+
                         $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
                             $variationQuery->where('meta_key', $priceTier)
-                                                          ->where('meta_value', '>=', $priceRange['min'])
-                                                        ->where('meta_value', '<=', $priceRange['max']);
-
+                                // Cast the 'meta_value' to a decimal (float) and apply the price range filter
+                                ->whereRaw("CAST(meta_value AS DECIMAL(10,2)) >= ? AND CAST(meta_value AS DECIMAL(10,2)) <= ?", 
+                                    [$priceRange['min'], $priceRange['max']]);
                         });
+                        
 
                         $query->orWhereHas('meta', function ($metaQuery) use ($priceRange, $priceTier) {
                             $metaQuery->where('meta_key', $priceTier)
-                            ->where('meta_value', '>=', $priceRange['min'])
-                            ->where('meta_value', '<=', $priceRange['max']);
+                            ->whereRaw("CAST(meta_value AS DECIMAL(10,2)) >= ? AND CAST(meta_value AS DECIMAL(10,2)) <= ?", 
+                            [$priceRange['min'], $priceRange['max']]);
                         });
                     });
                 }
