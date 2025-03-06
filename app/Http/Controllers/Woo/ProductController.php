@@ -99,17 +99,21 @@ class ProductController extends Controller
                         $query->whereIn('slug', $slug)
                             ->where('taxonomy', 'product_cat');
                     });
+
                 if (isset($priceRange['min']) && isset($priceRange['max'])) {
                     $products->where(function ($query) use ($priceRange, $priceTier) {
                         // Filter by priceTier first (variations)
                         $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
                             $variationQuery->where('meta_key', $priceTier)
-                                ->whereBetween('meta_value', [$priceRange['min'], $priceRange['max']]);
+                                                          ->where('meta_value', '>=', $priceRange['min'])
+                                                        ->where('meta_value', '<=', $priceRange['max']);
+
                         });
 
                         $query->orWhereHas('meta', function ($metaQuery) use ($priceRange, $priceTier) {
                             $metaQuery->where('meta_key', $priceTier)
-                                ->whereBetween('meta_value', [$priceRange['min'], $priceRange['max']]);
+                            ->where('meta_value', '>=', $priceRange['min'])
+                            ->where('meta_value', '<=', $priceRange['max']);
                         });
                     });
                 }
