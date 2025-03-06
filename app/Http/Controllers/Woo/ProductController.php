@@ -100,7 +100,7 @@ class ProductController extends Controller
                             ->where('taxonomy', 'product_cat');
                     });
                     
-                if (isset($priceRange['min']) && isset($priceRange['max'])) {
+                if ($priceRange['min']>0 && $priceRange['max']>0) {
                     $products->where(function ($query) use ($priceRange, $priceTier) {
                         // $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
                         //     $variationQuery->where('meta_key', $priceTier)
