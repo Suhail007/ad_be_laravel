@@ -241,7 +241,7 @@ class ProductController extends Controller
                             'meta_value' => $meta->meta_value
                         ];
                     })->toArray();
-                    $filteredMeta = $auth ? $metaArray : array_values(array_filter($metaArray, function ($meta) {
+                    $meta = $auth ? $metaArray : array_values(array_filter($metaArray, function ($meta) {
                         return $meta['meta_key'] !== '_price';
                     }));    
                 }
@@ -264,7 +264,7 @@ class ProductController extends Controller
                             'taxonomy' => $taxonomy ? $taxonomy : 'public',
                         ];
                     }),
-                    'meta' => $product->meta,
+                    'meta' => $auth?$product->meta:$meta,
                     'variations' => $product->variations,
                     'post_modified' => $product->post_modified
                 ];
