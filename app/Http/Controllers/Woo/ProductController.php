@@ -39,8 +39,9 @@ class ProductController extends Controller
         return $response;
     }
 
-    public function dummyProductList(){
-        return [209210,209212,209218,209216,209228,209219,209230,209220,209232,209227,209235];
+    public function dummyProductList()
+    {
+        return [209210, 209212, 209218, 209216, 209228, 209219, 209230, 209220, 209232, 209227, 209235];
     }
 
     public function categoryProductV2(Request $request, $slug)
@@ -53,8 +54,8 @@ class ProductController extends Controller
         $slug = explode(',', $slug);
         $auth = false;
         $priceRange = [
-            'min' =>(int) $priceRangeMin,
-            'max' =>(int) $priceRangeMax
+            'min' => (int) $priceRangeMin,
+            'max' => (int) $priceRangeMax
         ];
         try {
             $user = JWTAuth::parseToken()->authenticate();
@@ -78,7 +79,7 @@ class ProductController extends Controller
                             ]);
                     },
                     'variations' => function ($query) use ($priceTier) {
-                        $query->select('ID', 'post_parent', 'post_title', 'post_name') 
+                        $query->select('ID', 'post_parent', 'post_title', 'post_name')
                             ->with([
                                 'varients' => function ($query) use ($priceTier) {
                                     $query->select('post_id', 'meta_key', 'meta_value')
@@ -99,31 +100,62 @@ class ProductController extends Controller
                         $query->whereIn('slug', $slug)
                             ->where('taxonomy', 'product_cat');
                     });
-                    
-                if ($priceRange['min']>0 && $priceRange['max']>0) {
+                if ($priceRange['min'] > 0 && $priceRange['max'] > 0) {
                     $products->where(function ($query) use ($priceRange, $priceTier) {
-                        // $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
-                        //     $variationQuery->where('meta_key', $priceTier)
-                        //         ->whereBetween('meta_value', [$priceRange['min'], $priceRange['max']]);
-                        // });
-
                         $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
                             $variationQuery->where('meta_key', $priceTier)
-                                // Cast the 'meta_value' to a decimal (float) and apply the price range filter
-                                ->whereRaw("CAST(meta_value AS DECIMAL(10,2)) >= ? AND CAST(meta_value AS DECIMAL(10,2)) <= ?", 
-                                    [$priceRange['min'], $priceRange['max']]);
+                                ->whereRaw(
+                                    "CAST(meta_value AS DECIMAL(10,2)) >= ? AND CAST(meta_value AS DECIMAL(10,2)) <= ?",
+                                    [$priceRange['min'], $priceRange['max']]
+                                );
                         });
-                        
 
                         $query->orWhereHas('meta', function ($metaQuery) use ($priceRange, $priceTier) {
                             $metaQuery->where('meta_key', $priceTier)
-                            ->whereRaw("CAST(meta_value AS DECIMAL(10,2)) >= ? AND CAST(meta_value AS DECIMAL(10,2)) <= ?", 
-                            [$priceRange['min'], $priceRange['max']]);
+                                ->whereRaw(
+                                    "CAST(meta_value AS DECIMAL(10,2)) >= ? AND CAST(meta_value AS DECIMAL(10,2)) <= ?",
+                                    [$priceRange['min'], $priceRange['max']]
+                                );
+                        });
+                    });
+                } elseif ($priceRange['min'] > 0 && $priceRange['max'] == 0) {
+                    $products->where(function ($query) use ($priceRange, $priceTier) {
+                        $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
+                            $variationQuery->where('meta_key', $priceTier)
+                                ->whereRaw(
+                                    "CAST(meta_value AS DECIMAL(10,2)) >= ?",
+                                    [$priceRange['min']]
+                                );
+                        });
+                        $query->orWhereHas('meta', function ($metaQuery) use ($priceRange, $priceTier) {
+                            $metaQuery->where('meta_key', $priceTier)
+                                ->whereRaw(
+                                    "CAST(meta_value AS DECIMAL(10,2)) >= ?",
+                                    [$priceRange['min']]
+                                );
+                        });
+                    });
+                } elseif ($priceRange['max'] > 0 && $priceRange['min'] == 0) {
+                    $products->where(function ($query) use ($priceRange, $priceTier) {
+                        $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
+                            $variationQuery->where('meta_key', $priceTier)
+                                ->whereRaw(
+                                    "CAST(meta_value AS DECIMAL(10,2)) <= ?",
+                                    [$priceRange['max']]
+                                );
+                        });
+
+                        $query->orWhereHas('meta', function ($metaQuery) use ($priceRange, $priceTier) {
+                            $metaQuery->where('meta_key', $priceTier)
+                                ->whereRaw(
+                                    "CAST(meta_value AS DECIMAL(10,2)) <= ?",
+                                    [$priceRange['max']]
+                                );
                         });
                     });
                 }
 
-                
+
                 switch ($sortBy) {
                     case 'popul':
                         $products->with(['meta' => function ($query) {
@@ -224,7 +256,7 @@ class ProductController extends Controller
         $perPage = $request->query('perPage', 15);
         $sortBy = $request->query('sort', 'latest');
         $page = $request->query('page', 1);
-        
+
         $slug = explode(',', $slug);
         $auth = false;
         try {
@@ -291,9 +323,8 @@ class ProductController extends Controller
                                 $query->whereIn('slug', $slug)
                                     ->where('taxonomy', 'product_cat');
                             });
-                            
                     }
-                   
+
 
                     switch ($sortBy) {
                         case 'popul':
@@ -370,37 +401,37 @@ class ProductController extends Controller
                                     ->where('taxonomy', 'product_cat');
                             });
                     } else {
-                    $products = Product::with([
-                        'meta' => function ($query) use ($priceTier) {
-                            $query->select('post_id', 'meta_key', 'meta_value')
-                                ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
-                        },
-                        'categories' => function ($query) {
-                            $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
-                                ->with([
-                                    'categorymeta' => function ($query) {
-                                        $query->select('term_id', 'meta_key', 'meta_value')
-                                            ->where('meta_key', 'visibility');
-                                    },
-                                    'taxonomies' => function ($query) {
-                                        $query->select('term_id', 'taxonomy');
-                                    }
-                                ]);
-                        }
-                    ])
-                        ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
-                        ->where('post_type', 'product')
-                        ->where('post_status', 'publish')
-                        ->whereHas('meta', function ($query) {
-                            $query->where('meta_key', '_stock_status')
-                                ->where('meta_value', 'instock');
-                        })
-                        ->whereHas('categories.taxonomies', function ($query) use ($slug) {
-                            $query->whereIn('slug', $slug)
-                                ->where('taxonomy', 'product_cat');
-                        });
+                        $products = Product::with([
+                            'meta' => function ($query) use ($priceTier) {
+                                $query->select('post_id', 'meta_key', 'meta_value')
+                                    ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
+                            },
+                            'categories' => function ($query) {
+                                $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                                    ->with([
+                                        'categorymeta' => function ($query) {
+                                            $query->select('term_id', 'meta_key', 'meta_value')
+                                                ->where('meta_key', 'visibility');
+                                        },
+                                        'taxonomies' => function ($query) {
+                                            $query->select('term_id', 'taxonomy');
+                                        }
+                                    ]);
+                            }
+                        ])
+                            ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+                            ->where('post_type', 'product')
+                            ->where('post_status', 'publish')
+                            ->whereHas('meta', function ($query) {
+                                $query->where('meta_key', '_stock_status')
+                                    ->where('meta_value', 'instock');
+                            })
+                            ->whereHas('categories.taxonomies', function ($query) use ($slug) {
+                                $query->whereIn('slug', $slug)
+                                    ->where('taxonomy', 'product_cat');
+                            });
                     }
-                        
+
                     switch ($sortBy) {
                         case 'popul':
                             $products->with(['meta' => function ($query) {
@@ -467,7 +498,7 @@ class ProductController extends Controller
                 ])
                     ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                     ->where('post_type', 'product')
-                            ->where('post_status', 'publish')
+                    ->where('post_status', 'publish')
                     ->whereHas('meta', function ($query) {
                         $query->where('meta_key', '_stock_status')
                             ->where('meta_value', 'instock');
@@ -575,7 +606,7 @@ class ProductController extends Controller
                 ])
                     ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                     ->where('post_type', 'product')
-                            ->where('post_status', 'publish')
+                    ->where('post_status', 'publish')
                     ->whereHas('meta', function ($query) {
                         $query->where('meta_key', '_stock_status')
                             ->where('meta_value', 'instock');
@@ -751,36 +782,36 @@ class ProductController extends Controller
                             $query->where('slug', $slug)
                                 ->where('taxonomy', 'product_brand');
                         });
-                    } else {
-                $products = Product::with([
-                    'meta' => function ($query) use ($priceTier) {
-                        $query->select('post_id', 'meta_key', 'meta_value')
-                            ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
-                    },
-                    'categories' => function ($query) {
-                        $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
-                            ->with([
-                                'categorymeta' => function ($query) {
-                                    $query->select('term_id', 'meta_key', 'meta_value')
-                                        ->where('meta_key', 'visibility');
-                                },
-                                'taxonomies' => function ($query) {
-                                    $query->select('term_id', 'taxonomy');
-                                }
-                            ]);
-                    }
-                ])
-                    ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
-                    ->where('post_type', 'product')
-                    ->where('post_status', 'publish')
-                    ->whereHas('meta', function ($query) {
-                        $query->where('meta_key', '_stock_status')
-                            ->where('meta_value', 'instock');
-                    })
-                    ->whereHas('categories.taxonomies', function ($query) use ($slug) {
-                        $query->where('slug', $slug)
-                            ->where('taxonomy', 'product_brand');
-                    });
+                } else {
+                    $products = Product::with([
+                        'meta' => function ($query) use ($priceTier) {
+                            $query->select('post_id', 'meta_key', 'meta_value')
+                                ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
+                        },
+                        'categories' => function ($query) {
+                            $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                                ->with([
+                                    'categorymeta' => function ($query) {
+                                        $query->select('term_id', 'meta_key', 'meta_value')
+                                            ->where('meta_key', 'visibility');
+                                    },
+                                    'taxonomies' => function ($query) {
+                                        $query->select('term_id', 'taxonomy');
+                                    }
+                                ]);
+                        }
+                    ])
+                        ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+                        ->where('post_type', 'product')
+                        ->where('post_status', 'publish')
+                        ->whereHas('meta', function ($query) {
+                            $query->where('meta_key', '_stock_status')
+                                ->where('meta_value', 'instock');
+                        })
+                        ->whereHas('categories.taxonomies', function ($query) use ($slug) {
+                            $query->where('slug', $slug)
+                                ->where('taxonomy', 'product_brand');
+                        });
                 }
                 switch ($sortBy) {
                     case 'popul':
@@ -846,7 +877,7 @@ class ProductController extends Controller
             ])
                 ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                 ->where('post_type', 'product')
-                            ->where('post_status', 'publish')
+                ->where('post_status', 'publish')
                 ->whereHas('meta', function ($query) {
                     $query->where('meta_key', '_stock_status')
                         ->where('meta_value', 'instock');
@@ -1001,7 +1032,7 @@ class ProductController extends Controller
                 ])
                     ->select('ID', 'post_title', 'post_modified', 'post_name')
                     ->where('post_type', 'product')
-                            ->where('post_status', 'publish');
+                    ->where('post_status', 'publish');
             }
         } catch (\Throwable $th) {
             $query = Product::with([
@@ -1021,7 +1052,7 @@ class ProductController extends Controller
             ])
                 ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                 ->where('post_type', 'product')
-                            ->where('post_status', 'publish');
+                ->where('post_status', 'publish');
         }
 
 
@@ -1457,7 +1488,7 @@ class ProductController extends Controller
     {
         // Fetch the product
         $product = Product::find($id);
-        
+
         if (!$product) {
             return response()->json(['error' => 'Product not found'], 404);
         }
@@ -1480,7 +1511,7 @@ class ProductController extends Controller
             if ($user->ID == 5417) {
                 $relatedProducts = Product::whereHas('categories', function ($query) use ($subcatIds) {
                     $query->whereIn('term_taxonomy_id', $subcatIds);
-                })->where('post_status', 'trash')->where('ID',$this->dummyProductList())->orderBy('post_date', 'desc')->take(20)->get();
+                })->where('post_status', 'trash')->where('ID', $this->dummyProductList())->orderBy('post_date', 'desc')->take(20)->get();
             }
         } catch (\Throwable $th) {
             //throw $th;
@@ -1569,41 +1600,40 @@ class ProductController extends Controller
                     ])
                         ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                         ->where('post_type', 'product')
-                                ->where('post_status', 'trash')
-                                ->whereIn('ID', $this->dummyProductList())
+                        ->where('post_status', 'trash')
+                        ->whereIn('ID', $this->dummyProductList())
                         ->whereHas('meta', function ($query) {
                             $query->where('meta_key', '_stock_status')
                                 ->where('meta_value', 'instock');
                         });
                 } else {
-                $products = Product::with([
-                    'meta' => function ($query) use ($priceTier) {
-                        $query->select('post_id', 'meta_key', 'meta_value')
-                            ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
-                    },
-                    'categories' => function ($query) {
-                        $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
-                            ->with([
-                                'categorymeta' => function ($query) {
-                                    $query->select('term_id', 'meta_key', 'meta_value')
-                                        ->where('meta_key', 'visibility');
-                                },
-                                'taxonomies' => function ($query) {
-                                    $query->select('term_id', 'taxonomy');
-                                }
-                            ]);
-                    }
-                ])
-                    ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
-                    ->where('post_type', 'product')
-                    ->where('post_status', 'publish')
-                    ->whereIn('ID', $productIDArray)
-                    ->whereHas('meta', function ($query) {
-                        $query->where('meta_key', '_stock_status')
-                            ->where('meta_value', 'instock');
-                    });
-                    
-                    }
+                    $products = Product::with([
+                        'meta' => function ($query) use ($priceTier) {
+                            $query->select('post_id', 'meta_key', 'meta_value')
+                                ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
+                        },
+                        'categories' => function ($query) {
+                            $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                                ->with([
+                                    'categorymeta' => function ($query) {
+                                        $query->select('term_id', 'meta_key', 'meta_value')
+                                            ->where('meta_key', 'visibility');
+                                    },
+                                    'taxonomies' => function ($query) {
+                                        $query->select('term_id', 'taxonomy');
+                                    }
+                                ]);
+                        }
+                    ])
+                        ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+                        ->where('post_type', 'product')
+                        ->where('post_status', 'publish')
+                        ->whereIn('ID', $productIDArray)
+                        ->whereHas('meta', function ($query) {
+                            $query->where('meta_key', '_stock_status')
+                                ->where('meta_value', 'instock');
+                        });
+                }
                 switch ($sortBy) {
                     case 'popul':
                         $products->with(['meta' => function ($query) {
@@ -1667,7 +1697,7 @@ class ProductController extends Controller
             ])
                 ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                 ->where('post_type', 'product')
-                            ->where('post_status', 'publish')
+                ->where('post_status', 'publish')
                 ->whereIn('ID', $productIDArray)
                 ->whereHas('meta', function ($query) {
                     $query->where('meta_key', '_stock_status')
@@ -1853,9 +1883,9 @@ class ProductController extends Controller
                         ->where('post_type', 'product')
                         ->where('post_status', 'publish');
                 }
-               
 
-                    
+
+
                 // Apply category filter
                 if (!empty($catIDArray)) {
                     $productsQuery->whereHas('categories.taxonomies', function ($query) use ($catIDArray) {
