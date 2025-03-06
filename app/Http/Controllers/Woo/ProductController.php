@@ -196,15 +196,24 @@ class ProductController extends Controller
                 $products = $products->paginate($perPage, ['*'], 'page', $page);
                 $products->getCollection()->transform(function ($product) use ($priceTier, $auth) {
                     $thumbnailUrl = $product->thumbnail ? $product->thumbnail->guid : null;
+                    // $galleryImageIds = $product->meta->where('meta_key', '_product_image_gallery')->pluck('meta_value')->first();
+                    // $galleryImages = [];
+                    // if ($galleryImageIds) {
+                    //     $imageIds = explode(',', $galleryImageIds);
+                    //     foreach ($imageIds as $imageId) {
+                    //         $image = Product::find($imageId);
+                    //         if ($image) {
+                    //             $galleryImages[] = $image->guid;
+                    //         }
+                    //     }
+                    // }
                     $galleryImageIds = $product->meta->where('meta_key', '_product_image_gallery')->pluck('meta_value')->first();
                     $galleryImages = [];
                     if ($galleryImageIds) {
                         $imageIds = explode(',', $galleryImageIds);
-                        foreach ($imageIds as $imageId) {
-                            $image = Product::find($imageId);
-                            if ($image) {
-                                $galleryImages[] = $image->guid;
-                            }
+                        $images = Product::whereIn('ID', $imageIds)->get();
+                        foreach ($images as $image) {
+                            $galleryImages[] = $image->guid;
                         }
                     }
                     $ad_price = null;
