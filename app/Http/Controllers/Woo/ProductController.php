@@ -48,7 +48,8 @@ class ProductController extends Controller
         $perPage = $request->query('perPage', 15);
         $sortBy = $request->query('sort', 'latest');
         $page = $request->query('page', 1);
-
+        
+        $slug = explode(',', $slug);
         $auth = false;
         try {
             $user = JWTAuth::parseToken()->authenticate();
@@ -81,7 +82,7 @@ class ProductController extends Controller
                             ->where('post_status', 'trash')
                             ->whereIn('ID', $this->dummyProductList())
                             ->whereHas('categories.taxonomies', function ($query) use ($slug) {
-                                $query->where('slug', $slug)
+                                $query->whereIn('slug', $slug)
                                     ->where('taxonomy', 'product_cat');
                             });
                     } else {
@@ -111,7 +112,7 @@ class ProductController extends Controller
                                     ->where('meta_value', 'instock');
                             })
                             ->whereHas('categories.taxonomies', function ($query) use ($slug) {
-                                $query->where('slug', $slug)
+                                $query->whereIn('slug', $slug)
                                     ->where('taxonomy', 'product_cat');
                             });
                             
@@ -189,7 +190,7 @@ class ProductController extends Controller
                             //         ->where('meta_value', 'instock');
                             // })
                             ->whereHas('categories.taxonomies', function ($query) use ($slug) {
-                                $query->where('slug', $slug)
+                                $query->whereIn('slug', $slug)
                                     ->where('taxonomy', 'product_cat');
                             });
                     } else {
@@ -219,7 +220,7 @@ class ProductController extends Controller
                                 ->where('meta_value', 'instock');
                         })
                         ->whereHas('categories.taxonomies', function ($query) use ($slug) {
-                            $query->where('slug', $slug)
+                            $query->whereIn('slug', $slug)
                                 ->where('taxonomy', 'product_cat');
                         });
                     }
@@ -296,7 +297,7 @@ class ProductController extends Controller
                             ->where('meta_value', 'instock');
                     })
                     ->whereHas('categories.taxonomies', function ($query) use ($slug) {
-                        $query->where('slug', $slug)
+                        $query->whereIn('slug', $slug)
                             ->where('taxonomy', 'product_cat');
                     })
                     ->whereDoesntHave('categories.categorymeta', function ($query) {
@@ -404,7 +405,7 @@ class ProductController extends Controller
                             ->where('meta_value', 'instock');
                     })
                     ->whereHas('categories.taxonomies', function ($query) use ($slug) {
-                        $query->where('slug', $slug)
+                        $query->whereIn('slug', $slug)
                             ->where('taxonomy', 'product_cat');
                     })
                     ->whereDoesntHave('categories.categorymeta', function ($query) {

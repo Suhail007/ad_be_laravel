@@ -40,19 +40,19 @@ class LoginController extends Controller
         $check = WpPassword::check($hashedPassword, $user->user_pass);
         if ($check == true) {
             // // lines rollback in live mode
-            // if ($user->approved == "0") {
-            //     return response()->json([
-            //         'status' => false,
-            //         'message' => 'Your Register Request Not Approved',
-            //     ]);
-            // }
+            if ($user->approved == "0") {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Your Register Request Not Approved',
+                ]);
+            }
 
-            // if($user->approved == "2") {
-            //     return response()->json([
-            //         'status' => false,
-            //         'message' => 'Your Register Request Rejected',
-            //     ]);
-            // }
+            if($user->approved == "2") {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Your Register Request Rejected',
+                ]);
+            }
 
             $currentApiServer = Cache::get('current_api_server', 1);
 
@@ -287,12 +287,12 @@ class LoginController extends Controller
         UserMeta::create([
             'user_id' => $user->ID,
             'meta_key' => 'wp_capabilities',
-            'meta_value' => serialize(['mm_price_2' => true]), // rollback to customer
+            'meta_value' => serialize(['customer' => true]), // rollback to mm_price_2-> customer
         ]);
         UserMeta::create([
             'user_id' => $user->ID,
             'meta_key' => 'ur_user_status',
-            'meta_value' => '1' // rollback to 0
+            'meta_value' => '0' // rollback to 0
         ]);
 
         // $token = JWTAuth::fromUser($user);

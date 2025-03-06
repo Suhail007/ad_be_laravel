@@ -181,9 +181,9 @@
                 <h5>Your order will be sent to:</h5>
                 <h5><b>{{ $orderaddress }}</b></h5>
             </div>
-            {{-- <a href="https://express.americandistributorsllc.com/myaccount?tab=Orders" class="cta-button">
+            <a href="https://express.americandistributorsllc.com/myaccount?tab=Orders" class="cta-button">
                 Order Details // rollback
-            </a> --}}
+            </a>
         </div>
     </div>
 </body>
