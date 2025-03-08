@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Woo;
 
 use App\Http\Controllers\Controller;
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\CustomBrand;
 use App\Models\CustomCategory;
@@ -51,6 +52,8 @@ class ProductController extends Controller
         $page = $request->query('page', 1);
         $priceRangeMin = $request->query('min', 0);
         $priceRangeMax = $request->query('max', 0);
+        $type = $request->query('type', 'cat'); // brand , flavor
+        $flavor = $request->query('flavor', 0); // brand , flavor
         $slug = explode(',', $slug);
         $auth = false;
         $priceRange = [
@@ -111,6 +114,19 @@ class ProductController extends Controller
                     $products->whereDoesntHave('categories.categorymeta', function ($query) {
                         $query->where('meta_key', 'visibility')
                             ->where('meta_value', 'protected');
+                    });
+                }
+                if($type=='flavor' && $flavor !=0){
+                    $products->where(function ($query) use ($flavor) {
+                        $query->whereHas('variations.varients', function ($variationQuery) use ($flavor) {
+                            $variationQuery->where('meta_key','attribute_flavor')
+                                ->where('meta_value',$flavor);
+                        });
+    
+                        $query->orWhereHas('meta', function ($metaQuery) use ($flavor) {
+                            $metaQuery->where('meta_key','attribute_flavor')
+                                ->where('meta_value',$flavor);
+                        });
                     });
                 }
             if ($priceRange['min'] > 0 && $priceRange['max'] > 0) {
@@ -2038,7 +2054,167 @@ class ProductController extends Controller
 
         return response()->json(['related_products' => $relatedProductsData], 200);
     }
+    public function getRelatedProductV2(Request $request,$id){
+        $perPage = $request->query('perPage', 15);
+        $page = $request->query('page', 1);
 
+        // product
+        $product = Product::with(['categories.taxonomies', 'meta'])->find($id);
+        if (!$product) {
+            return response()->json(['error' => 'Product not found']);
+        }
+
+        // get parent
+        $parentCategory = null;
+        foreach ($product->categories as $category) {
+            if ($category->taxonomies->taxonomy === 'product_cat' && $category->taxonomies->parent == 0) {
+                $parentCategory = $category;
+                break;
+            }
+        }
+        if (!$parentCategory) {
+            return response()->json(['error' => 'Parent category not found']);
+        }
+        // get parent category brands
+        $brands = Brand::where('term_id', $parentCategory->term_id)->orderBy('priority','desc')->get();
+        $sideBrand = $brands;
+        $highlyRecommendList = [];
+        foreach ($brands as $brand) {
+            if (!empty(json_decode($brand->meta))) {
+                $highlyRecommendList = array_merge($highlyRecommendList, array_map('intval', json_decode($brand->meta)));
+            }
+        }
+        // clean array 
+        $highlyRecommendList = array_unique($highlyRecommendList);
+        $highlyRecommendList = array_values($highlyRecommendList);
+        $relatedProducts = Product::whereHas('categories.taxonomies', function ($query) use ($brands) {
+            $query->whereIn('slug', $brands->pluck('brandUrl'))
+                ->where('taxonomy', 'product_brand');
+        })->where('post_status', 'publish')
+            ->orderBy('post_date', 'desc')
+            ->take(10)
+            ->pluck('ID')
+            ->toArray();
+        // clean less recommend product
+        $finalProductList = array_merge($highlyRecommendList, $relatedProducts);
+        $finalProductList = array_unique($finalProductList);
+        $finalProductList = array_values($finalProductList);
+        $priceTier = '_price';
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            $priceTier = $user->price_tier ?? '_price';
+            if ($user->ID) {
+                $auth = true;
+            }
+        } catch (\Throwable $th) {
+            $auth = false;
+        }
+        $finalProducts = Product::with([
+            'meta' => function ($query) use ($priceTier) {
+                $query->select('post_id', 'meta_key', 'meta_value')
+                    ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', '_product_image_gallery', $priceTier]);
+            },
+            'categories' => function ($query) {
+                $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                    ->with([
+                        'categorymeta' => function ($query) {
+                            $query->select('term_id', 'meta_key', 'meta_value')
+                                ->where('meta_key', 'visibility');
+                        },
+                        'taxonomies' => function ($query) {
+                            $query->select('term_id', 'taxonomy');
+                        }
+                    ]);
+            },
+            'variations' => function ($query) use ($priceTier) {
+                $query->select('ID', 'post_parent', 'post_title', 'post_name')
+                    ->with([
+                        'varients' => function ($query) use ($priceTier) {
+                            $query->select('post_id', 'meta_key', 'meta_value')
+                                ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
+                        }
+                    ]);
+            },
+            'thumbnail'
+        ])
+            ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+            ->where('post_type', 'product')
+            ->where('post_status', 'publish')
+            ->whereHas('meta', function ($query) {
+                $query->where('meta_key', '_stock_status')
+                    ->where('meta_value', 'instock');
+            })->whereIn('ID',$finalProductList);
+            if($auth == false){
+                $finalProducts->whereDoesntHave('categories.categorymeta', function ($query) {
+                    $query->where('meta_key', 'visibility')
+                        ->where('meta_value', 'protected');
+                });
+            }
+            $finalProducts = $finalProducts->paginate($perPage, ['*'], 'page', $page);
+            $finalProducts->getCollection()->transform(function ($product) use ($priceTier, $auth) {
+                $thumbnailUrl = $product->thumbnail ? $product->thumbnail->guid : null;
+                $galleryImageIds = $product->meta->where('meta_key', '_product_image_gallery')->pluck('meta_value')->first();
+                $galleryImages = [];
+                if ($galleryImageIds) {
+                    $imageIds = explode(',', $galleryImageIds);
+                    $images = Product::whereIn('ID', $imageIds)->get();
+                    foreach ($images as $image) {
+                        $galleryImages[] = $image->guid;
+                    }
+                }
+                $ad_price = null;
+                if($auth == false){
+                    $ad_price = null;
+                } else {
+                    if ($product->variations->isNotEmpty()) {
+                        foreach ($product->variations as $variation) {
+                            $variationPrice = $variation->varients->where('meta_key', $priceTier)->pluck('meta_value')->first();
+                            if ($variationPrice) {
+                                $ad_price = $variationPrice;
+                                break;
+                            }
+                        }
+                    }
+                    if ($ad_price === null) {
+                        $ad_price = $product->meta->where('meta_key', $priceTier)->pluck('meta_value')->first();
+                    }
+                }
+                if($auth == false){
+                    $metaArray = $product->meta->map(function ($meta) {
+                        return [
+                            'meta_key' => $meta->meta_key,
+                            'meta_value' => $meta->meta_value
+                        ];
+                    })->toArray();
+                    $meta = $auth ? $metaArray : array_values(array_filter($metaArray, function ($meta) {
+                        return $meta['meta_key'] !== '_price';
+                    }));    
+                }
+                return [
+                    'ID' => $product->ID,
+                    'ad_price' => $ad_price,
+                    'title' => $product->post_title,
+                    'slug' => $product->post_name,
+                    'thumbnail_url' => $thumbnailUrl,
+                    'gallery_images' => $galleryImages, // Add gallery images here
+                    'categories' => $product->categories->map(function ($category) {
+                        $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                        $taxonomy =  $category->taxonomies->taxonomy;
+                        return [
+                            'term_id' => $category->term_id,
+                            'name' => $category->name,
+                            'slug' => $category->slug,
+                            'visibility' => $visibility ? $visibility : 'public',
+                            'taxonomy' => $taxonomy ? $taxonomy : 'public',
+                        ];
+                    }),
+                    'meta' => $auth?$product->meta:$meta,
+                    'variations' => $product->variations,
+                    'post_modified' => $product->post_modified
+                ];
+            });
+            return response()->json( ['brands'=>$sideBrand,'products'=>$finalProducts]);
+    }
     private function getVariations($productId, $priceTier = '')
     {
         $variations = Product::where('post_parent', $productId)

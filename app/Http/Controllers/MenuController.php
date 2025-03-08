@@ -18,7 +18,11 @@ class MenuController extends Controller
         $brand = Brand::get();
         // $brandMenus = BrandMenu::all();
         $brandMenus = BrandMenu::orderBy('order', 'asc')->get();
-        return response()->json(['status' => true, 'category' => $categories, 'brand' => $brand, 'menu' => $brandMenus]);
+        return response()->json(['status' => true, 'category' => $categories, 'brand' => $brand, 'menu' => $brandMenus , ]);
+    }
+    public function flavorList(){
+        $flavors = DB::table('wp_postmeta')->where('meta_key','attribute_flavor')->distinct()->select('meta_value')->paginate(30);
+        return response()->json($flavors);
     }
     public function index()
     {
@@ -140,7 +144,7 @@ class MenuController extends Controller
                             ->with([
                                 'categorymeta' => function ($query) {
                                     $query->select('term_id', 'meta_key', 'meta_value')
-                                        ->whereIn('meta_key', ['visibility', 'thumbnail_id']);
+                                        ->whereIn('meta_key', ['visibility', 'thumbnail_id','brand_recommend_product_list','brand_priority_field','brand_image_id','banner_id']);
                                 },
                                 'taxonomies' => function ($query) {
                                     $query->select('term_id', 'taxonomy');
@@ -159,21 +163,36 @@ class MenuController extends Controller
                     })
                     ->orderBy('post_date', 'desc')
                     ->get();
-
                 $brandData = $products->flatMap(function ($product) {
                     return $product->categories->filter(function ($category) {
                         return $category->taxonomies->taxonomy === 'product_brand';
                     })->map(function ($category) {
-                        $thumbnailIdMeta = $category->categorymeta->firstWhere('meta_key', 'thumbnail_id');
+
+                        $thumbnailIdMeta = $category->categorymeta->firstWhere('meta_key', 'thumbnail_id')??null;
                         $thumbnailId = $thumbnailIdMeta ? $thumbnailIdMeta->meta_value : null;
                         $thumbnailUrl = $this->getbrandUrl($thumbnailId);
+                        
+                        $bannerMeta = $category->categorymeta->firstWhere('meta_key', 'banner_id')??null;
+                        $bannerID = $bannerMeta ? $bannerMeta->meta_value : null;
+                        $bannerMetaURL = $this->getbrandUrl($bannerID);
+                        
+                        $imageMeta = $category->categorymeta->firstWhere('meta_key', 'brand_image_id')??null;
+                        $imageID = $imageMeta ? $imageMeta->meta_value : null;
+                        $imageMetaUrl = $this->getbrandUrl($imageID);
+                        
+                        $brandMeta = $category->categorymeta->firstWhere('meta_key', 'brand_recommend_product_list')??null;
+
+                        $priority = $category->categorymeta->firstWhere('meta_key', 'brand_priority_field')??null;
+                        $priorityVal = $priority->meta_value??0;
+                    
                         return [
                             'name' => $category->name,
                             'slug' => $category->slug,
                             'thumbnail_url' => $thumbnailUrl,
-                            'categorymeta' => $category->categorymeta->filter(function ($meta) {
-                                return in_array($meta->meta_key, ['thumbnail_id', 'visibility']);
-                            })->values()
+                            'image' => $imageMetaUrl,
+                            'banner' => $bannerMetaURL,
+                            'meta' => isset($brandMeta->meta_value) ? json_decode($brandMeta->meta_value) : null,
+                            'priority' => $priorityVal
                         ];
                     });
                 });
@@ -184,11 +203,15 @@ class MenuController extends Controller
                                 'term_id' => $term_id,
                                 'categoryName' => $Name ?? null,
                                 'categorySlug' => $slug ?? null,
-                                'categoryVisbility' => null,
+                                'categoryVisbility' => 'public',
                                 'brandName' => $brandData['name'] ?? null,
                                 'brandUrl' => $brandData['slug'] ?? null,
                                 'brandImageurl' => $brandData['thumbnail_url'] ?? null,
-                                'visibility' => 'public',
+                                'image' => $brandData['image'] ?? null,
+                                'banner' => $brandData['banner'] ?? null,
+                                'meta' => json_encode($brandData['meta']) ?? null,
+                                'visibility' =>'public',
+                                'priority'=>$brandData['priority']??0,
                                 'status' => true,
                             ]
                         );
@@ -200,15 +223,18 @@ class MenuController extends Controller
             return response()->json(['status' => true, 'message' => 'Brands updated successfully.']);
         } catch (\Exception $e) {
             DB::rollback();
-            return response()->json(['status' => false, 'error' => 'Failed to update brands.', 'message' => $e->getMessage()], 500);
+            return response()->json(['status' => false, 'error' => 'Failed to update brands.', 'message' => $e->getMessage() .' '. $e->getLine()], 500);
         }
     }
 
     private function getbrandUrl($thumbnailId)
     {
         try {
-            $url = Product::where('ID', $thumbnailId)->value('guid');
-            return $url;
+            if($thumbnailId !=null){
+                $url = Product::where('ID', $thumbnailId)->value('guid');
+                return $url;
+            } 
+            return null;
         } catch (\Throwable $th) {
             return null;
         }

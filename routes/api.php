@@ -138,6 +138,7 @@ Route::get('/positionLayout/{page}', [LayoutController::class, 'pageLayout']);
 Route::get('/categoryProductV2/{slug}', [ProductController::class, 'categoryProductV2']);
 Route::get('/brandProductV2/{slug}', [ProductController::class, 'brandProductV2']);
 Route::get('/searchProductsV2', [ProductController::class,'searchProductV2']);  //'searchProducts']); 
+Route::get('products/{id}/relatedV2', [ProductController::class, 'getRelatedProductV2']);
 
 Route::get('/categoryProduct/{slug}', [ProductController::class, 'categoryProduct']);
 Route::get('/brandProduct/{slug}', [ProductController::class, 'brandProducts']);
@@ -154,6 +155,7 @@ Route::get('products/{id}/related', [ProductController::class, 'getRelatedProduc
 Route::get('/sidebar', [ProductController::class, 'sidebar']);
 
 Route::get('/list', [MenuController::class, 'publiclist']);
+Route::get('/flavors', [MenuController::class, 'flavorList']);
 
 // Route::get('/cart', [WooCartController::class, 'index']);
 Route::get('/cart-products', [WooCartController::class, 'show']);
