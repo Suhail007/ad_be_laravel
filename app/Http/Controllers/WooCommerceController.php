@@ -139,12 +139,16 @@ class WooCommerceController extends Controller
             // Check if the category's taxonomy type is 'brand'
             return $this->getTaxonomyType($category->taxonomies) === 'brand';
         })->map(function ($category) {
+            $meta = $category->categorymeta->pluck('meta_value', 'meta_key')->toArray();
+            if (isset($meta['thumbnail_id'])) {
+                $meta['thumbnail_url']  = Product::where('ID', $meta['thumbnail_id'])->value('guid')??null;
+            }
             return [
                 'id' => $category->term_id,
                 'name' => $category->name,
                 'slug' => $category->slug,
                 'taxonomy' => $category->taxonomies,
-                'meta' => $category->categorymeta->pluck('meta_value', 'meta_key')->toArray(),
+                'meta' => $meta,
                 'children' => $category->children,
             ];
         });

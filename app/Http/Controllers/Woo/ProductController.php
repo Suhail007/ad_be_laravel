@@ -845,8 +845,8 @@ class ProductController extends Controller
 
                     switch ($sortBy) {
                         case 'popul':
-                            $products->with(['meta' => function ($query) {
-                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                            $products->with(['meta' => function ($query) use ($priceTier){
+                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                             }])
                                 ->orderByRaw("
                                         CAST((SELECT meta_value FROM wp_postmeta 
@@ -857,8 +857,8 @@ class ProductController extends Controller
                             break;
 
                         case 'plh':
-                            $products->with(['meta' => function ($query) {
-                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                            $products->with(['meta' => function ($query) use ($priceTier){
+                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                             }])
                                 ->orderByRaw("
                                         CAST((SELECT MIN(meta_value) FROM wp_postmeta 
@@ -868,8 +868,8 @@ class ProductController extends Controller
                             break;
 
                         case 'phl':
-                            $products->with(['meta' => function ($query) {
-                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                            $products->with(['meta' => function ($query) use ($priceTier){
+                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                             }])
                                 ->orderByRaw("
                                         CAST((SELECT MAX(meta_value) FROM wp_postmeta 
@@ -951,8 +951,8 @@ class ProductController extends Controller
 
                     switch ($sortBy) {
                         case 'popul':
-                            $products->with(['meta' => function ($query) {
-                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                            $products->with(['meta' => function ($query) use ($priceTier){
+                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                             }])
                                 ->orderByRaw("
                                         CAST((SELECT meta_value FROM wp_postmeta 
@@ -963,8 +963,8 @@ class ProductController extends Controller
                             break;
 
                         case 'plh':
-                            $products->with(['meta' => function ($query) {
-                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                            $products->with(['meta' => function ($query) use ($priceTier){
+                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                             }])
                                 ->orderByRaw("
                                         CAST((SELECT MIN(meta_value) FROM wp_postmeta 
@@ -974,8 +974,8 @@ class ProductController extends Controller
                             break;
 
                         case 'phl':
-                            $products->with(['meta' => function ($query) {
-                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                            $products->with(['meta' => function ($query) use ($priceTier){
+                                $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                             }])
                                 ->orderByRaw("
                                         CAST((SELECT MAX(meta_value) FROM wp_postmeta 
@@ -1030,8 +1030,8 @@ class ProductController extends Controller
                     });
                 switch ($sortBy) {
                     case 'popul':
-                        $products->with(['meta' => function ($query) {
-                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                        $products->with(['meta' => function ($query) use ($priceTier){
+                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                         }])
                             ->orderByRaw("
                                     CAST((SELECT meta_value FROM wp_postmeta 
@@ -1042,8 +1042,8 @@ class ProductController extends Controller
                         break;
 
                     case 'plh':
-                        $products->with(['meta' => function ($query) {
-                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                        $products->with(['meta' => function ($query) use ($priceTier){
+                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                         }])
                             ->orderByRaw("
                                     CAST((SELECT MIN(meta_value) FROM wp_postmeta 
@@ -1053,8 +1053,8 @@ class ProductController extends Controller
                         break;
 
                     case 'phl':
-                        $products->with(['meta' => function ($query) {
-                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                        $products->with(['meta' => function ($query) use ($priceTier){
+                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                         }])
                             ->orderByRaw("
                                     CAST((SELECT MAX(meta_value) FROM wp_postmeta 
@@ -1138,8 +1138,8 @@ class ProductController extends Controller
                     });
                 switch ($sortBy) {
                     case 'popul':
-                        $products->with(['meta' => function ($query) {
-                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                        $products->with(['meta' => function ($query) use ($priceTier){
+                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                         }])
                             ->orderByRaw("
                                     CAST((SELECT meta_value FROM wp_postmeta 
@@ -1150,8 +1150,8 @@ class ProductController extends Controller
                         break;
 
                     case 'plh':
-                        $products->with(['meta' => function ($query) {
-                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                        $products->with(['meta' => function ($query) use ($priceTier){
+                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                         }])
                             ->orderByRaw("
                                     CAST((SELECT MIN(meta_value) FROM wp_postmeta 
@@ -1161,8 +1161,8 @@ class ProductController extends Controller
                         break;
 
                     case 'phl':
-                        $products->with(['meta' => function ($query) {
-                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                        $products->with(['meta' => function ($query) use ($priceTier){
+                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                         }])
                             ->orderByRaw("
                                     CAST((SELECT MAX(meta_value) FROM wp_postmeta 
@@ -1332,8 +1332,8 @@ class ProductController extends Controller
                 }
                 switch ($sortBy) {
                     case 'popul':
-                        $products->with(['meta' => function ($query) {
-                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                        $products->with(['meta' => function ($query) use ($priceTier){
+                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                         }])
                             ->orderByRaw("
                                 CAST((SELECT meta_value FROM wp_postmeta 
@@ -1344,8 +1344,8 @@ class ProductController extends Controller
                         break;
 
                     case 'plh':
-                        $products->with(['meta' => function ($query) {
-                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                        $products->with(['meta' => function ($query) use ($priceTier){
+                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                         }])
                             ->orderByRaw("
                                 CAST((SELECT MIN(meta_value) FROM wp_postmeta 
@@ -1355,8 +1355,8 @@ class ProductController extends Controller
                         break;
 
                     case 'phl':
-                        $products->with(['meta' => function ($query) {
-                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                        $products->with(['meta' => function ($query) use ($priceTier){
+                            $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                         }])
                             ->orderByRaw("
                                 CAST((SELECT MAX(meta_value) FROM wp_postmeta 
@@ -1409,8 +1409,8 @@ class ProductController extends Controller
                 });
             switch ($sortBy) {
                 case 'popul':
-                    $products->with(['meta' => function ($query) {
-                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    $products->with(['meta' => function ($query) use ($priceTier){
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                     }])
                         ->orderByRaw("
                                 CAST((SELECT meta_value FROM wp_postmeta 
@@ -1421,8 +1421,8 @@ class ProductController extends Controller
                     break;
 
                 case 'plh':
-                    $products->with(['meta' => function ($query) {
-                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    $products->with(['meta' => function ($query) use ($priceTier){
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                     }])
                         ->orderByRaw("
                                 CAST((SELECT MIN(meta_value) FROM wp_postmeta 
@@ -1432,8 +1432,8 @@ class ProductController extends Controller
                     break;
 
                 case 'phl':
-                    $products->with(['meta' => function ($query) {
-                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    $products->with(['meta' => function ($query) use ($priceTier){
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                     }])
                         ->orderByRaw("
                                 CAST((SELECT MAX(meta_value) FROM wp_postmeta 
@@ -1748,8 +1748,8 @@ class ProductController extends Controller
             }
             switch ($sortBy) {
                 case 'popul':
-                    $query->with(['meta' => function ($query) {
-                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    $query->with(['meta' => function ($query) use ($priceTier){
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                     }])
                         ->orderByRaw("
                     CAST((SELECT meta_value FROM wp_postmeta 
@@ -1760,8 +1760,8 @@ class ProductController extends Controller
                     break;
 
                 case 'plh':
-                    $query->with(['meta' => function ($query) {
-                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    $query->with(['meta' => function ($query) use ($priceTier){
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                     }])
                         ->orderByRaw("
                     CAST((SELECT MIN(meta_value) FROM wp_postmeta 
@@ -1771,8 +1771,8 @@ class ProductController extends Controller
                     break;
 
                 case 'phl':
-                    $query->with(['meta' => function ($query) {
-                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    $query->with(['meta' => function ($query) use ($priceTier){
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                     }])
                         ->orderByRaw("
                     CAST((SELECT MAX(meta_value) FROM wp_postmeta 
@@ -1835,8 +1835,8 @@ class ProductController extends Controller
             }
             switch ($sortBy) {
                 case 'popul':
-                    $query->with(['meta' => function ($query) {
-                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    $products->with(['meta' => function ($query) use ($priceTier){
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                     }])
                         ->orderByRaw("
                     CAST((SELECT meta_value FROM wp_postmeta 
@@ -1847,8 +1847,8 @@ class ProductController extends Controller
                     break;
 
                 case 'plh':
-                    $query->with(['meta' => function ($query) {
-                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    $products->with(['meta' => function ($query) use ($priceTier){
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                     }])
                         ->orderByRaw("
                     CAST((SELECT MIN(meta_value) FROM wp_postmeta 
@@ -1858,8 +1858,8 @@ class ProductController extends Controller
                     break;
 
                 case 'phl':
-                    $query->with(['meta' => function ($query) {
-                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    $products->with(['meta' => function ($query) use ($priceTier){
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id',$priceTier]);
                     }])
                         ->orderByRaw("
                     CAST((SELECT MAX(meta_value) FROM wp_postmeta 
@@ -2023,16 +2023,6 @@ class ProductController extends Controller
         $relatedProducts = Product::whereHas('categories', function ($query) use ($subcatIds) {
             $query->whereIn('term_taxonomy_id', $subcatIds);
         })->where('post_status', 'publish')->orderBy('post_date', 'desc')->take(20)->get();
-        try {
-            $user = JWTAuth::parseToken()->authenticate();
-            if ($user->ID == 5417) {
-                $relatedProducts = Product::whereHas('categories', function ($query) use ($subcatIds) {
-                    $query->whereIn('term_taxonomy_id', $subcatIds);
-                })->where('post_status', 'trash')->where('ID', $this->dummyProductList())->orderBy('post_date', 'desc')->take(20)->get();
-            }
-        } catch (\Throwable $th) {
-            //throw $th;
-        }
         if ($relatedProducts->isEmpty()) {
             return response()->json(['error' => 'No related products found'], 404);
         }
@@ -2051,7 +2041,6 @@ class ProductController extends Controller
                 'date' => $relatedProduct->post_modified_gmt,
             ];
         });
-
         return response()->json(['related_products' => $relatedProductsData], 200);
     }
     public function getRelatedProductV2(Request $request,$id){
@@ -2068,8 +2057,11 @@ class ProductController extends Controller
         $parentCategory = null;
         foreach ($product->categories as $category) {
             if ($category->taxonomies->taxonomy === 'product_cat' && $category->taxonomies->parent == 0) {
-                $parentCategory = $category;
-                break;
+                $t = $category['children'];
+                if (!empty($t) && count($t) > 0) {
+                    $parentCategory = $category;
+                    break;
+                }
             }
         }
         if (!$parentCategory) {
@@ -2213,7 +2205,40 @@ class ProductController extends Controller
                     'post_modified' => $product->post_modified
                 ];
             });
-            return response()->json( ['brands'=>$sideBrand,'products'=>$finalProducts]);
+
+        // top left related product 
+        $subcatIds = $product->categories()
+            ->whereHas('taxonomies', function ($query) {
+                $query->where('parent', '!=', 0);
+            })
+            ->pluck('term_id');
+
+        if ($subcatIds->isEmpty()) {
+            return response()->json(['error' => 'No subcategories found for this product'], 404);
+        }
+
+        $relatedProducts = Product::whereHas('categories', function ($query) use ($subcatIds) {
+            $query->whereIn('term_taxonomy_id', $subcatIds);
+        })->where('post_status', 'publish')->orderBy('post_date', 'desc')->take(10)->get();
+        if ($relatedProducts->isEmpty()) {
+            return response()->json(['error' => 'No related products found'], 404);
+        }
+
+        $relatedProductsData = $relatedProducts->map(function ($relatedProduct) {
+            $categoryVisibility = $relatedProduct->categories->map(function ($category) {
+                return $category->visibility;
+            })->toArray();
+
+            return [
+                'ID' => $relatedProduct->ID,
+                'name' => $relatedProduct->post_title,
+                'slug' => $relatedProduct->post_name,
+                'thumbnail' => $relatedProduct->thumbnail_url,
+                'product_visibility' => $relatedProduct->visibility,
+                'date' => $relatedProduct->post_modified_gmt,
+            ];
+        });
+        return response()->json( ['brands'=>$sideBrand,'products'=>$finalProducts, 'top_products'=>$relatedProductsData]);
     }
     private function getVariations($productId, $priceTier = '')
     {

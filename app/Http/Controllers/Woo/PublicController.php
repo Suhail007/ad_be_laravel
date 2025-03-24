@@ -233,7 +233,7 @@ class PublicController extends Controller
         $attachment = DB::table('wp_posts')->where('ID', $thumbnailId)->first();
         if ($attachment) {
             $imageUrl = $attachment->guid;
-            $new_domain = 'https://ad.phantasm.solutions';
+            $new_domain = 'http://localhost/gsdwp';
             $position = strpos($imageUrl, '/wp-content/uploads/');
             if ($position !== false) {
                 $imageUrl = $new_domain . substr($imageUrl, $position);
@@ -341,7 +341,7 @@ class PublicController extends Controller
                 $query->where('meta_key', '_stock_status')
                     ->where('meta_value', 'instock');
             })
-            ->first();
+            ->firstOrFail();
         $metaData = $product->meta->map(function ($meta) {
             return [
                 'id' => $meta->meta_id,
@@ -385,7 +385,13 @@ class PublicController extends Controller
                 'thumbnail_id' => $displayType
             ];
         });
-        $thumbnailUrl = $this->getThumbnail($metaData->where('key', '_thumbnail_id')->first()['value']);
+        try {
+            //code...
+            $thumbnailUrl = $this->getThumbnail($metaData->where('key', '_thumbnail_id')->first()['value']);
+        } catch (\Throwable $th) {
+            //throw $th;
+            $thumbnailUrl =  'https://adfe.phantasm.solutions/img/default.png';
+        }
         $galleryImagesUrls = $this->getGalleryImages($product->ID);
         $variations = $this->getVariation($product->ID);
         $response = [
@@ -445,12 +451,12 @@ class PublicController extends Controller
                     ->where('meta_value', 'instock');
             })
             ->where('post_parent', 0)
-            ->where('ID', '<', $product->ID)
+            ->where('ID', '>', $product->ID)
             ->where('post_type', 'product')
             ->where('post_status', 'publish')
-            ->orderBy('ID', 'desc')
+            ->orderBy('ID', 'asc')
             ->first();
-        $nextProductSlug = $nextProduct ? $nextProduct->post_name : null;
+        $nextProductSlug = $nextProduct ? $nextProduct->ID : null;
         return response()->json(['product' => $response, 'nextProduct' => $nextProductSlug]);
     }
     private function getVariation($productId, $priceTier = '')
