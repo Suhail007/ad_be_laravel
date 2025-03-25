@@ -53,7 +53,9 @@ class ProductController extends Controller
         $priceRangeMin = $request->query('min', 0);
         $priceRangeMax = $request->query('max', 0);
         $type = $request->query('type', 'cat'); // brand , flavor
-        $flavor = $request->query('flavor', 0); // brand , flavor
+        $flavor = $request->query('flavor', '');  // 
+        $flavor = $flavor ? explode(',', $flavor) : [];
+        
         $slug = explode(',', $slug);
         $auth = false;
         $priceRange = [
@@ -93,7 +95,10 @@ class ProductController extends Controller
                         ->with([
                             'varients' => function ($query) use ($priceTier) {
                                 $query->select('post_id', 'meta_key', 'meta_value')
-                                    ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
+                                    ->whereIn('meta_key', ['_price','attribute_.*', '_stock_status', '_sku', '_thumbnail_id', $priceTier])
+                                    ->orWhere(function ($query) {
+                                        $query->where('meta_key', 'like', 'attribute_%');
+                                    });
                             }
                         ]);
                 },
@@ -116,17 +121,17 @@ class ProductController extends Controller
                             ->where('meta_value', 'protected');
                     });
                 }
-                if($type=='flavor' && $flavor !=0){
+                if ($type == 'flavor' && !empty($flavor)) {
                     $products->where(function ($query) use ($flavor) {
                         $query->whereHas('variations.varients', function ($variationQuery) use ($flavor) {
-                            $variationQuery->where('meta_key','attribute_flavor')
-                                ->where('meta_value',$flavor);
+                            $variationQuery->where('meta_key', 'attribute_flavor')
+                                ->whereIn('meta_value', $flavor);  
                         });
-    
-                        $query->orWhereHas('meta', function ($metaQuery) use ($flavor) {
-                            $metaQuery->where('meta_key','attribute_flavor')
-                                ->where('meta_value',$flavor);
-                        });
+                
+                        // $query->orWhereHas('meta', function ($metaQuery) use ($flavor) {
+                        //     $metaQuery->where('meta_key', 'attribute_flavor')
+                        //         ->whereIn('meta_value', $flavor); 
+                        // });
                     });
                 }
             if ($priceRange['min'] > 0 && $priceRange['max'] > 0) {
@@ -221,6 +226,17 @@ class ProductController extends Controller
                     break;
             }
             $products = $products->paginate($perPage, ['*'], 'page', $page);
+
+            $allAttributeValues = collect($products->pluck('variations.*.varients.*'))
+            ->flatten()
+            ->filter(function ($meta) {
+                return str_starts_with($meta['meta_key'], 'attribute_');
+            })
+            ->pluck('meta_value')
+            ->unique()
+            ->values()
+            ->all();
+
             $products->getCollection()->transform(function ($product) use ($priceTier, $auth) {
                 $thumbnailUrl = $product->thumbnail ? $product->thumbnail->guid : null;
                 $galleryImageIds = $product->meta->where('meta_key', '_product_image_gallery')->pluck('meta_value')->first();
@@ -286,7 +302,7 @@ class ProductController extends Controller
                 ];
             });
 
-            return response()->json($products);
+            return response()->json(['data'=>$products,'favorList'=>$allAttributeValues]);
         } catch (\Throwable $th) {
             return response()->json(['error' => $th->getMessage()]);
         }
