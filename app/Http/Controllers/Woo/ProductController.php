@@ -546,6 +546,9 @@ class ProductController extends Controller
         $page = $request->query('page', 1);
         $priceRangeMin = $request->query('min', 0);
         $priceRangeMax = $request->query('max', 0);
+        $flavor = $request->query('flavor', '');  // 
+        $flavor = $flavor ? explode(',', $flavor) : [];
+        $type = $request->query('type', 'cat'); // brand , flavor
         // $slug = explode(',', $slug);
         $auth = false;
         $priceRange = [
@@ -623,6 +626,19 @@ class ProductController extends Controller
                                 $query->where('meta_key', '_sku')
                                     ->where('meta_value', 'REGEXP', $regexPattern);
                             });
+                    });
+                }
+                if ($type == 'flavor' && !empty($flavor)) {
+                    $products->where(function ($query) use ($flavor) {
+                        $query->whereHas('variations.varients', function ($variationQuery) use ($flavor) {
+                            $variationQuery->where('meta_key', 'like', 'attribute_%')
+                                ->whereIn('meta_value', $flavor);  
+                        });
+                
+                        // $query->orWhereHas('meta', function ($metaQuery) use ($flavor) {
+                        //     $metaQuery->where('meta_key', 'attribute_flavor')
+                        //         ->whereIn('meta_value', $flavor); 
+                        // });
                     });
                 }
             if ($priceRange['min'] > 0 && $priceRange['max'] > 0) {
