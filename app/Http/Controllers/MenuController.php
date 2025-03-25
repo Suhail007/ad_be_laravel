@@ -211,7 +211,7 @@ class MenuController extends Controller
                                 'banner' => $brandData['banner'] ?? null,
                                 'meta' => json_encode($brandData['meta']) ?? null,
                                 'visibility' =>'public',
-                                'priority'=>$brandData['priority']??0,
+                                'priority'=>(int) $brandData['priority']??0,
                                 'status' => true,
                             ]
                         );

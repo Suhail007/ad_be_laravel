@@ -569,7 +569,10 @@ class ProductController extends Controller
                         ->with([
                             'varients' => function ($query) use ($priceTier) {
                                 $query->select('post_id', 'meta_key', 'meta_value')
-                                    ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier]);
+                                    ->whereIn('meta_key', ['_price','attribute_.*', '_stock_status', '_sku', '_thumbnail_id', $priceTier])
+                                    ->orWhere(function ($query) {
+                                        $query->where('meta_key', 'like', 'attribute_%');
+                                    });
                             }
                         ]);
                 },
@@ -698,6 +701,23 @@ class ProductController extends Controller
                     break;
             }
             $products = $products->paginate($perPage, ['*'], 'page', $page);
+
+            
+            $allAttributeValues = collect($products->pluck('variations.*.varients.*'))
+                ->flatten()
+                ->filter(function ($meta) {
+                    return str_starts_with($meta['meta_key'], 'attribute_');
+                })
+                ->pluck('meta_value')
+                ->unique()
+                ->values()
+                ->all();
+            $allCategoryNames = collect($products->pluck('categories.*.name'))
+                ->flatten()
+                ->unique()
+                ->values()
+                ->all();
+
             $products->getCollection()->transform(function ($product) use ($priceTier, $auth) {
                 $thumbnailUrl = $product->thumbnail ? $product->thumbnail->guid : null;
                 $galleryImageIds = $product->meta->where('meta_key', '_product_image_gallery')->pluck('meta_value')->first();
@@ -763,7 +783,7 @@ class ProductController extends Controller
                 ];
             });
 
-            return response()->json($products);
+            return response()->json(['data'=>$products,'favorList'=>$allAttributeValues,'categories'=>$allCategoryNames]);
         } catch (\Throwable $th) {
             return response()->json(['error' => $th->getMessage()]);
         }
