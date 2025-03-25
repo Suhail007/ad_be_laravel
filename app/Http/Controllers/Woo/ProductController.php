@@ -124,7 +124,7 @@ class ProductController extends Controller
                 if ($type == 'flavor' && !empty($flavor)) {
                     $products->where(function ($query) use ($flavor) {
                         $query->whereHas('variations.varients', function ($variationQuery) use ($flavor) {
-                            $variationQuery->where('meta_key', 'attribute_flavor')
+                            $variationQuery->where('meta_key', 'like', 'attribute_%')
                                 ->whereIn('meta_value', $flavor);  
                         });
                 
