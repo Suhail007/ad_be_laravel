@@ -56,6 +56,8 @@ class ProductController extends Controller
         $flavor = $request->query('flavor', '');  // 
         $flavor = $flavor ? explode(',', $flavor) : [];
         
+        $taxo = $request->query('taxo', []); //
+
         $slug = explode(',', $slug);
         $auth = false;
         $priceRange = [
@@ -111,9 +113,14 @@ class ProductController extends Controller
                     $query->where('meta_key', '_stock_status')
                         ->where('meta_value', 'instock');
                 })
-                ->whereHas('categories.taxonomies', function ($query) use ($slug) {
-                    $query->whereIn('slug', $slug)
-                        ->where('taxonomy', 'product_cat');
+                ->whereHas('categories.taxonomies', function ($query) use ($slug, $taxo) {
+                    if (!empty($taxo)) {
+                        $query->whereIn('slug', $slug)
+                              ->where('taxonomy', 'product_brand');
+                    } else {
+                        $query->whereIn('slug', $slug)
+                              ->where('taxonomy', 'product_cat');
+                    }
                 });
                 if($auth == false){
                     $products->whereDoesntHave('categories.categorymeta', function ($query) {

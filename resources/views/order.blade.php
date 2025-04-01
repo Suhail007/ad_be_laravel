@@ -182,7 +182,7 @@
                 <h5><b>{{ $orderaddress }}</b></h5>
             </div>
             <a href="https://express.americandistributorsllc.com/myaccount?tab=Orders" class="cta-button">
-                Order Details // rollback
+                Order Details
             </a>
         </div>
     </div>
