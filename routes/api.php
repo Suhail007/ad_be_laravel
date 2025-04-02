@@ -80,6 +80,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);
 
+    Route::get('history/orders', [OrderController::class, 'oldOrders']);
+    Route::get('history/orders/{id}', [OrderController::class, 'oldOrder']);
     //user Cart
     Route::get('/cart/{userId}', [CartController::class, 'getCart']);
     Route::delete('/cart/{id}', [CartController::class, 'deleteFromCart']);
@@ -94,7 +96,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
     //checkout 
     Route::post('/checkout/address',[CheckoutController::class,'checkoutAddress']);
-
+    
     //payment 
     Route::get('/payment-price',[PayPalController::class, 'me']);
     Route::post('/process-payment', [PayPalController::class, 'processPayment']);
