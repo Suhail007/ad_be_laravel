@@ -202,9 +202,7 @@ $y = is_numeric($y) ? (int)$y : null;
             foreach (array_values($bxgyData['ranges']) as $range) {
                 $buyQty = isset($range['from']) ? (int) $range['from'] : null;
                 $freeQty = isset($range['free_qty']) ? (int) $range['free_qty'] : null;
-
-                if ($buyQty ||   $freeQty )
-{
+                if (($x === null || $buyQty === $x) && ($y === null || $freeQty === $y)) {
                     $offers[] = [
                         'id' => $rule->id,
                         'title' => $rule->title,
