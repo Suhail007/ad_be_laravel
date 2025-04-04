@@ -125,7 +125,9 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('/wishlist/remove-all', [WishlistController::class, 'removeAllFromWishlist']);
 });
 
-
+Route::get('/offers',[DiscountRuleController::class, 'offers']);
+Route::get('/bxgy',[DiscountRuleController::class, 'bxgyOffers']);
+Route::get('/offer/{id}',[DiscountRuleController::class, 'offer']);
 Route::post('nmi/webhook',[PayPalController::class,'handleWebhook']);
 
 Route::get('/cleanup',[CleanupController::class,'menuCleanUp']);

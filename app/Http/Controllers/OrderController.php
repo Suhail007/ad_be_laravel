@@ -40,7 +40,7 @@ class OrderController extends Controller
         }
         $query = CustomerOrder::where('type', 'shop_order')
             ->where('status', '!=', 'trash')
-            ->where('created_at', '<', $threeMonthsAgo)  
+            ->where('date_created_gmt', '<', $threeMonthsAgo)  
             ->with(['items', 'items.meta', 'meta'])
             ->orderBy('id', 'desc');
         if (!$isAdmin) {
@@ -68,7 +68,7 @@ class OrderController extends Controller
         $query = CustomerOrder::with(['items', 'items.meta', 'meta'])
             ->where('type', 'shop_order')
             ->where('status', '!=', 'trash')
-            ->where('created_at', '<', $threeMonthsAgo) ; // Exclude orders from the last 3 months
+            ->where('date_created_gmt', '<', $threeMonthsAgo) ; // Exclude orders from the last 3 months
         if (!$isAdmin) {
             $query->where('customer_id', $user->ID);
         }

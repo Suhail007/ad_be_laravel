@@ -27,6 +27,202 @@ class DiscountRuleController extends Controller
             return response()->json(['status' => 'error', 'message' => $th->getMessage()], 401);
         }
     }
+    public function offers(Request $request)
+{
+    $discountRules = DiscountRule::where('enabled', 1)
+        ->where('deleted', 0)
+        ->orderBy('priority', 'desc')
+        ->get();
+
+    $offers = [];
+
+    foreach ($discountRules as $rule) {
+        $filters = $rule->filters ?? [];
+        $filterData = [];
+        foreach ($filters as $filter) {
+            if (!empty($filter['type']) && !empty($filter['value'])) {
+                $filterData[] = [
+                    'type' => $filter['type'],
+                    'value' => $filter['value']
+                ];
+            }
+        }
+
+        // Add offer details to the list
+        $offers[] = [
+            'id' => $rule->id,
+            'title' => $rule->title,
+            'priority' => $rule->priority,
+            'discount_type' => $rule->discount_type,
+            // 'filters' => $filterData,
+            'date_from' => $rule->date_from,
+            'date_to' => $rule->date_to,
+            'created_on' => $rule->created_on
+        ];
+    }
+
+    return response()->json(['offers' => $offers]);
+}
+
+    public function offer(Request $request, $id)
+{
+    // Fetch the discount rule
+    $discountRule = DiscountRule::where('enabled', 1)
+        ->where('deleted', 0)
+        ->where('id', $id)
+        ->first();
+
+    if (!$discountRule) {
+        return response()->json(['error' => 'Offer not found'], 404);
+    }
+
+    $filters = [];
+    $auth = false;
+    $priceTier = '_price';
+
+    // Authenticate user and set price tier
+    try {
+        $user = JWTAuth::parseToken()->authenticate();
+        if ($user) {
+            $auth = true;
+            $priceTier = $user->price_tier ?? '_price';
+        }
+    } catch (\Throwable $th) {
+        // User is not authenticated
+    }
+
+    // Parse filters
+    $filterData = $discountRule->filters ?? [];
+    foreach ($filterData as $filter) {
+        if (!empty($filter['type']) && !empty($filter['value'])) {
+            $filters[] = [
+                'type' => $filter['type'],
+                'value' => $filter['value']
+            ];
+        }
+    }
+
+    // Fetch products based on filters
+    $products = Product::with([
+        'meta' => function ($query) use ($priceTier) {
+            $query->select('post_id', 'meta_key', 'meta_value')
+                ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', '_product_image_gallery', $priceTier]);
+        },
+        'categories' => function ($query) {
+            $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                ->with([
+                    'categorymeta' => function ($query) {
+                        $query->select('term_id', 'meta_key', 'meta_value')
+                            ->where('meta_key', 'visibility');
+                    },
+                    'taxonomies' => function ($query) {
+                        $query->select('term_id', 'taxonomy');
+                    }
+                ]);
+        },
+        'variations' => function ($query) use ($priceTier) {
+            $query->select('ID', 'post_parent', 'post_title', 'post_name')
+                ->with([
+                    'varients' => function ($query) use ($priceTier) {
+                        $query->select('post_id', 'meta_key', 'meta_value')
+                            ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', $priceTier])
+                            ->orWhere('meta_key', 'like', 'attribute_%');
+                    }
+                ]);
+        },
+        'thumbnail'
+    ])
+        ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+        ->where('post_type', 'product')
+        ->where('post_status', 'publish')
+        ->whereHas('meta', function ($query) {
+            $query->where('meta_key', '_stock_status')
+                ->where('meta_value', 'instock');
+        });
+
+    // Apply filter conditions
+    if (!empty($filters)) {
+        foreach ($filters as $filter) {
+            if ($filter['type'] === 'products') {
+                $products->whereIn('ID', $filter['value']);
+            } elseif ($filter['type'] === 'product_category') {
+                $products->whereHas('categories', function ($query) use ($filter) {
+                    $query->whereIn('wp_terms.term_id', $filter['value']);
+                });
+            }
+        }
+    }
+
+    // Apply category visibility filter for unauthenticated users
+    if (!$auth) {
+        $products->whereDoesntHave('categories.categorymeta', function ($query) {
+            $query->where('meta_key', 'visibility')
+                ->where('meta_value', 'protected');
+        });
+    }
+
+    // Fetch the final product list
+    $products = $products->get();
+
+    // Return response
+    return response()->json([
+        'offer' => [
+            'id' => $discountRule->id,
+            'title' => $discountRule->title,
+            'priority' => $discountRule->priority,
+            'discount_type' => $discountRule->discount_type,
+            'filters' => $filters,
+            'date_from' => $discountRule->date_from,
+            'date_to' => $discountRule->date_to,
+            'created_on' => $discountRule->created_on
+        ],
+        'products' => $products
+    ]);
+}
+
+public function bxgyOffers(Request $request)
+{
+    $x = $request->query('x', null);
+$y = $request->query('y', null);
+
+$x = is_numeric($x) ? (int)$x : null;
+$y = is_numeric($y) ? (int)$y : null;
+
+    $discountRules = DiscountRule::where('enabled', 1)
+        ->where('deleted', 0)
+        ->where('discount_type', 'wdr_buy_x_get_y_discount')
+        ->orderBy('priority', 'desc')
+        ->get();
+
+    $offers = [];
+
+    foreach ($discountRules as $rule) {
+        $bxgyData = $rule->buy_x_get_y_adjustments ?? [];
+        if (isset($bxgyData['ranges']) && is_array($bxgyData['ranges'])) {
+            foreach (array_values($bxgyData['ranges']) as $range) {
+                $buyQty = isset($range['from']) ? (int) $range['from'] : null;
+                $freeQty = isset($range['free_qty']) ? (int) $range['free_qty'] : null;
+
+                if ($buyQty ||   $freeQty )
+{
+                    $offers[] = [
+                        'id' => $rule->id,
+                        'title' => $rule->title,
+                        'priority' => $rule->priority,
+                        'discount_type' => $rule->discount_type,
+                        // 'filters' => $filterData,
+                        'date_from' => $rule->date_from,
+                        'date_to' => $rule->date_to,
+                        'created_on' => $rule->created_on
+                    ];
+                }
+            }
+        }
+    }
+
+    return response()->json(['offers' => $offers]);
+}
+
 
     public function singleDiscount(string $id)
     {
