@@ -127,6 +127,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
 Route::get('/offers',[DiscountRuleController::class, 'offers']);
 Route::get('/bxgy',[DiscountRuleController::class, 'bxgyOffers']);
+Route::get('/percent-sale',[DiscountRuleController::class, 'percentageSale']);
 Route::get('/offer/{id}',[DiscountRuleController::class, 'offer']);
 Route::post('nmi/webhook',[PayPalController::class,'handleWebhook']);
 
