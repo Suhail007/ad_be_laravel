@@ -182,6 +182,11 @@ class DiscountRuleController extends Controller
 
     public function bxgyOffers(Request $request)
     {
+        
+        $searchTerm = $request->input('searchTerm', null);
+        if($searchTerm){
+            return response()->json(['status'=>false, 'products'=>[]]);
+        }
         $perPage = $request->query('perPage', 15);
         $sortBy = $request->query('sort', 'latest');
         $page = $request->query('page', 1);
@@ -500,6 +505,10 @@ class DiscountRuleController extends Controller
     }
     public function percentageSale(Request $request)
     {
+        $searchTerm = $request->input('searchTerm', null);
+        if($searchTerm){
+            return response()->json(['status'=>false, 'products'=>[]]);
+        }
         $perPage = $request->query('perPage', 15);
         $sortBy = $request->query('sort', 'latest');
         $page = $request->query('page', 1);
