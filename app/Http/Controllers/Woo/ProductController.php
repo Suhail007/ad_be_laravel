@@ -2103,7 +2103,7 @@ class ProductController extends Controller
         return response()->json(['related_products' => $relatedProductsData], 200);
     }
     public function getRelatedProductV2(Request $request,$id){
-        $perPage = $request->query('perPage', 15);
+        $perPage = $request->query('perPage', 50);
         $page = $request->query('page', 1);
 
         // product
@@ -2143,7 +2143,7 @@ class ProductController extends Controller
                 ->where('taxonomy', 'product_brand');
         })->where('post_status', 'publish')
             ->orderBy('post_date', 'desc')
-            ->take(10)
+            ->take(50)
             ->pluck('ID')
             ->toArray();
         // clean less recommend product
