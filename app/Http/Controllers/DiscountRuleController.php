@@ -518,7 +518,7 @@ class DiscountRuleController extends Controller
         ];
         $discountRules = DiscountRule::where('enabled', 1)
             ->where('deleted', 0)
-            ->where('discount_type', 'wdr_buy_x_get_y_discount')
+            ->where('discount_type', 'wdr_simple_discount')
             ->orderBy('priority', 'desc')
             ->get();
         $auth = false;
