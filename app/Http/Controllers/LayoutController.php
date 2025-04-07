@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Layout;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class LayoutController extends Controller
 {
@@ -35,7 +37,26 @@ class LayoutController extends Controller
 
     public function positionLayout($layout, $position)
     {
-        $data = Layout::where('page', $layout)->where('position', $position)->get();
+        $query = Layout::where('page', $layout)->where('position', $position);
+        $timestamp = request()->input('d');
+        if($timestamp){
+            $date = Carbon::createFromTimestamp($timestamp / 1000);
+            $date->setTimezone('America/Chicago');
+            $today = $date->format('Y-m-d H:i:s');
+            $query->where(function ($query) use ($today) {
+                $query->where(function ($query) use ($today) {
+                    $query->where('start_date', '<=', $today)
+                          ->orWhereNull('start_date');
+                })
+                ->where(function ($query) use ($today) {
+                    $query->where('end_date', '>=', $today)
+                          ->orWhereNull('end_date');
+                });
+            });
+        }
+        $data = $query->get();
+        
+        // $data = Layout::where('page', $layout)->where('position', $position)->get();
         return response()->json(['data' => $data]);
     }
     /**
@@ -53,6 +74,17 @@ class LayoutController extends Controller
      */
     public function store(Request $request)
     {
+        $user = JWTAuth::parseToken()->authenticate();
+        $data = $user->capabilities;
+        $isAdmin= false;
+        foreach ($data as $key => $value) {
+            if ($key == 'administrator') {
+                $isAdmin = true;
+            }
+        }
+        if (!$isAdmin) {
+            return response()->json(['status' => false, 'message' => 'You are not allowed']);
+        }
         $validator = Validator::make($request->all(), [
             'page' => ['required', 'string'],
             'position' => ['required', 'string'],
@@ -61,6 +93,8 @@ class LayoutController extends Controller
             'link' => ['string'],
             'url' => ['nullable','string'],
             'visibility' => ['required', 'string'],
+            'start_date'=>['nullable','date'],  
+            'end_date'=>['nullable','date','after_or_equal:start_date'],
         ]);
 
         if ($validator->fails()) {
@@ -115,7 +149,6 @@ class LayoutController extends Controller
 
         if ($request->hasFile('thumbnail')) {
             try {
-                // Delete the old file if the old_url is provided
                 if ($request->filled('old_url')) {
                     Storage::disk('public')->delete($request->input('old_url'));
                 }
@@ -145,6 +178,8 @@ class LayoutController extends Controller
             'link' => ['string'],
             'url' => ['string','nullable'],
             'visibility' => ['string'],
+            'end_date'=>['nullable'],
+            'start_date'=>['nullable'],
         ]);
 
         if ($validator->fails()) {
@@ -157,21 +192,6 @@ class LayoutController extends Controller
         if (!$post) {
             return response()->json(['error' => 'Layout not found'], 404);
         }
-
-        // if ($request->hasFile('url')) {
-        //     try {
-        //         // Delete old file if exists
-        //         if ($post->url) {
-        //             Storage::disk('public')->delete($post->url);
-        //         }
-
-        //         $thumbnail = $request->file('url');
-        //         $thumbnailPath = $thumbnail->store('layouts', 'public');
-        //         $validatedData['url'] = $thumbnailPath;
-        //     } catch (\Exception $e) {
-        //         return response()->json(['error' => 'File upload failed'], 500);
-        //     }
-        // }
 
         $post->update($validatedData);
 
