@@ -2142,6 +2142,10 @@ class ProductController extends Controller
             $query->whereIn('slug', $brands->pluck('brandUrl'))
                 ->where('taxonomy', 'product_brand');
         })->where('post_status', 'publish')
+        ->whereHas('meta', function ($query) {
+            $query->where('meta_key', '_stock_status')
+                ->where('meta_value', 'instock');
+        })
             ->orderBy('post_date', 'desc')
             ->take(50)
             ->pluck('ID')
@@ -2278,6 +2282,10 @@ class ProductController extends Controller
 
         $relatedProducts = Product::whereHas('categories', function ($query) use ($subcatIds) {
             $query->whereIn('term_taxonomy_id', $subcatIds);
+        })
+        ->whereHas('meta', function ($query) {
+            $query->where('meta_key', '_stock_status')
+                ->where('meta_value', 'instock');
         })->where('post_status', 'publish')->orderBy('post_date', 'desc')->take(10)->get();
         if ($relatedProducts->isEmpty()) {
             return response()->json(['error' => 'No related products found'], 404);

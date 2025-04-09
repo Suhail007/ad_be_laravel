@@ -16,6 +16,7 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CleanupController;
 use App\Http\Controllers\DiscountRuleController;
 use App\Http\Controllers\MenuController;
+use App\Http\Controllers\Multichannel\ProductController as MultichannelProductController;
 use App\Http\Controllers\MyAcccountController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\UserCouponController;
@@ -47,6 +48,10 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
     Route::post('/adminUserLogin', [LoginController::class, 'adminlogin']);
     Route::get('/userList/{value}', [LoginController::class, 'users']);
+
+    //multichanel 
+    Route::get('get-variations/{id}',[MultichannelProductController::class,'getProductVariation']);
+    Route::post('set-purchase-limit',[MultichannelProductController::class,'updateQuantity']);
 
     //menu cleanup 
     Route::get('/cleanup',[CleanupController::class,'menuCleanUp']);
