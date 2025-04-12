@@ -52,6 +52,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     //multichanel 
     Route::get('get-variations/{id}',[MultichannelProductController::class,'getProductVariation']);
     Route::post('set-purchase-limit',[MultichannelProductController::class,'updateQuantity']);
+    Route::get('get-purchase-limit-products',[MultichannelProductController::class,'getPurchaseLimitProduct']);
 
     //menu cleanup 
     Route::get('/cleanup',[CleanupController::class,'menuCleanUp']);
