@@ -618,6 +618,8 @@ class PayPalController extends Controller
 
                     $taxAmmountWC = 0;
                     $temp = false;
+                    $giveawaySaleCasper = 0;
+                    $giveawaySaleKrature=0;
                     foreach ($orderData['extra'] as $item) {
                         if ($item['quantity'] < 0) {
                             $item['quantity'] = 1; 
@@ -648,6 +650,14 @@ class PayPalController extends Controller
                         $float2 = 0.00;
                         $float2 = $item['quantity'] * $productPrice;
                         $float2 = round($float2, 2);
+                        
+                        // 16/04/2025
+                        if (!empty($item['taxonomies']) && in_array(1835, $item['taxonomies'])) { // 1835-> casper-blend
+                            $giveawaySaleCasper += $float2;
+                        }
+                        if (!empty($item['taxonomies']) && in_array(2687, $item['taxonomies'])) { // 2687->krature-hydroxy
+                            $giveawaySaleKrature += $float2;
+                        }
                         $linetotal += $float2;
 
                         $taxAmount = (float) ($iLTax ?? 0);
@@ -892,6 +902,60 @@ class PayPalController extends Controller
                             'shipping_amount' => $unitshippingCharge ?? 0,
                             'shipping_tax_amount' => 0,
                         ]);
+                    }
+                    
+                    // 16/04/2025
+                    if($giveawaySaleCasper>=300){
+                        $counterDBVal = DB::transaction(function () {
+                            DB::table('wp_options')->where('option_name', 'express_counter')->increment('option_value', 1);
+                            return DB::table('wp_options')
+                                ->where('option_name', 'express_counter')
+                                ->value('option_value');
+                        });
+                        if($counterDBVal<10){
+                            $counterDBVal= '0'.$counterDBVal;
+                        }
+                        $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
+                            'order_id' => $orderId,
+                            'order_item_name' => 'RAFFLECS'.$counterDBVal,
+                            'order_item_type' => 'coupon'
+                        ]);
+                        $coupon_info = [0,'RAFFLECS'.$counterDBVal, 'GIVEAWAY', 0];
+                        $jsonCouponInfo = json_encode($coupon_info);
+                        $metaILTax = [
+                            ['order_item_id' => $id3, 'meta_key' => 'coupon_info', 'meta_value' => $jsonCouponInfo],
+                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount_tax', 'meta_value' =>  0],
+                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount', 'meta_value' =>  0],
+                        ];
+                        foreach ($metaILTax as $meta) {
+                            OrderItemMeta::insert($meta);
+                        }
+                    }
+                    if($giveawaySaleKrature>=300){
+                        $counterDBVal = DB::transaction(function () {
+                            DB::table('wp_options')->where('option_name', 'express_counter_2')->increment('option_value', 1);
+                            return DB::table('wp_options')
+                                ->where('option_name', 'express_counter')
+                                ->value('option_value');
+                        });
+                        if($counterDBVal<10){
+                            $counterDBVal= '0'.$counterDBVal;
+                        }
+                        $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
+                            'order_id' => $orderId,
+                            'order_item_name' => 'RAFFLEKR'.$counterDBVal,
+                            'order_item_type' => 'coupon'
+                        ]);
+                        $coupon_info = [0, 'RAFFLEKR'.$counterDBVal, 'GIVEAWAY', 0];
+                        $jsonCouponInfo = json_encode($coupon_info);
+                        $metaILTax = [
+                            ['order_item_id' => $id3, 'meta_key' => 'coupon_info', 'meta_value' => $jsonCouponInfo],
+                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount_tax', 'meta_value' => 0],
+                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount', 'meta_value' => 0],
+                        ];
+                        foreach ($metaILTax as $meta) {
+                            OrderItemMeta::insert($meta);
+                        }
                     }
 
                     DB::table('wp_wc_orders')->insert([
@@ -1498,6 +1562,8 @@ class PayPalController extends Controller
 
                     $dd = [];
                     $temp = false;
+                    $giveawaySaleCasper = 0;
+                    $giveawaySaleKrature=0;
                     foreach ($orderData['extra'] as $item) {
                         if ($item['quantity'] < 0) {
                             $item['quantity'] = 1; 
@@ -1529,6 +1595,14 @@ class PayPalController extends Controller
                         $float2 = 0.00;
                         $float2 = $item['quantity'] * $productPrice;
                         $float2 = round($float2, 2);
+
+                        // 16/04/2025
+                        if (!empty($item['taxonomies']) && in_array(1835, $item['taxonomies'])) { // 1835-> casper-blend
+                            $giveawaySaleCasper += $float2;
+                        }
+                        if (!empty($item['taxonomies']) && in_array(2687, $item['taxonomies'])) { // 2687->krature-hydroxy
+                            $giveawaySaleKrature += $float2;
+                        }
                         $linetotal += $float2;
 
                         $taxAmount = (float) ($iLTax ?? 0);
@@ -1753,7 +1827,7 @@ class PayPalController extends Controller
                                 $serializedData3 = serialize($data3);
                                 $itemMeta[] = ['order_item_id' => $orderItemId, 'meta_key' => '_wdr_discounts', 'meta_value' => $serializedData2];
                                 $itemMeta[] = ['order_item_id' => $orderItemId, 'meta_key' => '_advanced_woo_discount_item_total_discount', 'meta_value' => $serializedData3];
-                            }
+                            } 
                         } catch (\Throwable $th) {
                             //throw $th;
                         }
@@ -1794,6 +1868,62 @@ class PayPalController extends Controller
                             'shipping_tax_amount' => 0,
                         ]);
                     }
+
+
+                    // 16/04/2025
+                    if($giveawaySaleCasper>=300){
+                        $counterDBVal = DB::transaction(function () {
+                            DB::table('wp_options')->where('option_name', 'express_counter')->increment('option_value', 1);
+                            return DB::table('wp_options')
+                                ->where('option_name', 'express_counter')
+                                ->value('option_value');
+                        });
+                        if($counterDBVal<10){
+                            $counterDBVal= '0'.$counterDBVal;
+                        }
+                        $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
+                            'order_id' => $orderId,
+                            'order_item_name' => 'RAFFLECS'.$counterDBVal,
+                            'order_item_type' => 'coupon'
+                        ]);
+                        $coupon_info = [0,'RAFFLECS'.$counterDBVal, 'GIVEAWAY', 0];
+                        $jsonCouponInfo = json_encode($coupon_info);
+                        $metaILTax = [
+                            ['order_item_id' => $id3, 'meta_key' => 'coupon_info', 'meta_value' => $jsonCouponInfo],
+                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount_tax', 'meta_value' =>  0],
+                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount', 'meta_value' =>  0],
+                        ];
+                        foreach ($metaILTax as $meta) {
+                            OrderItemMeta::insert($meta);
+                        }
+                    }
+                    if($giveawaySaleKrature>=300){
+                        $counterDBVal = DB::transaction(function () {
+                            DB::table('wp_options')->where('option_name', 'express_counter_2')->increment('option_value', 1);
+                            return DB::table('wp_options')
+                                ->where('option_name', 'express_counter')
+                                ->value('option_value');
+                        });
+                        if($counterDBVal<10){
+                            $counterDBVal= '0'.$counterDBVal;
+                        }
+                        $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
+                            'order_id' => $orderId,
+                            'order_item_name' => 'RAFFLEKR'.$counterDBVal,
+                            'order_item_type' => 'coupon'
+                        ]);
+                        $coupon_info = [0, 'RAFFLEKR'.$counterDBVal, 'GIVEAWAY', 0];
+                        $jsonCouponInfo = json_encode($coupon_info);
+                        $metaILTax = [
+                            ['order_item_id' => $id3, 'meta_key' => 'coupon_info', 'meta_value' => $jsonCouponInfo],
+                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount_tax', 'meta_value' => 0],
+                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount', 'meta_value' => 0],
+                        ];
+                        foreach ($metaILTax as $meta) {
+                            OrderItemMeta::insert($meta);
+                        }
+                    }
+
                     // dd($dd);
                     DB::table('wp_wc_orders')->insert([
                         'id' => $orderId,

@@ -14,12 +14,14 @@ class Category extends Model
     {
         return $this->belongsToMany(Product::class, 'wp_term_relationships', 'term_taxonomy_id', 'object_id');
     }
-    public function categorymeta(){
-        return $this->hasMany(CategoryMeta::class,'term_id','term_id');
+    public function categorymeta()
+    {
+        return $this->hasMany(CategoryMeta::class, 'term_id', 'term_id');
     }
 
-    public function taxonomies(){
-        return $this->hasOne(CategoryTaxonomy::class,'term_id','term_id');
+    public function taxonomies()
+    {
+        return $this->hasOne(CategoryTaxonomy::class, 'term_id', 'term_id');
     }
     public function taxonomy()
     {
@@ -46,14 +48,25 @@ class Category extends Model
     public static function getCategoriesWithChildren()
     {
         $categoryIds = BrandMenu::pluck('term_id')->toArray();
-
-        $categories = self::with('children')
+        $categories = self::with(['children' => function ($query) {
+            $query->whereHas('products', function ($q) {
+                $q->whereHas('meta', function ($metaQuery) {
+                    $metaQuery->where('meta_key', '_stock_status')->where('meta_value', 'instock');
+                });
+            });
+        }])
             ->whereHas('taxonomies', function ($query) {
                 $query->where('taxonomy', 'product_cat');
             })
             ->whereDoesntHave('taxonomy', function ($query) {
                 $query->where('parent', '>', 0)->where('count', '>', 0);
-            })->whereIn('term_id', $categoryIds)
+            })
+            ->whereIn('term_id', $categoryIds)
+            ->whereHas('products', function ($query) {
+                $query->whereHas('meta', function ($metaQuery) {
+                    $metaQuery->where('meta_key', '_stock_status')->where('meta_value', 'instock');
+                });
+            })
             ->get()
             ->map(function ($category) {
                 return [
@@ -70,10 +83,9 @@ class Category extends Model
                             'slug' => $child->slug,
                             'visibility' => $child->visibility
                         ];
-                    })
+                    })->values()
                 ];
             });
-
         return $categories;
     }
 
