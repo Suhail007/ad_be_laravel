@@ -314,6 +314,324 @@ class ProductController extends Controller
             return response()->json(['error' => $th->getMessage()]);
         }
     }
+
+    public function categoryProductV3(Request $request, $slug)
+    {
+        $perPage = $request->query('perPage', 15);
+        $sortBy = $request->query('sort', 'latest');
+        $page = $request->query('page', 1);
+        $priceRangeMin = $request->query('min', 0);
+        $priceRangeMax = $request->query('max', 0);
+        $type = $request->query('type', 'cat'); // brand , flavor
+        $flavor = $request->query('flavor', '');  // 
+        $flavor = $flavor ? explode(',', $flavor) : [];
+        $taxo = $request->query('taxo', []); //
+        $slug = explode(',', $slug);
+        $auth = false;
+        $priceRange = [
+            'min' => (int) $priceRangeMin,
+            'max' => (int) $priceRangeMax
+        ];
+        $priceTier = '_price';
+
+        try {
+            try {
+                $user = JWTAuth::parseToken()->authenticate();
+                $priceTier = $user->price_tier ?? '_price';
+                if ($user->ID) {
+                    $auth = true;
+                }
+            } catch (\Throwable $th) {
+                $auth = false;
+            }
+
+            // Generate cache key based on all request parameters
+            $cacheKey = 'category_products_v3_' . md5(json_encode([
+                'slug' => $slug,
+                'sortBy' => $sortBy,
+                'page' => $page,
+                'perPage' => $perPage,
+                'priceRange' => $priceRange,
+                'flavor' => $flavor,
+                'type' => $type,
+                'taxo' => $taxo,
+                'priceTier' => $priceTier,
+                'auth' => $auth
+            ]));
+
+            // Try to get cached results
+            $cachedResults = Cache::get($cacheKey);
+            if ($cachedResults) {
+                // Update stock status for cached products
+                $productIds = collect($cachedResults['data'])->pluck('ID')->toArray();
+                $freshStockData = Product::whereIn('ID', $productIds)
+                    ->with(['meta' => function($query) {
+                        $query->where('meta_key', '_stock_status');
+                    }])
+                    ->get()
+                    ->mapWithKeys(function($product) {
+                        return [$product->ID => $product->meta->first()->meta_value ?? 'instock'];
+                    });
+
+                $cachedResults['data'] = collect($cachedResults['data'])->map(function($product) use ($freshStockData) {
+                    if (isset($product['meta']) && is_array($product['meta'])) {
+                        $product['meta'] = collect($product['meta'])->map(function($meta) use ($product, $freshStockData) {
+                            if (isset($meta['meta_key']) && $meta['meta_key'] === '_stock_status') {
+                                $meta['meta_value'] = $freshStockData[$product['ID']] ?? 'instock';
+                            }
+                            return $meta;
+                        })->toArray();
+                    }
+                    return $product;
+                })->toArray();
+
+                return response()->json($cachedResults);
+            }
+
+            $products = Product::with([
+                'meta' => function ($query) use ($priceTier) {
+                    $query->select('post_id', 'meta_key', 'meta_value')
+                        ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', '_product_image_gallery', $priceTier]);
+                },
+                'categories' => function ($query) {
+                    $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                        ->with([
+                            'categorymeta' => function ($query) {
+                                $query->select('term_id', 'meta_key', 'meta_value')
+                                    ->where('meta_key', 'visibility');
+                            },
+                            'taxonomies' => function ($query) {
+                                $query->select('term_id', 'taxonomy');
+                            }
+                        ]);
+                },
+                'variations' => function ($query) use ($priceTier) {
+                    $query->select('ID', 'post_parent', 'post_title', 'post_name')
+                        ->with([
+                            'varients' => function ($query) use ($priceTier) {
+                                $query->select('post_id', 'meta_key', 'meta_value')
+                                    ->whereIn('meta_key', ['_price','attribute_.*', '_stock_status', '_sku', '_thumbnail_id', $priceTier])
+                                    ->orWhere(function ($query) {
+                                        $query->where('meta_key', 'like', 'attribute_%');
+                                    });
+                            }
+                        ]);
+                },
+                'thumbnail'
+            ])
+            ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+            ->where('post_type', 'product')
+            ->where('post_status', 'publish')
+            ->whereHas('meta', function ($query) {
+                $query->where('meta_key', '_stock_status')
+                    ->where('meta_value', 'instock');
+            })
+            ->whereHas('categories.taxonomies', function ($query) use ($slug, $taxo) {
+                if (!empty($taxo)) {
+                    $query->whereIn('slug', $slug)
+                          ->where('taxonomy', 'product_brand');
+                } else {
+                    $query->whereIn('slug', $slug)
+                          ->where('taxonomy', 'product_cat');
+                }
+            });
+
+            if($auth == false){
+                $products->whereDoesntHave('categories.categorymeta', function ($query) {
+                    $query->where('meta_key', 'visibility')
+                        ->where('meta_value', 'protected');
+                });
+            }
+
+            if ($type == 'flavor' && !empty($flavor)) {
+                $products->where(function ($query) use ($flavor) {
+                    $query->whereHas('variations.varients', function ($variationQuery) use ($flavor) {
+                        $variationQuery->where('meta_key', 'like', 'attribute_%')
+                            ->whereIn('meta_value', $flavor);  
+                    });
+                });
+            }
+
+            // Apply price range filters
+            if ($priceRange['min'] > 0 && $priceRange['max'] > 0) {
+                $products->where(function ($query) use ($priceRange, $priceTier) {
+                    $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
+                        $variationQuery->where('meta_key', $priceTier)
+                            ->whereRaw(
+                                "CAST(meta_value AS DECIMAL(10,2)) >= ? AND CAST(meta_value AS DECIMAL(10,2)) <= ?",
+                                [$priceRange['min'], $priceRange['max']]
+                            );
+                    });
+
+                    $query->orWhereHas('meta', function ($metaQuery) use ($priceRange, $priceTier) {
+                        $metaQuery->where('meta_key', $priceTier)
+                            ->whereRaw(
+                                "CAST(meta_value AS DECIMAL(10,2)) >= ? AND CAST(meta_value AS DECIMAL(10,2)) <= ?",
+                                [$priceRange['min'], $priceRange['max']]
+                            );
+                    });
+                });
+            } elseif ($priceRange['min'] > 0 && $priceRange['max'] == 0) {
+                $products->where(function ($query) use ($priceRange, $priceTier) {
+                    $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
+                        $variationQuery->where('meta_key', $priceTier)
+                            ->whereRaw(
+                                "CAST(meta_value AS DECIMAL(10,2)) >= ?",
+                                [$priceRange['min']]
+                            );
+                    });
+                    $query->orWhereHas('meta', function ($metaQuery) use ($priceRange, $priceTier) {
+                        $metaQuery->where('meta_key', $priceTier)
+                            ->whereRaw(
+                                "CAST(meta_value AS DECIMAL(10,2)) >= ?",
+                                [$priceRange['min']]
+                            );
+                    });
+                });
+            } elseif ($priceRange['max'] > 0 && $priceRange['min'] == 0) {
+                $products->where(function ($query) use ($priceRange, $priceTier) {
+                    $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
+                        $variationQuery->where('meta_key', $priceTier)
+                            ->whereRaw(
+                                "CAST(meta_value AS DECIMAL(10,2)) <= ?",
+                                [$priceRange['max']]
+                            );
+                    });
+
+                    $query->orWhereHas('meta', function ($metaQuery) use ($priceRange, $priceTier) {
+                        $metaQuery->where('meta_key', $priceTier)
+                            ->whereRaw(
+                                "CAST(meta_value AS DECIMAL(10,2)) <= ?",
+                                [$priceRange['max']]
+                            );
+                    });
+                });
+            }
+
+            // Apply sorting
+            switch ($sortBy) {
+                case 'popul':
+                    $products->orderByRaw("
+                        CAST((SELECT meta_value FROM wp_postmeta 
+                              WHERE wp_postmeta.post_id = wp_posts.ID 
+                              AND wp_postmeta.meta_key = 'total_sales' 
+                              LIMIT 1) AS UNSIGNED) DESC
+                    ");
+                    break;
+                case 'plh':
+                    $products->orderByRaw("
+                        CAST((SELECT MIN(meta_value) FROM wp_postmeta 
+                              WHERE wp_postmeta.post_id = wp_posts.ID 
+                              AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) ASC
+                    ");
+                    break;
+                case 'phl':
+                    $products->orderByRaw("
+                        CAST((SELECT MAX(meta_value) FROM wp_postmeta 
+                              WHERE wp_postmeta.post_id = wp_posts.ID 
+                              AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) DESC
+                    ");
+                    break;
+                default:
+                    $products->orderBy('post_date', 'desc');
+                    break;
+            }
+
+            $products = $products->paginate($perPage, ['*'], 'page', $page);
+
+            // Get all attribute values for flavor filtering
+            $allAttributeValues = collect($products->pluck('variations.*.varients.*'))
+                ->flatten()
+                ->filter(function ($meta) {
+                    return str_starts_with($meta['meta_key'], 'attribute_');
+                })
+                ->pluck('meta_value')
+                ->unique()
+                ->values()
+                ->all();
+
+            // Transform the products collection
+            $products->getCollection()->transform(function ($product) use ($priceTier, $auth) {
+                $thumbnailUrl = $product->thumbnail ? $product->thumbnail->guid : null;
+                $galleryImageIds = $product->meta->where('meta_key', '_product_image_gallery')->pluck('meta_value')->first();
+                $galleryImages = [];
+                if ($galleryImageIds) {
+                    $imageIds = explode(',', $galleryImageIds);
+                    $images = Product::whereIn('ID', $imageIds)->get();
+                    foreach ($images as $image) {
+                        $galleryImages[] = $image->guid;
+                    }
+                }
+                $ad_price = null;
+                if($auth == false){
+                    $ad_price = null;
+                } else {
+                    if ($product->variations->isNotEmpty()) {
+                        foreach ($product->variations as $variation) {
+                            $variationPrice = $variation->varients->where('meta_key', $priceTier)->pluck('meta_value')->first();
+                            if ($variationPrice) {
+                                $ad_price = $variationPrice;
+                                break;
+                            }
+                        }
+                    }
+                    if ($ad_price === null) {
+                        $ad_price = $product->meta->where('meta_key', $priceTier)->pluck('meta_value')->first();
+                    }
+                }
+                if($auth == false){
+                    $metaArray = $product->meta->map(function ($meta) {
+                        return [
+                            'meta_key' => $meta->meta_key,
+                            'meta_value' => $meta->meta_value
+                        ];
+                    })->toArray();
+                    $meta = $auth ? $metaArray : array_values(array_filter($metaArray, function ($meta) {
+                        return $meta['meta_key'] !== '_price';
+                    }));    
+                } else {
+                    $meta = $product->meta;
+                }
+                
+                return [
+                    'ID' => $product->ID,
+                    'ad_price' => $ad_price,
+                    'title' => $product->post_title,
+                    'slug' => $product->post_name,
+                    'thumbnail_url' => $thumbnailUrl,
+                    'gallery_images' => $galleryImages,
+                    'categories' => $product->categories->map(function ($category) {
+                        $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                        $taxonomy =  $category->taxonomies->taxonomy;
+                        return [
+                            'term_id' => $category->term_id,
+                            'name' => $category->name,
+                            'slug' => $category->slug,
+                            'visibility' => $visibility ? $visibility : 'public',
+                            'taxonomy' => $taxonomy ? $taxonomy : 'public',
+                        ];
+                    }),
+                    'meta' => $meta,
+                    'variations' => $product->variations,
+                    'post_modified' => $product->post_modified
+                ];
+            });
+
+            $data = [
+                'data' => $products,
+                'favorList' => $allAttributeValues
+            ];
+
+            // Cache the results for one hour
+            Cache::put($cacheKey, $data, now()->addHour());
+
+            return response()->json($data);
+
+        } catch (\Throwable $th) {
+            return response()->json(['error' => $th->getMessage()]);
+        }
+    }
+
     public function brandProductV2(Request $request, $slug)
     {
         $perPage = $request->query('perPage', 15);
@@ -603,7 +921,7 @@ class ProductController extends Controller
                         ]);
                 },
                 'thumbnail'
-            ])
+                ])
                 ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
                 ->where('post_type', 'product')
                 ->where('post_status', 'publish')
@@ -823,6 +1141,326 @@ class ProductController extends Controller
             });
 
             return response()->json(['data'=>$products,'favorList'=>$allAttributeValues,'categories'=>$allCategoryNames]);
+        } catch (\Throwable $th) {
+            return response()->json(['error' => $th->getMessage()]);
+        }
+    }
+    public function searchProductV3(Request $request){
+        $perPage = $request->query('perPage', 15);
+        $searchTerm = $request->input('searchTerm', '');
+        $sortBy = $request->query('sort', 'latest');
+        $page = $request->query('page', 1);
+        $priceRangeMin = $request->query('min', 0);
+        $priceRangeMax = $request->query('max', 0);
+        $flavor = $request->query('flavor', '');
+        $flavor = $flavor ? explode(',', $flavor) : [];
+        $type = $request->query('type', 'cat');
+        $auth = false;
+        $priceRange = [
+            'min' => (int) $priceRangeMin,
+            'max' => (int) $priceRangeMax
+        ];
+        $priceTier = '_price';
+        try {
+            try {
+                $user = JWTAuth::parseToken()->authenticate();
+                $priceTier = $user->price_tier ?? '_price';
+                if ($user->ID) {
+                    $auth = true;
+                }
+            } catch (\Throwable $th) {
+                $auth = false;
+            }
+            $cacheKey = 'search_products_v3_' . md5(json_encode([
+                'searchTerm' => $searchTerm,
+                'sortBy' => $sortBy,
+                'page' => $page,
+                'perPage' => $perPage,
+                'priceRange' => $priceRange,
+                'flavor' => $flavor,
+                'type' => $type,
+                'priceTier' => $priceTier,
+                'auth' => $auth
+            ]));
+            $cachedResults = Cache::get($cacheKey);
+            if ($cachedResults) {
+                $productIds = collect($cachedResults['data'])->pluck('ID')->toArray();
+                $freshStockData = Product::whereIn('ID', $productIds)
+                    ->with(['meta' => function($query) {
+                        $query->where('meta_key', '_stock_status');
+                    }])
+                    ->get()
+                    ->mapWithKeys(function($product) {
+                        return [$product->ID => $product->meta->first()->meta_value ?? 'instock'];
+                    });
+                $cachedResults['data'] = collect($cachedResults['data'])->map(function($product) use ($freshStockData) {
+                    if (isset($product['meta']) && is_array($product['meta'])) {
+                        $product['meta'] = collect($product['meta'])->map(function($meta) use ($product, $freshStockData) {
+                            if (isset($meta['meta_key']) && $meta['meta_key'] === '_stock_status') {
+                                $meta['meta_value'] = $freshStockData[$product['ID']] ?? 'instock';
+                            }
+                            return $meta;
+                        })->toArray();
+                    }
+                    return $product;
+                })->toArray();
+                return response()->json($cachedResults);
+            }
+            $products = Product::with([
+                'meta' => function ($query) use ($priceTier) {
+                    $query->select('post_id', 'meta_key', 'meta_value')
+                        ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', '_product_image_gallery', $priceTier]);
+                },
+                'categories' => function ($query) {
+                    $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
+                        ->with([
+                            'categorymeta' => function ($query) {
+                                $query->select('term_id', 'meta_key', 'meta_value')
+                                    ->where('meta_key', 'visibility');
+                            },
+                            'taxonomies' => function ($query) {
+                                $query->select('term_id', 'taxonomy');
+                            }
+                        ]);
+                },
+                'variations' => function ($query) use ($priceTier) {
+                    $query->select('ID', 'post_parent', 'post_title', 'post_name')
+                        ->with([
+                            'varients' => function ($query) use ($priceTier) {
+                                $query->select('post_id', 'meta_key', 'meta_value')
+                                    ->whereIn('meta_key', ['_price','attribute_.*', '_stock_status', '_sku', '_thumbnail_id', $priceTier])
+                                    ->orWhere(function ($query) {
+                                        $query->where('meta_key', 'like', 'attribute_%');
+                                    });
+                            }
+                        ]);
+                },
+                'thumbnail'
+            ])
+            ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+            ->where('post_type', 'product')
+            ->where('post_status', 'publish')
+            ->whereHas('meta', function ($query) {
+                $query->where('meta_key', '_stock_status')
+                    ->where('meta_value', 'instock');
+            });
+
+            // Handle protected products for non-authenticated users
+            if ($auth == false) {
+                $products->whereDoesntHave('categories.categorymeta', function ($query) {
+                    $query->where('meta_key', 'visibility')
+                        ->where('meta_value', 'protected');
+                });
+            }
+
+            // Handle search term
+            if (!empty($searchTerm)) {
+                $searchWords = preg_split('/\s+/', $searchTerm);
+                $regexPattern = implode('.*', array_map(function ($word) {
+                    return "(?=.*" . preg_quote($word) . ")";
+                }, $searchWords));
+
+                $products->where(function ($query) use ($regexPattern) {
+                    $query->where('post_title', 'REGEXP', $regexPattern)
+                        ->orWhereHas('meta', function ($query) use ($regexPattern) {
+                            $query->where('meta_key', '_sku')
+                                ->where('meta_value', 'REGEXP', $regexPattern);
+                        });
+                });
+            }
+            if ($type == 'flavor' && !empty($flavor)) {
+                $products->where(function ($query) use ($flavor) {
+                    $query->whereHas('variations.varients', function ($variationQuery) use ($flavor) {
+                        $variationQuery->where('meta_key', 'like', 'attribute_%')
+                            ->whereIn('meta_value', $flavor);
+                    });
+                });
+            }
+            if ($priceRange['min'] > 0 && $priceRange['max'] > 0) {
+                $products->where(function ($query) use ($priceRange, $priceTier) {
+                    $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
+                        $variationQuery->where('meta_key', $priceTier)
+                            ->whereRaw(
+                                "CAST(meta_value AS DECIMAL(10,2)) >= ? AND CAST(meta_value AS DECIMAL(10,2)) <= ?",
+                                [$priceRange['min'], $priceRange['max']]
+                            );
+                    });
+
+                    $query->orWhereHas('meta', function ($metaQuery) use ($priceRange, $priceTier) {
+                        $metaQuery->where('meta_key', $priceTier)
+                            ->whereRaw(
+                                "CAST(meta_value AS DECIMAL(10,2)) >= ? AND CAST(meta_value AS DECIMAL(10,2)) <= ?",
+                                [$priceRange['min'], $priceRange['max']]
+                            );
+                    });
+                });
+            } elseif ($priceRange['min'] > 0 && $priceRange['max'] == 0) {
+                $products->where(function ($query) use ($priceRange, $priceTier) {
+                    $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
+                        $variationQuery->where('meta_key', $priceTier)
+                            ->whereRaw(
+                                "CAST(meta_value AS DECIMAL(10,2)) >= ?",
+                                [$priceRange['min']]
+                            );
+                    });
+                    $query->orWhereHas('meta', function ($metaQuery) use ($priceRange, $priceTier) {
+                        $metaQuery->where('meta_key', $priceTier)
+                            ->whereRaw(
+                                "CAST(meta_value AS DECIMAL(10,2)) >= ?",
+                                [$priceRange['min']]
+                            );
+                    });
+                });
+            } elseif ($priceRange['max'] > 0 && $priceRange['min'] == 0) {
+                $products->where(function ($query) use ($priceRange, $priceTier) {
+                    $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
+                        $variationQuery->where('meta_key', $priceTier)
+                            ->whereRaw(
+                                "CAST(meta_value AS DECIMAL(10,2)) <= ?",
+                                [$priceRange['max']]
+                            );
+                    });
+
+                    $query->orWhereHas('meta', function ($metaQuery) use ($priceRange, $priceTier) {
+                        $metaQuery->where('meta_key', $priceTier)
+                            ->whereRaw(
+                                "CAST(meta_value AS DECIMAL(10,2)) <= ?",
+                                [$priceRange['max']]
+                            );
+                    });
+                });
+            }
+            switch ($sortBy) {
+                case 'popul':
+                    $products->with(['meta' => function ($query) {
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    }])
+                        ->orderByRaw("
+                                        CAST((SELECT meta_value FROM wp_postmeta 
+                                              WHERE wp_postmeta.post_id = wp_posts.ID 
+                                              AND wp_postmeta.meta_key = 'total_sales' 
+                                              LIMIT 1) AS UNSIGNED) DESC
+                                    ");
+                    break;
+                case 'plh':
+                    $products->with(['meta' => function ($query) {
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    }])
+                        ->orderByRaw("
+                                        CAST((SELECT MIN(meta_value) FROM wp_postmeta 
+                                              WHERE wp_postmeta.post_id = wp_posts.ID 
+                                              AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) ASC
+                                    ");
+                    break;
+                case 'phl':
+                    $products->with(['meta' => function ($query) {
+                        $query->whereIn('meta_key', ['total_sales', '_price', '_stock_status', '_sku', '_thumbnail_id']);
+                    }])
+                        ->orderByRaw("
+                                        CAST((SELECT MAX(meta_value) FROM wp_postmeta 
+                                              WHERE wp_postmeta.post_id = wp_posts.ID 
+                                              AND wp_postmeta.meta_key = '_price') AS DECIMAL(10,2)) DESC
+                                    ");
+                    break;
+
+                default:
+                    $products->orderBy('post_date', 'desc');
+                    break;
+            }
+
+            $products = $products->paginate($perPage, ['*'], 'page', $page);
+            
+            // Fetch all attribute values (flavors) from the variations of the products
+            $allAttributeValues = collect($products->pluck('variations.*.varients.*'))
+                ->flatten()
+                ->filter(function ($meta) {
+                    return is_array($meta) && isset($meta['meta_key']) && str_starts_with($meta['meta_key'], 'attribute_');
+                })
+                ->pluck('meta_value')
+                ->unique()
+                ->values()
+                ->all();
+
+            $allCategoryNames = collect($products->pluck('categories.*.name'))
+                ->flatten()
+                ->unique()
+                ->values()
+                ->all();
+            
+                $products->getCollection()->transform(function ($product) use ($priceTier, $auth) {
+                    $thumbnailUrl = $product->thumbnail ? $product->thumbnail->guid : null;
+                    $galleryImageIds = $product->meta->where('meta_key', '_product_image_gallery')->pluck('meta_value')->first();
+                    $galleryImages = [];
+                    if ($galleryImageIds) {
+                        $imageIds = explode(',', $galleryImageIds);
+                        $images = Product::whereIn('ID', $imageIds)->get();
+                        foreach ($images as $image) {
+                            $galleryImages[] = $image->guid;
+                        }
+                    }
+                    $ad_price = null;
+                    // login
+                    if($auth == false){
+                        $ad_price = null;
+                    } else {
+                        if ($product->variations->isNotEmpty()) {
+                            foreach ($product->variations as $variation) {
+                                $variationPrice = $variation->varients->where('meta_key', $priceTier)->pluck('meta_value')->first();
+                                if ($variationPrice) {
+                                    $ad_price = $variationPrice;
+                                    break;
+                                }
+                            }
+                        }
+                        if ($ad_price === null) {
+                            $ad_price = $product->meta->where('meta_key', $priceTier)->pluck('meta_value')->first();
+                        }
+                    }
+                    if($auth == false){
+                        $metaArray = $product->meta->map(function ($meta) {
+                            return [
+                                'meta_key' => $meta->meta_key,
+                                'meta_value' => $meta->meta_value
+                            ];
+                        })->toArray();
+                        $meta = $auth ? $metaArray : array_values(array_filter($metaArray, function ($meta) {
+                            return $meta['meta_key'] !== '_price';
+                        }));    
+                    } else {
+                        $meta = $product->meta;
+                    }
+                    
+                    return [
+                        'ID' => $product->ID,
+                        'ad_price' => $ad_price,
+                        'title' => $product->post_title,
+                        'slug' => $product->post_name,
+                        'thumbnail_url' => $thumbnailUrl,
+                        'gallery_images' => $galleryImages, // Add gallery images here
+                        'categories' => $product->categories->map(function ($category) {
+                            $visibility = $category->categorymeta->where('meta_key', 'visibility')->pluck('meta_value')->first();
+                            $taxonomy =  $category->taxonomies->taxonomy;
+                            return [
+                                'term_id' => $category->term_id,
+                                'name' => $category->name,
+                                'slug' => $category->slug,
+                                'visibility' => $visibility ? $visibility : 'public',
+                                'taxonomy' => $taxonomy ? $taxonomy : 'public',
+                            ];
+                        }),
+                        'meta' => $meta,
+                        'variations' => $product->variations,
+                        'post_modified' => $product->post_modified
+                    ];
+                });
+
+                $data = [
+                    'data' => $products,
+                    'flavorList' => $allAttributeValues,
+                    'categories' => $allCategoryNames
+                ];
+                Cache::put($cacheKey, $data, now()->addHour());
+                return response()->json($data);
         } catch (\Throwable $th) {
             return response()->json(['error' => $th->getMessage()]);
         }

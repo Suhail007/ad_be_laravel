@@ -148,9 +148,9 @@ Route::get('/positionLayout/{layout}/{position}', [LayoutController::class, 'pos
 Route::get('/positionLayout/{page}', [LayoutController::class, 'pageLayout']);
 
 //Pages
-Route::get('/categoryProductV2/{slug}', [ProductController::class, 'categoryProductV2']);
+Route::get('/categoryProductV2/{slug}', [ProductController::class, 'categoryProductV3']);
 Route::get('/brandProductV2/{slug}', [ProductController::class, 'brandProductV2']);
-Route::get('/searchProductsV2', [ProductController::class,'searchProductV2']);  //'searchProducts']); 
+Route::get('/searchProductsV2', [ProductController::class,'searchProductV3']);  //'searchProducts']); 
 Route::get('products/{id}/relatedV2', [ProductController::class, 'getRelatedProductV2']);
 
 Route::get('/categoryProduct/{slug}', [ProductController::class, 'categoryProduct']);
