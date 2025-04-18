@@ -849,16 +849,16 @@ class ProductController extends Controller
         try {
             try {
                 $user = JWTAuth::parseToken()->authenticate();
-                $priceTier = $user->price_tier ?? '_price';
                 if ($user->ID) {
+                    $priceTier = $user->price_tier ?? '_price';
                     $auth = true;
                 }
             } catch (\Throwable $th) {
                 $auth = false;
             }
-
+            // return $priceTier;
             // Generate cache key based on all request parameters
-            $cacheKey = 'category_products_v3_' . md5(json_encode([
+            $cacheKey = 'category_products_v3_'. $priceTier . '_' . md5(json_encode([
                 'slug' => $slug,
                 'sortBy' => $sortBy,
                 'page' => $page,
@@ -867,15 +867,16 @@ class ProductController extends Controller
                 'flavor' => $flavor,
                 'type' => $type,
                 'taxo' => $taxo,
-                'priceTier' => $priceTier,
                 'auth' => $auth
             ]));
 
             // Try to get cached results
             $cachedResults = Cache::get($cacheKey);
             if ($cachedResults) {
-                // Update stock status for cached results
+                // Update stock status and prices for cached results
                 $productIds = collect($cachedResults['data'])->pluck('ID')->toArray();
+                
+                // Get fresh stock status
                 $freshStockData = Product::whereIn('ID', $productIds)
                     ->with(['meta' => function($query) {
                         $query->where('meta_key', '_stock_status');
@@ -885,7 +886,40 @@ class ProductController extends Controller
                         return [$product->ID => $product->meta->first()->meta_value ?? 'instock'];
                     });
 
-                $cachedResults['data'] = collect($cachedResults['data'])->map(function($product) use ($freshStockData) {
+                // Get fresh prices
+                $freshPriceData = [];
+                if ($auth) {
+                    $freshPriceData = DB::table('wp_postmeta')
+                        ->whereIn('post_id', $productIds)
+                        ->where('meta_key', $priceTier)
+                        ->get()
+                        ->mapWithKeys(function($meta) {
+                            return [$meta->post_id => $meta->meta_value];
+                        });
+
+                    // Get variation prices for products without direct price
+                    $productsNeedingVariationPrice = array_diff($productIds, array_keys($freshPriceData->toArray()));
+                    if (!empty($productsNeedingVariationPrice)) {
+                        $variationPrices = DB::table('wp_posts as variations')
+                            ->join('wp_postmeta as variation_meta', 'variations.ID', '=', 'variation_meta.post_id')
+                            ->whereIn('variations.post_parent', $productsNeedingVariationPrice)
+                            ->where('variations.post_type', 'product_variation')
+                            ->where('variation_meta.meta_key', $priceTier)
+                            ->select('variations.post_parent', 'variation_meta.meta_value')
+                            ->get()
+                            ->groupBy('post_parent')
+                            ->map(function($group) {
+                                return collect($group)->first()->meta_value;
+                            });
+                        
+                        foreach($variationPrices as $productId => $price) {
+                            $freshPriceData->put($productId, $price);
+                        }
+                    }
+                }
+
+                $cachedResults['data'] = collect($cachedResults['data'])->map(function($product) use ($freshStockData, $freshPriceData, $auth) {
+                    // Update stock status
                     if (isset($product['meta']) && is_array($product['meta'])) {
                         $product['meta'] = collect($product['meta'])->map(function($meta) use ($product, $freshStockData) {
                             if (isset($meta['meta_key']) && $meta['meta_key'] === '_stock_status') {
@@ -894,6 +928,12 @@ class ProductController extends Controller
                             return $meta;
                         })->toArray();
                     }
+
+                    // Update price if authenticated
+                    if ($auth && isset($product['ID'])) {
+                        $product['ad_price'] = $freshPriceData->get($product['ID'], null);
+                    }
+
                     return $product;
                 })->toArray();
 
@@ -1165,7 +1205,7 @@ class ProductController extends Controller
             } catch (\Throwable $th) {
                 $auth = false;
             }
-            $cacheKey = 'search_products_v3_' . md5(json_encode([
+            $cacheKey = 'search_products_v3_' . $priceTier . '_' . md5(json_encode([
                 'searchTerm' => $searchTerm,
                 'sortBy' => $sortBy,
                 'page' => $page,
@@ -1266,7 +1306,7 @@ class ProductController extends Controller
                 $products->where(function ($query) use ($flavor) {
                     $query->whereHas('variations.varients', function ($variationQuery) use ($flavor) {
                         $variationQuery->where('meta_key', 'like', 'attribute_%')
-                            ->whereIn('meta_value', $flavor);
+                            ->whereIn('meta_value', $flavor);  
                     });
                 });
             }
