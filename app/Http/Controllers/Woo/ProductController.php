@@ -844,10 +844,12 @@ class ProductController extends Controller
             'min' => (int) $priceRangeMin,
             'max' => (int) $priceRangeMax
         ];
+        $priceTier = '_price';
 
         try {
             try {
                 $user = JWTAuth::parseToken()->authenticate();
+                $priceTier = $user->price_tier ?? '_price';
                 if ($user->ID) {
                     $auth = true;
                 }
@@ -855,7 +857,7 @@ class ProductController extends Controller
                 $auth = false;
             }
 
-            // Generate cache key based on all request parameters except priceTier
+            // Generate cache key based on all request parameters
             $cacheKey = 'category_products_v3_' . md5(json_encode([
                 'slug' => $slug,
                 'sortBy' => $sortBy,
@@ -865,43 +867,32 @@ class ProductController extends Controller
                 'flavor' => $flavor,
                 'type' => $type,
                 'taxo' => $taxo,
+                'priceTier' => $priceTier,
                 'auth' => $auth
             ]));
 
             // Try to get cached results
             $cachedResults = Cache::get($cacheKey);
             if ($cachedResults) {
-                // Update stock status and price for cached results
+                // Update stock status for cached results
                 $productIds = collect($cachedResults['data'])->pluck('ID')->toArray();
-                $freshData = Product::whereIn('ID', $productIds)
-                    ->with(['meta' => function($query) use ($auth, $user) {
+                $freshStockData = Product::whereIn('ID', $productIds)
+                    ->with(['meta' => function($query) {
                         $query->where('meta_key', '_stock_status');
-                        if ($auth) {
-                            $priceTier = $user->price_tier ?? '_price';
-                            $query->orWhere('meta_key', $priceTier);
-                        }
                     }])
                     ->get()
-                    ->mapWithKeys(function($product) use ($auth, $user) {
-                        $data = ['stock_status' => $product->meta->where('meta_key', '_stock_status')->first()->meta_value ?? 'instock'];
-                        if ($auth) {
-                            $priceTier = $user->price_tier ?? '_price';
-                            $data['price'] = $product->meta->where('meta_key', $priceTier)->first()->meta_value ?? null;
-                        }
-                        return [$product->ID => $data];
+                    ->mapWithKeys(function($product) {
+                        return [$product->ID => $product->meta->first()->meta_value ?? 'instock'];
                     });
 
-                $cachedResults['data'] = collect($cachedResults['data'])->map(function($product) use ($freshData, $auth) {
+                $cachedResults['data'] = collect($cachedResults['data'])->map(function($product) use ($freshStockData) {
                     if (isset($product['meta']) && is_array($product['meta'])) {
-                        $product['meta'] = collect($product['meta'])->map(function($meta) use ($product, $freshData, $auth) {
+                        $product['meta'] = collect($product['meta'])->map(function($meta) use ($product, $freshStockData) {
                             if (isset($meta['meta_key']) && $meta['meta_key'] === '_stock_status') {
-                                $meta['meta_value'] = $freshData[$product['ID']]['stock_status'] ?? 'instock';
+                                $meta['meta_value'] = $freshStockData[$product['ID']] ?? 'instock';
                             }
                             return $meta;
                         })->toArray();
-                    }
-                    if ($auth) {
-                        $product['ad_price'] = $freshData[$product['ID']]['price'] ?? null;
                     }
                     return $product;
                 })->toArray();
@@ -910,9 +901,9 @@ class ProductController extends Controller
             }
 
             $products = Product::with([
-                'meta' => function ($query) {
+                'meta' => function ($query) use ($priceTier) {
                     $query->select('post_id', 'meta_key', 'meta_value')
-                        ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', '_product_image_gallery']);
+                        ->whereIn('meta_key', ['_price', '_stock_status', '_sku', '_thumbnail_id', '_product_image_gallery', $priceTier]);
                 },
                 'categories' => function ($query) {
                     $query->select('wp_terms.term_id', 'wp_terms.name', 'wp_terms.slug')
@@ -926,12 +917,12 @@ class ProductController extends Controller
                             }
                         ]);
                 },
-                'variations' => function ($query) {
+                'variations' => function ($query) use ($priceTier) {
                     $query->select('ID', 'post_parent', 'post_title', 'post_name')
                         ->with([
-                            'varients' => function ($query) {
+                            'varients' => function ($query) use ($priceTier) {
                                 $query->select('post_id', 'meta_key', 'meta_value')
-                                    ->whereIn('meta_key', ['_price', 'attribute_.*', '_stock_status', '_sku', '_thumbnail_id'])
+                                    ->whereIn('meta_key', ['_price','attribute_.*', '_stock_status', '_sku', '_thumbnail_id', $priceTier])
                                     ->orWhere(function ($query) {
                                         $query->where('meta_key', 'like', 'attribute_%');
                                     });
@@ -974,17 +965,17 @@ class ProductController extends Controller
             }
 
             if ($priceRange['min'] > 0 && $priceRange['max'] > 0) {
-                $products->where(function ($query) use ($priceRange) {
-                    $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange) {
-                        $variationQuery->where('meta_key', '_price')
+                $products->where(function ($query) use ($priceRange, $priceTier) {
+                    $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
+                        $variationQuery->where('meta_key', $priceTier)
                             ->whereRaw(
                                 "CAST(meta_value AS DECIMAL(10,2)) >= ? AND CAST(meta_value AS DECIMAL(10,2)) <= ?",
                                 [$priceRange['min'], $priceRange['max']]
                             );
                     });
 
-                    $query->orWhereHas('meta', function ($metaQuery) use ($priceRange) {
-                        $metaQuery->where('meta_key', '_price')
+                    $query->orWhereHas('meta', function ($metaQuery) use ($priceRange, $priceTier) {
+                        $metaQuery->where('meta_key', $priceTier)
                             ->whereRaw(
                                 "CAST(meta_value AS DECIMAL(10,2)) >= ? AND CAST(meta_value AS DECIMAL(10,2)) <= ?",
                                 [$priceRange['min'], $priceRange['max']]
@@ -992,16 +983,16 @@ class ProductController extends Controller
                     });
                 });
             } elseif ($priceRange['min'] > 0 && $priceRange['max'] == 0) {
-                $products->where(function ($query) use ($priceRange) {
-                    $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange) {
-                        $variationQuery->where('meta_key', '_price')
+                $products->where(function ($query) use ($priceRange, $priceTier) {
+                    $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
+                        $variationQuery->where('meta_key', $priceTier)
                             ->whereRaw(
                                 "CAST(meta_value AS DECIMAL(10,2)) >= ?",
                                 [$priceRange['min']]
                             );
                     });
-                    $query->orWhereHas('meta', function ($metaQuery) use ($priceRange) {
-                        $metaQuery->where('meta_key', '_price')
+                    $query->orWhereHas('meta', function ($metaQuery) use ($priceRange, $priceTier) {
+                        $metaQuery->where('meta_key', $priceTier)
                             ->whereRaw(
                                 "CAST(meta_value AS DECIMAL(10,2)) >= ?",
                                 [$priceRange['min']]
@@ -1009,17 +1000,17 @@ class ProductController extends Controller
                     });
                 });
             } elseif ($priceRange['max'] > 0 && $priceRange['min'] == 0) {
-                $products->where(function ($query) use ($priceRange) {
-                    $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange) {
-                        $variationQuery->where('meta_key', '_price')
+                $products->where(function ($query) use ($priceRange, $priceTier) {
+                    $query->whereHas('variations.varients', function ($variationQuery) use ($priceRange, $priceTier) {
+                        $variationQuery->where('meta_key', $priceTier)
                             ->whereRaw(
                                 "CAST(meta_value AS DECIMAL(10,2)) <= ?",
                                 [$priceRange['max']]
                             );
                     });
 
-                    $query->orWhereHas('meta', function ($metaQuery) use ($priceRange) {
-                        $metaQuery->where('meta_key', '_price')
+                    $query->orWhereHas('meta', function ($metaQuery) use ($priceRange, $priceTier) {
+                        $metaQuery->where('meta_key', $priceTier)
                             ->whereRaw(
                                 "CAST(meta_value AS DECIMAL(10,2)) <= ?",
                                 [$priceRange['max']]
@@ -1068,7 +1059,7 @@ class ProductController extends Controller
                 ->values()
                 ->all();
 
-            $products->getCollection()->transform(function ($product) use ($auth, $user) {
+            $products->getCollection()->transform(function ($product) use ($priceTier, $auth) {
                 $thumbnailUrl = $product->thumbnail ? $product->thumbnail->guid : null;
                 $galleryImageIds = $product->meta->where('meta_key', '_product_image_gallery')->pluck('meta_value')->first();
                 $galleryImages = [];
@@ -1080,8 +1071,9 @@ class ProductController extends Controller
                     }
                 }
                 $ad_price = null;
-                if($auth) {
-                    $priceTier = $user->price_tier ?? '_price';
+                if($auth == false){
+                    $ad_price = null;
+                } else {
                     if ($product->variations->isNotEmpty()) {
                         foreach ($product->variations as $variation) {
                             $variationPrice = $variation->varients->where('meta_key', $priceTier)->pluck('meta_value')->first();
@@ -1095,15 +1087,19 @@ class ProductController extends Controller
                         $ad_price = $product->meta->where('meta_key', $priceTier)->pluck('meta_value')->first();
                     }
                 }
-                $metaArray = $product->meta->map(function ($meta) {
-                    return [
-                        'meta_key' => $meta->meta_key,
-                        'meta_value' => $meta->meta_value
-                    ];
-                })->toArray();
-                $meta = $auth ? $metaArray : array_values(array_filter($metaArray, function ($meta) {
-                    return $meta['meta_key'] !== '_price';
-                }));
+                if($auth == false){
+                    $metaArray = $product->meta->map(function ($meta) {
+                        return [
+                            'meta_key' => $meta->meta_key,
+                            'meta_value' => $meta->meta_value
+                        ];
+                    })->toArray();
+                    $meta = $auth ? $metaArray : array_values(array_filter($metaArray, function ($meta) {
+                        return $meta['meta_key'] !== '_price';
+                    }));    
+                } else {
+                    $meta = $product->meta;
+                }
                 
                 return [
                     'ID' => $product->ID,
