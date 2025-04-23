@@ -167,7 +167,7 @@ class CheckoutController extends Controller
         $data = $request->all();
 
         $data['billing']['email']=$data['billing']['email']??$this->getUserMeta($user->ID, 'billing_email');
-        $isRestrictedState=in_array(['CA','UT','MN','PA'],[$data['shipping']['state']])?true:false;
+        $isRestrictedState=in_array($data['shipping']['state'],['CA','UT','MN','PA'])?true:false;
         if($isRestrictedState){
             return response()->json(['status' => false, 'message' => 'We are not accepting orders to the selected shipping state']);
         }

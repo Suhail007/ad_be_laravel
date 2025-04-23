@@ -305,7 +305,7 @@ class PayPalController extends Controller
                     $shippingInfo['zipcode'] = $shippingInfo['postcode'];
                     unset($shippingInfo['postcode']);
                 }
-                $isRestrictedState=in_array(['CA','UT','MN','PA'],[$shippingInfo['state']])?true:false;
+                $isRestrictedState=in_array($shippingInfo['state'],['CA','UT','MN','PA'])?true:false;
                 if($isRestrictedState){
                     return response()->json(['status' => false, 'message' => 'We are not accepting orders to the selected shipping state']);
                 }
@@ -1155,7 +1155,7 @@ class PayPalController extends Controller
                 );
                 $orderData = Checkout::where('user_id', $user->ID)->first();
                 $shippingInfo=$orderData['shipping'];
-                $isRestrictedState=in_array(['CA','UT','MN','PA'],[$shippingInfo['state']])?true:false;
+                $isRestrictedState=in_array($shippingInfo['state'],['CA','UT','MN','PA'])?true:false;
                 if($isRestrictedState){
                     return response()->json(['status' => false, 'message' => 'We are not accepting orders to the selected shipping state']);
                 }
