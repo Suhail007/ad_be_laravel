@@ -56,7 +56,7 @@ class LoginController extends Controller
 
             $currentApiServer = Cache::get('current_api_server', 1);
 
-            $newApiServer = $currentApiServer == 2 ? 1 : 2;
+            $newApiServer = $currentApiServer % 3 + 1;
 
             Cache::put('current_api_server', $newApiServer);
 

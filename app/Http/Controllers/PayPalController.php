@@ -226,13 +226,17 @@ class PayPalController extends Controller
                     }
                     try {
                         if (isset($item['discount_amt']) && $item['discount_amt']) {
-                            $cartDiscount += $item['discount_amt'];
+                            if($item['type'] == 'fixed_price'){
+                                
+                            } else {
+                                $cartDiscount += $item['discount_amt'];
+                            }
 
                             $couponIDs[] = $item['applicable_rules'][0]['rule_id'];
 
                             //coupon user limit validation and functionality 
                             try {
-                                if ($item['applicable_rules'][0]['userUseLimit'] == 1 && $item['applicable_rules'][0]['label']=="Spaceman10") {
+                                if ($item['applicable_rules'][0]['userUseLimit'] == 1 && $item['applicable_rules'][0]['label'] == "Spaceman10") {
                                     $limitCouponID = $item['applicable_rules'][0]['rule_id'];
                                     $limitUserEmail = $user->user_email;
                                     $isApplicable = UserCoupon::where('discountRuleId', $limitCouponID)->where('email', $limitUserEmail)->first();
@@ -263,7 +267,7 @@ class PayPalController extends Controller
                             } catch (\Throwable $th) {
                                 //throw $th;
                             }
-                            
+
                             $isPercentageCoupone = true;
                         }
                     } catch (\Throwable $th) {
@@ -300,6 +304,10 @@ class PayPalController extends Controller
                 if (isset($shippingInfo['postcode'])) {
                     $shippingInfo['zipcode'] = $shippingInfo['postcode'];
                     unset($shippingInfo['postcode']);
+                }
+                $isRestrictedState=in_array(['CA','UT','MN','PA'],[$shippingInfo['state']])?true:false;
+                if($isRestrictedState){
+                    return response()->json(['status' => false, 'message' => 'We are not accepting orders to the selected shipping state']);
                 }
                 $validShippingKeys = [
                     "shipping_first_name" => "first_name",
@@ -349,9 +357,8 @@ class PayPalController extends Controller
                 try {
                     Log::info('Payment Result: ' . json_encode($paymentResult, JSON_PRETTY_PRINT));
                 } catch (\Throwable $th) {
-
                 }
-                if ($paymentResult['status'] ===false || $paymentResult['responsetext'] !== 'Approved') {
+                if ($paymentResult['status'] === false || $paymentResult['responsetext'] !== 'Approved') {
                     return response()->json([
                         'status' => false,
                         'message' => $paymentResult['responsetext'], // Send the response text as the message
@@ -618,11 +625,9 @@ class PayPalController extends Controller
 
                     $taxAmmountWC = 0;
                     $temp = false;
-                    $giveawaySaleCasper = 0;
-                    $giveawaySaleKrature=0;
                     foreach ($orderData['extra'] as $item) {
                         if ($item['quantity'] < 0) {
-                            $item['quantity'] = 1; 
+                            $item['quantity'] = 1;
                         }
                         $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,
@@ -641,7 +646,7 @@ class PayPalController extends Controller
                         $initialPrice = 0;
 
                         if ($item['isVape'] == true) {
-                            
+
                             $iLTax = $item['quantity'] * $item['taxPerUnit'];
                             $iLTax = round($iLTax, 2);
                         } else {
@@ -650,14 +655,6 @@ class PayPalController extends Controller
                         $float2 = 0.00;
                         $float2 = $item['quantity'] * $productPrice;
                         $float2 = round($float2, 2);
-                        
-                        // 16/04/2025
-                        if (!empty($item['taxonomies']) && in_array(1835, $item['taxonomies'])) { // 1835-> casper-blend
-                            $giveawaySaleCasper += $float2;
-                        }
-                        if (!empty($item['taxonomies']) && in_array(2687, $item['taxonomies'])) { // 2687->krature-hydroxy
-                            $giveawaySaleKrature += $float2;
-                        }
                         $linetotal += $float2;
 
                         $taxAmount = (float) ($iLTax ?? 0);
@@ -674,11 +671,13 @@ class PayPalController extends Controller
                         if ($orderData['shipping']['state'] == 'IL' && $item['isVape'] == true) {
                             $indirect_tax_amount = 0.00;
                         }
+
+                        
                         $itemMeta = [
                             ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_sku', 'meta_value' => $item['sku']??'AD'],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_sku', 'meta_value' => $item['sku'] ?? 'AD'],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_reduced_stock', 'meta_value' => $item['quantity']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
                             ['order_item_id' => $orderItemId, 'meta_key' => 'flavor', 'meta_value' => implode(',', $item['variation']) ?? ''],
@@ -688,9 +687,9 @@ class PayPalController extends Controller
 
                             ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => $indirect_tax_amount ?? 0],
 
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $linetotal ?? 0], //
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $linetotal ?? 0], //
-                            //
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => isset($item['type']) && $item['type'] == 'fixed_price' ? (isset($item['subTotal']) ? $item['subTotal'] : 0) : ($linetotal ?? 0)],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => isset($item['type']) && $item['type'] == 'fixed_price' ? ((isset($item['subTotal']) ? $item['subTotal'] : 0) + (isset($item['discount_amt']) ? $item['discount_amt'] : 0)) : ($linetotal ?? 0)],
+                            
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => $iLTax ?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' => $iLTax ?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' =>  $serializedData],
@@ -768,12 +767,15 @@ class PayPalController extends Controller
                                     $cartValue = 0;
                                     $cartType = ' ';
                                 }
-                                if ($cartType == 'percentage') {
+                                if ($cartType == 'percentage' || $cartType == 'fixed_price') {
                                     $cartTypeN = 'percent';
                                 }
                                 $couponTitle = $cartLabel; //20% off  //<-lable
                                 $discountRateType = $cartTypeN; // 'percent'
                                 $discountRateValue = $cartValue; //20
+                                if ($cartType == 'fixed_price') {
+                                    $discountRateValue = ($item['subTotal'] / ($item['subTotal'] + $item['discount_amt'])) * 100;
+                                }
 
                                 if ($temp == false) {
                                     $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
@@ -902,60 +904,6 @@ class PayPalController extends Controller
                             'shipping_amount' => $unitshippingCharge ?? 0,
                             'shipping_tax_amount' => 0,
                         ]);
-                    }
-                    
-                    // 16/04/2025
-                    if($giveawaySaleCasper>=300){
-                        $counterDBVal = DB::transaction(function () {
-                            DB::table('wp_options')->where('option_name', 'express_counter')->increment('option_value', 1);
-                            return DB::table('wp_options')
-                                ->where('option_name', 'express_counter')
-                                ->value('option_value');
-                        });
-                        if($counterDBVal<10){
-                            $counterDBVal= '0'.$counterDBVal;
-                        }
-                        $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
-                            'order_id' => $orderId,
-                            'order_item_name' => 'RAFFLECS'.$counterDBVal,
-                            'order_item_type' => 'coupon'
-                        ]);
-                        $coupon_info = [0,'RAFFLECS'.$counterDBVal, 'GIVEAWAY', 0];
-                        $jsonCouponInfo = json_encode($coupon_info);
-                        $metaILTax = [
-                            ['order_item_id' => $id3, 'meta_key' => 'coupon_info', 'meta_value' => $jsonCouponInfo],
-                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount_tax', 'meta_value' =>  0],
-                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount', 'meta_value' =>  0],
-                        ];
-                        foreach ($metaILTax as $meta) {
-                            OrderItemMeta::insert($meta);
-                        }
-                    }
-                    if($giveawaySaleKrature>=300){
-                        $counterDBVal = DB::transaction(function () {
-                            DB::table('wp_options')->where('option_name', 'express_counter_2')->increment('option_value', 1);
-                            return DB::table('wp_options')
-                                ->where('option_name', 'express_counter')
-                                ->value('option_value');
-                        });
-                        if($counterDBVal<10){
-                            $counterDBVal= '0'.$counterDBVal;
-                        }
-                        $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
-                            'order_id' => $orderId,
-                            'order_item_name' => 'RAFFLEKR'.$counterDBVal,
-                            'order_item_type' => 'coupon'
-                        ]);
-                        $coupon_info = [0, 'RAFFLEKR'.$counterDBVal, 'GIVEAWAY', 0];
-                        $jsonCouponInfo = json_encode($coupon_info);
-                        $metaILTax = [
-                            ['order_item_id' => $id3, 'meta_key' => 'coupon_info', 'meta_value' => $jsonCouponInfo],
-                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount_tax', 'meta_value' => 0],
-                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount', 'meta_value' => 0],
-                        ];
-                        foreach ($metaILTax as $meta) {
-                            OrderItemMeta::insert($meta);
-                        }
                     }
 
                     DB::table('wp_wc_orders')->insert([
@@ -1129,7 +1077,7 @@ class PayPalController extends Controller
                             $quantity = $item->meta->where('meta_key', '_qty')->first()->meta_value ?? 0;
                             $subtotal = $item->meta->where('meta_key', '_line_subtotal')->first()->meta_value ?? 0;
                             $total = $item->meta->where('meta_key', '_line_total')->first()->meta_value ?? 0;
-                
+
                             return [
                                 'name' => $item->order_item_name,
                                 'sku' => $sku,
@@ -1143,7 +1091,7 @@ class PayPalController extends Controller
                         $tax = $order->meta->where('meta_key', '_order_tax')->first()->meta_value ?? 0;
                         $discount = $order->meta->where('meta_key', '_cart_discount')->first()->meta_value ?? 0;
                         $total = $order->meta->where('meta_key', '_order_total')->first()->meta_value ?? 0;
-                        $watermarkNumber= $user->account ?? '  ';
+                        $watermarkNumber = $user->account ?? '  ';
                         $html = View::make('pdf.order_invoice', compact(
                             'order',
                             'shippingAddress',
@@ -1164,7 +1112,7 @@ class PayPalController extends Controller
                         $pdfOutput = $dompdf->output();
                         $tempFilePath = "temp/order_invoice_{$orderId}.pdf";
                         Storage::put($tempFilePath, $pdfOutput);
-                        
+
                         SendOrderConfirmationEmail::dispatch(
                             $email,
                             $newValue,
@@ -1177,7 +1125,6 @@ class PayPalController extends Controller
                         Log::info("Failed to send mail for $orderId because:");
                         Log::info($th->getMessage());
                     }
-                    
                 } catch (\Exception $e) {
                     DB::rollBack();
                     return response()->json(['error' => 'Order creation failed: ' . $e->getMessage()], 500);
@@ -1207,6 +1154,11 @@ class PayPalController extends Controller
                     ]
                 );
                 $orderData = Checkout::where('user_id', $user->ID)->first();
+                $shippingInfo=$orderData['shipping'];
+                $isRestrictedState=in_array(['CA','UT','MN','PA'],[$shippingInfo['state']])?true:false;
+                if($isRestrictedState){
+                    return response()->json(['status' => false, 'message' => 'We are not accepting orders to the selected shipping state']);
+                }
 
                 $isVape = false;
                 $order_tax = 0;
@@ -1219,7 +1171,7 @@ class PayPalController extends Controller
                 $isPercentageCoupone = false;
                 foreach ($orderData['extra'] as $item) {
                     if ($item['quantity'] < 0) {
-                        $item['quantity'] = 1; 
+                        $item['quantity'] = 1;
                     }
                     $ordertotalQTY += $item['quantity'];
                     $subtotal = $item['product_price'];
@@ -1239,9 +1191,9 @@ class PayPalController extends Controller
 
                             $couponIDs[] = $item['applicable_rules'][0]['rule_id'];
 
-                             //coupon user limit validation and functionality 
-                             try {
-                                if ($item['applicable_rules'][0]['userUseLimit'] == 1 && $item['applicable_rules'][0]['label']=="Spaceman10") {
+                            //coupon user limit validation and functionality 
+                            try {
+                                if ($item['applicable_rules'][0]['userUseLimit'] == 1 && $item['applicable_rules'][0]['label'] == "Spaceman10") {
                                     $limitCouponID = $item['applicable_rules'][0]['rule_id'];
                                     $limitUserEmail = $user->user_email;
                                     $isApplicable = UserCoupon::where('discountRuleId', $limitCouponID)->where('email', $limitUserEmail)->first();
@@ -1562,11 +1514,9 @@ class PayPalController extends Controller
 
                     $dd = [];
                     $temp = false;
-                    $giveawaySaleCasper = 0;
-                    $giveawaySaleKrature=0;
                     foreach ($orderData['extra'] as $item) {
                         if ($item['quantity'] < 0) {
-                            $item['quantity'] = 1; 
+                            $item['quantity'] = 1;
                         }
                         $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
                             'order_id' => $orderId,
@@ -1595,14 +1545,6 @@ class PayPalController extends Controller
                         $float2 = 0.00;
                         $float2 = $item['quantity'] * $productPrice;
                         $float2 = round($float2, 2);
-
-                        // 16/04/2025
-                        if (!empty($item['taxonomies']) && in_array(1835, $item['taxonomies'])) { // 1835-> casper-blend
-                            $giveawaySaleCasper += $float2;
-                        }
-                        if (!empty($item['taxonomies']) && in_array(2687, $item['taxonomies'])) { // 2687->krature-hydroxy
-                            $giveawaySaleKrature += $float2;
-                        }
                         $linetotal += $float2;
 
                         $taxAmount = (float) ($iLTax ?? 0);
@@ -1623,7 +1565,7 @@ class PayPalController extends Controller
                             ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
-                            ['order_item_id' => $orderItemId, 'meta_key' => '_sku', 'meta_value' => $item['sku']??'AD'],
+                            ['order_item_id' => $orderItemId, 'meta_key' => '_sku', 'meta_value' => $item['sku'] ?? 'AD'],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_reduced_stock', 'meta_value' => $item['quantity']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
                             ['order_item_id' => $orderItemId, 'meta_key' => 'flavor', 'meta_value' => implode(',', $item['variation']) ?? ''],
@@ -1827,7 +1769,7 @@ class PayPalController extends Controller
                                 $serializedData3 = serialize($data3);
                                 $itemMeta[] = ['order_item_id' => $orderItemId, 'meta_key' => '_wdr_discounts', 'meta_value' => $serializedData2];
                                 $itemMeta[] = ['order_item_id' => $orderItemId, 'meta_key' => '_advanced_woo_discount_item_total_discount', 'meta_value' => $serializedData3];
-                            } 
+                            }
                         } catch (\Throwable $th) {
                             //throw $th;
                         }
@@ -1868,62 +1810,7 @@ class PayPalController extends Controller
                             'shipping_tax_amount' => 0,
                         ]);
                     }
-
-
-                    // 16/04/2025
-                    if($giveawaySaleCasper>=300){
-                        $counterDBVal = DB::transaction(function () {
-                            DB::table('wp_options')->where('option_name', 'express_counter')->increment('option_value', 1);
-                            return DB::table('wp_options')
-                                ->where('option_name', 'express_counter')
-                                ->value('option_value');
-                        });
-                        if($counterDBVal<10){
-                            $counterDBVal= '0'.$counterDBVal;
-                        }
-                        $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
-                            'order_id' => $orderId,
-                            'order_item_name' => 'RAFFLECS'.$counterDBVal,
-                            'order_item_type' => 'coupon'
-                        ]);
-                        $coupon_info = [0,'RAFFLECS'.$counterDBVal, 'GIVEAWAY', 0];
-                        $jsonCouponInfo = json_encode($coupon_info);
-                        $metaILTax = [
-                            ['order_item_id' => $id3, 'meta_key' => 'coupon_info', 'meta_value' => $jsonCouponInfo],
-                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount_tax', 'meta_value' =>  0],
-                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount', 'meta_value' =>  0],
-                        ];
-                        foreach ($metaILTax as $meta) {
-                            OrderItemMeta::insert($meta);
-                        }
-                    }
-                    if($giveawaySaleKrature>=300){
-                        $counterDBVal = DB::transaction(function () {
-                            DB::table('wp_options')->where('option_name', 'express_counter_2')->increment('option_value', 1);
-                            return DB::table('wp_options')
-                                ->where('option_name', 'express_counter')
-                                ->value('option_value');
-                        });
-                        if($counterDBVal<10){
-                            $counterDBVal= '0'.$counterDBVal;
-                        }
-                        $id3 = DB::table('wp_woocommerce_order_items')->insertGetId([
-                            'order_id' => $orderId,
-                            'order_item_name' => 'RAFFLEKR'.$counterDBVal,
-                            'order_item_type' => 'coupon'
-                        ]);
-                        $coupon_info = [0, 'RAFFLEKR'.$counterDBVal, 'GIVEAWAY', 0];
-                        $jsonCouponInfo = json_encode($coupon_info);
-                        $metaILTax = [
-                            ['order_item_id' => $id3, 'meta_key' => 'coupon_info', 'meta_value' => $jsonCouponInfo],
-                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount_tax', 'meta_value' => 0],
-                            ['order_item_id' => $id3, 'meta_key' => 'discount_amount', 'meta_value' => 0],
-                        ];
-                        foreach ($metaILTax as $meta) {
-                            OrderItemMeta::insert($meta);
-                        }
-                    }
-
+                    
                     // dd($dd);
                     DB::table('wp_wc_orders')->insert([
                         'id' => $orderId,
@@ -2100,7 +1987,7 @@ class PayPalController extends Controller
                         $quantity = $item->meta->where('meta_key', '_qty')->first()->meta_value ?? 0;
                         $subtotal = $item->meta->where('meta_key', '_line_subtotal')->first()->meta_value ?? 0;
                         $total = $item->meta->where('meta_key', '_line_total')->first()->meta_value ?? 0;
-            
+
                         return [
                             'name' => $item->order_item_name,
                             'sku' => $sku,
@@ -2114,7 +2001,7 @@ class PayPalController extends Controller
                     $tax = $order->meta->where('meta_key', '_order_tax')->first()->meta_value ?? 0;
                     $discount = $order->meta->where('meta_key', '_cart_discount')->first()->meta_value ?? 0;
                     $total = $order->meta->where('meta_key', '_order_total')->first()->meta_value ?? 0;
-                    $watermarkNumber= $user->account ?? '  ';
+                    $watermarkNumber = $user->account ?? '  ';
                     $html = View::make('pdf.order_invoice', compact(
                         'order',
                         'shippingAddress',
@@ -2135,7 +2022,7 @@ class PayPalController extends Controller
                     $pdfOutput = $dompdf->output();
                     $tempFilePath = "temp/order_invoice_{$orderId}.pdf";
                     Storage::put($tempFilePath, $pdfOutput);
-                    
+
                     SendOrderConfirmationEmail::dispatch(
                         $email,
                         $newValue,

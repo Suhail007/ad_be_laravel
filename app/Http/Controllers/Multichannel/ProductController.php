@@ -12,8 +12,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class ProductController extends Controller
 {
-    public function getProductVariation(Request $request,$id=null)
-    {
+    public function getProductVariation(Request $request,$id=null){
         $isAdmin = false;
         try {
             $user = JWTAuth::parseToken()->authenticate();
@@ -58,8 +57,7 @@ class ProductController extends Controller
             return response()->json(['status'=>true,'data'=>$product]);
     }
 
-    public function updateQuantity(Request $request)
-    {
+    public function updateQuantity(Request $request){
         $isAdmin = false;
         try {
             $user = JWTAuth::parseToken()->authenticate();
@@ -70,10 +68,11 @@ class ProductController extends Controller
                 }
             }
         } catch (\Throwable $th) {
+        
         }
-
-        if (!$isAdmin) {
-            return response()->json(['status' => false, 'message' => 'Hey you are not Allowed']);
+        
+        if(!$isAdmin){
+            return response()->json(['status'=>false, 'message'=>'Hey you are not Allowed']);
         }
         $validate = Validator::make($request->all(), [
             'quantities' => 'required|array',
@@ -99,21 +98,20 @@ class ProductController extends Controller
         foreach ($data['quantities'] as $quantity) {
             // Check if meta already exists with meta_id and meta_key (optionally you could also add post_id to prevent conflicts)
             $meta = ProductMeta::updateOrCreate(
-                [
-                    'meta_key' => $quantity['type'],
+                [    
+                    'meta_key' => $quantity['type'],  
                     'post_id' => $quantity['post_id'],  // Adding post_id to prevent conflicts with other entries
                 ],
                 [
-                    'meta_value' => $quantity['value'],
+                    'meta_value' => $quantity['value'], 
                 ]
             );
         }
 
-        return response()->json(['status' => true, 'message' => 'Quantities updated successfully.']);
+        return response()->json(['status' => true,'message' => 'Quantities updated successfully.']);
     }
-
-    public function getPurchaseLimitProduct(Request $request)
-    {
+    
+    public function getPurchaseLimitProduct(Request $request){
         $searchTerm = $request->input('searchTerm', '');
         $perPage = $request->query('perPage', 15);
         $sortBy = $request->query('sort', 'default');
@@ -149,10 +147,10 @@ class ProductController extends Controller
         )
         ->unique()
         ->toArray();
-    
 
-$products = Product::with([
-    'meta' => function ($query)  {
+
+        $products = Product::with([
+        'meta' => function ($query)  {
         $query->select('post_id', 'meta_key', 'meta_value')
             ->whereIn('meta_key', [
                 '_price',
@@ -164,8 +162,8 @@ $products = Product::with([
                 '_thumbnail_id',
                 '_product_image_gallery',
             ]);
-    },
-    'variations' => function ($query)  {
+        },
+        'variations' => function ($query)  {
         $query->select('ID', 'post_parent', 'post_title', 'post_name')
             ->with([
                 'varients' => function ($query)  {
@@ -181,16 +179,14 @@ $products = Product::with([
                         ]);
                 }
             ]);
-    },
-    'thumbnail'
-])
-    ->whereIn('ID', $productIds)
-    ->where('post_type', 'product')
-    ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
-    ->orderBy($sortBy, $sortOrder)
-    ->paginate($perPage, ['*'], 'page', $page);
-
-
+        },
+        'thumbnail'
+        ])
+        ->whereIn('ID', $productIds)
+        ->where('post_type', 'product')
+        ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+        ->orderBy($sortBy, $sortOrder)
+        ->paginate($perPage, ['*'], 'page', $page);
         return response()->json([
             'status' => true,
             'products' => $products
@@ -229,43 +225,31 @@ $products = Product::with([
         }
 
     }
-    public function searchPurchaseLimitProduct(Request $request)
-    {
+
+    public function searchPurchaseLimitProduct(Request $request){
         $searchTerm = $request->input('searchTerm', '');
         $perPage = $request->query('perPage', 15);
+        $page = $request->query('page', 1);
         $sortBy = $request->query('sortBy', 'post_modified');
         $sortOrder = $request->query('sortOrder', 'desc');
         $isAdmin = false;
-
         try {
             $user = JWTAuth::parseToken()->authenticate();
             $capabilities = $user->capabilities ?? [];
             $isAdmin = isset($capabilities['administrator']);
         } catch (\Throwable $th) {}
-
         if (!$isAdmin) {
             return response()->json(['status' => false, 'message' => 'You are not allowed']);
         }
+        $regexPattern = '';
         if (!empty($searchTerm)) {
             $searchWords = preg_split('/\s+/', $searchTerm);
             $regexPattern = implode('.*', array_map(function ($word) {
                 return "(?=.*" . preg_quote($word) . ")";
             }, $searchWords));
         }
-        $productIds = ProductMeta::whereIn('meta_key', ['max_quantity', 'min_quantity'])
-            ->whereNotNull('meta_value')
-            ->where('meta_value', '!=', '')
-            ->pluck('post_id')
-            ->merge(
-                ProductMeta::whereIn('meta_key', ['max_quantity_var', 'min_quantity_var'])
-                    ->whereNotNull('meta_value')
-                    ->where('meta_value', '!=', '')
-                    ->pluck('post_id')
-            )
-            ->unique()
-            ->toArray();
-
-        $products = Product::with([
+        if(!empty($searchTerm)){
+            $products = Product::with([
                 'meta' => function ($query) {
                     $query->select('post_id', 'meta_key', 'meta_value')
                         ->whereIn('meta_key', [
@@ -278,31 +262,99 @@ $products = Product::with([
                     $query->select('ID', 'post_parent', 'post_title', 'post_name')
                         ->with(['varients' => function ($query) {
                             $query->select('post_id', 'meta_key', 'meta_value')
-                                    ->whereIn('meta_key', [
-                                        '_price', '_stock_status', '_stock',
-                                        'max_quantity_var', 'min_quantity_var',
-                                        '_sku', '_thumbnail_id'
-                                    ]);
+                                ->whereIn('meta_key', [
+                                    '_price', '_stock_status', '_stock',
+                                    'max_quantity_var', 'min_quantity_var',
+                                    '_sku', '_thumbnail_id'
+                                ]);
                         }]);
                 },
                 'thumbnail'
             ])
-            ->whereIn('ID', $productIds)
             ->where('post_type', 'product')
             ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
-            ->when($searchTerm, function ($q) use ($regexPattern) {
-                $q->where('post_title', 'REGEXP', $regexPattern);
+            ->where(function ($query) {
+                $query->whereHas('meta', function ($q) {
+                    $q->whereIn('meta_key', ['max_quantity', 'min_quantity'])
+                    ->where('meta_value', '!=', '');
+                })
+                ->orWhereHas('variations.varients', function ($q) {
+                    $q->whereIn('meta_key', ['max_quantity_var', 'min_quantity_var'])
+                    ->where('meta_value', '!=', '');
+                });
             })
-            ->orWhereHas('meta', function ($query) use ($regexPattern) {
-                $query->where('meta_key', '_sku')
-                    ->where('meta_value', 'REGEXP', $regexPattern);
+            ->when($searchTerm, function ($query) use ($regexPattern) {
+                $query->where(function ($q) use ($regexPattern) {
+                    $q->where('post_title', 'REGEXP', $regexPattern)
+                    ->orWhereHas('meta', function ($metaQuery) use ($regexPattern) {
+                        $metaQuery->where('meta_key', '_sku')
+                                    ->where('meta_value', 'REGEXP', $regexPattern);
+                    });
+                });
             })
             ->orderBy($sortBy, $sortOrder)
             ->paginate($perPage);
 
-        return response()->json([
-            'status' => true,
-            'products' => $products
-        ]);
+            return response()->json([
+                'status' => true,
+                'products' => $products
+            ]);
+        } else {
+            $priceTier = '_price';
+            $productIds = ProductMeta::whereIn('meta_key', ['max_quantity', 'min_quantity'])
+            ->whereNotNull('meta_value')
+            ->where('meta_value', '!=', '')
+            ->pluck('post_id')
+            ->merge(
+                ProductMeta::whereIn('meta_key', ['max_quantity_var', 'min_quantity_var'])
+                    ->whereNotNull('meta_value')
+                    ->where('meta_value', '!=', '')
+                    ->pluck('post_id')
+            )
+            ->unique()
+            ->toArray();
+            $products = Product::with([
+            'meta' => function ($query)  {
+            $query->select('post_id', 'meta_key', 'meta_value')
+                ->whereIn('meta_key', [
+                    '_price',
+                    '_stock_status',
+                    '_stock',
+                    'max_quantity',
+                    'min_quantity',
+                    '_sku',
+                    '_thumbnail_id',
+                    '_product_image_gallery',
+                ]);
+            },
+            'variations' => function ($query)  {
+            $query->select('ID', 'post_parent', 'post_title', 'post_name')
+                ->with([
+                    'varients' => function ($query)  {
+                        $query->select('post_id', 'meta_key', 'meta_value')
+                            ->whereIn('meta_key', [
+                                '_price',
+                                '_stock_status',
+                                '_stock',
+                                'max_quantity_var',
+                                'min_quantity_var',
+                                '_sku',
+                                '_thumbnail_id',
+                            ]);
+                    }
+                ]);
+            },
+            'thumbnail'
+            ])
+            ->whereIn('ID', $productIds)
+            ->where('post_type', 'product')
+            ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+            ->orderBy($sortBy, $sortOrder)
+            ->paginate($perPage, ['*'], 'page', $page);
+            return response()->json([
+                'status' => true,
+                'products' => $products
+            ]);
+        }
     }
 }

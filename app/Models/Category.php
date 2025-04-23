@@ -14,14 +14,12 @@ class Category extends Model
     {
         return $this->belongsToMany(Product::class, 'wp_term_relationships', 'term_taxonomy_id', 'object_id');
     }
-    public function categorymeta()
-    {
-        return $this->hasMany(CategoryMeta::class, 'term_id', 'term_id');
+    public function categorymeta(){
+        return $this->hasMany(CategoryMeta::class,'term_id','term_id');
     }
 
-    public function taxonomies()
-    {
-        return $this->hasOne(CategoryTaxonomy::class, 'term_id', 'term_id');
+    public function taxonomies(){
+        return $this->hasOne(CategoryTaxonomy::class,'term_id','term_id');
     }
     public function taxonomy()
     {
@@ -46,48 +44,51 @@ class Category extends Model
     }
 
     public static function getCategoriesWithChildren()
-    {
-        $categoryIds = BrandMenu::pluck('term_id')->toArray();
-        $categories = self::with(['children' => function ($query) {
+{
+    $categoryIds = BrandMenu::pluck('term_id')->toArray();
+
+    $categories = self::with(['children' => function ($query) {
             $query->whereHas('products', function ($q) {
                 $q->whereHas('meta', function ($metaQuery) {
                     $metaQuery->where('meta_key', '_stock_status')->where('meta_value', 'instock');
                 });
             });
         }])
-            ->whereHas('taxonomies', function ($query) {
-                $query->where('taxonomy', 'product_cat');
-            })
-            ->whereDoesntHave('taxonomy', function ($query) {
-                $query->where('parent', '>', 0)->where('count', '>', 0);
-            })
-            ->whereIn('term_id', $categoryIds)
-            ->whereHas('products', function ($query) {
-                $query->whereHas('meta', function ($metaQuery) {
-                    $metaQuery->where('meta_key', '_stock_status')->where('meta_value', 'instock');
-                });
-            })
-            ->get()
-            ->map(function ($category) {
-                return [
-                    'parent' => [
-                        'term_id' => $category->term_id,
-                        'name' => $category->name,
-                        'slug' => $category->slug,
-                        'visibility' => $category->visibility
-                    ],
-                    'children' => $category->children->map(function ($child) {
-                        return [
-                            'term_id' => $child->term_id,
-                            'name' => $child->name,
-                            'slug' => $child->slug,
-                            'visibility' => $child->visibility
-                        ];
-                    })->values()
-                ];
+        ->whereHas('taxonomies', function ($query) {
+            $query->where('taxonomy', 'product_cat');
+        })
+        ->whereDoesntHave('taxonomy', function ($query) {
+            $query->where('parent', '>', 0)->where('count', '>', 0);
+        })
+        ->whereIn('term_id', $categoryIds)
+        ->whereHas('products', function ($query) {
+            $query->whereHas('meta', function ($metaQuery) {
+                $metaQuery->where('meta_key', '_stock_status')->where('meta_value', 'instock');
             });
-        return $categories;
-    }
+        })
+        ->get()
+        ->map(function ($category) {
+            return [
+                'parent' => [
+                    'term_id' => $category->term_id,
+                    'name' => $category->name,
+                    'slug' => $category->slug,
+                    'visibility' => $category->visibility
+                ],
+                'children' => $category->children->map(function ($child) {
+                    return [
+                        'term_id' => $child->term_id,
+                        'name' => $child->name,
+                        'slug' => $child->slug,
+                        'visibility' => $child->visibility
+                    ];
+                })->values()
+            ];
+        });
+
+    return $categories;
+}
+
 
     public static function getBrandWithChildren()
     {
