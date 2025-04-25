@@ -199,10 +199,7 @@ Route::get('/sync-product/{slug?}',[PublicController::class,'wooProduct']);
 Route::get('/thumbnail/{thumbnailId?}',[PublicController::class,'getThumbnail']);
 Route::get('/synProductMeta/{id}',[PublicController::class,'syncProductMeta']);
 
-Route::get('/test-ip', function () {
-    $ip = request()->ip();
-    return response()->json(['ip' => $ip]);
-});
+Route::get('/test-ip',[ProductController::class,'rewealLocation']);
 
 Route::fallback(function () {
     return response()->json([

@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\CustomBrand;
 use App\Models\CustomCategory;
 use App\Models\Product;
+use App\Traits\LocationTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Automattic\WooCommerce\Client;
@@ -19,6 +20,7 @@ use Illuminate\Http\Response;
 
 class ProductController extends Controller
 {
+    use LocationTrait;
     protected $woocommerce;
     private function getThumbnailUrl($thumbnailId)
     {
@@ -30,6 +32,11 @@ class ProductController extends Controller
             return $attachment->guid;
         }
         return null;
+    }
+    public function rewealLocation(Request $request){
+        $ip = $request->ip();
+        $userLocation = $this->getUserLocationFromIP($ip);
+        return response()->json(['ip' => $ip, 'userLocation' => $userLocation]);
     }
     public function sidebar()
     {
