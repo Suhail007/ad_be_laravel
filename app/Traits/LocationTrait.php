@@ -25,13 +25,14 @@ trait LocationTrait
                 $response = Http::get("https://ipapi.co/{$ip}/json/");
                 if ($response->successful()) {
                     $data = $response->json();
-                    // Only proceed if it's a US location
                     if ($data['country_code'] === 'US') {
                         $state = $data['region_code'] ?? null;
                         return $state ? [
                             'state' => $state,
                             'location' => "US-{$state}"
                         ] : null;
+                    } else {
+                        return $data['country_code'].'-'.$data['region_code'];
                     }
                 }
                 return null;
