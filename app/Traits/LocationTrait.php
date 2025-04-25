@@ -23,6 +23,7 @@ trait LocationTrait
         return Cache::remember("geo_state_{$ip}", now()->addHours(6), function () use ($ip) {
             try {
                 $response = Http::get("https://ipapi.co/{$ip}/json/");
+                return $response->json();
                 if ($response->successful()) {
                     $data = $response->json();
                     if ($data['country_code'] === 'US') {
