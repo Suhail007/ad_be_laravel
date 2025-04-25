@@ -19,13 +19,14 @@ trait LocationTrait
         if (!$ip) {
             $ip = request()->ip();
         }
+        // $ip = "49.205.96.76";
 
-        return Cache::remember("geo_state_{$ip}", now()->addHours(6), function () use ($ip) {
+        // return Cache::remember("geo_state_{$ip}", now()->addHours(6), function () use ($ip) {
             try {
                 $response = Http::get("https://ipapi.co/{$ip}/json/");
-                return $response->json();
+                $data = $response->json();
+                
                 if ($response->successful()) {
-                    $data = $response->json();
                     if ($data['country_code'] === 'US') {
                         $state = $data['region_code'] ?? null;
                         return $state ? [
@@ -33,7 +34,7 @@ trait LocationTrait
                             'location' => "US-{$state}"
                         ] : null;
                     } else {
-                        return $data['country_code'].'-'.$data['region_code'];
+                        return $data['country_code'] . '-' . $data['region_code'];
                     }
                 }
                 return null;
@@ -41,6 +42,6 @@ trait LocationTrait
                 Log::error('IP Geolocation error: ' . $e->getMessage());
                 return null;
             }
-        });
+        // });
     }
 } 
