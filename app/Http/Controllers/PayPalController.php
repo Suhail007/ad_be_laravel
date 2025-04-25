@@ -305,10 +305,10 @@ class PayPalController extends Controller
                     $shippingInfo['zipcode'] = $shippingInfo['postcode'];
                     unset($shippingInfo['postcode']);
                 }
-                $isRestrictedState=in_array($shippingInfo['state'],['CA','UT','MN','PA'])?true:false;
-                if($isRestrictedState){
-                    return response()->json(['status' => false, 'message' => 'We are not accepting orders to the selected shipping state']);
-                }
+                // $isRestrictedState=in_array($shippingInfo['state'],['CA','UT','MN','PA'])?true:false;
+                // if($isRestrictedState){
+                //     return response()->json(['status' => false, 'message' => 'We are not accepting orders to the selected shipping state']);
+                // }
                 $validShippingKeys = [
                     "shipping_first_name" => "first_name",
                     "shipping_last_name" => "last_name",
@@ -1154,11 +1154,11 @@ class PayPalController extends Controller
                     ]
                 );
                 $orderData = Checkout::where('user_id', $user->ID)->first();
-                $shippingInfo=$orderData['shipping'];
-                $isRestrictedState=in_array($shippingInfo['state'],['CA','UT','MN','PA'])?true:false;
-                if($isRestrictedState){
-                    return response()->json(['status' => false, 'message' => 'We are not accepting orders to the selected shipping state']);
-                }
+                // $shippingInfo=$orderData['shipping'];
+                // $isRestrictedState=in_array($shippingInfo['state'],['CA','UT','MN','PA'])?true:false;
+                // if($isRestrictedState){
+                //     return response()->json(['status' => false, 'message' => 'We are not accepting orders to the selected shipping state']);
+                // }
 
                 $isVape = false;
                 $order_tax = 0;
