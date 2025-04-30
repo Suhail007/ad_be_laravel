@@ -625,6 +625,8 @@ class PayPalController extends Controller
 
                     $taxAmmountWC = 0;
                     $temp = false;
+                    $giveawaySaleCasper = 0;
+                    $giveawaySaleKrature=0;
                     foreach ($orderData['extra'] as $item) {
                         if ($item['quantity'] < 0) {
                             $item['quantity'] = 1;
@@ -655,6 +657,16 @@ class PayPalController extends Controller
                         $float2 = 0.00;
                         $float2 = $item['quantity'] * $productPrice;
                         $float2 = round($float2, 2);
+                                                
+                        // 16/04/2025
+                        if (!empty($item['taxonomies']) && in_array(1835, $item['taxonomies'])) { // 1835-> casper-blend
+                            $giveawaySaleCasper += $float2;
+                        }
+                        if (!empty($item['taxonomies']) && in_array(2687, $item['taxonomies'])) { // 2687->krature-hydroxy
+                            $giveawaySaleKrature += $float2;
+                        
+                        }
+                        
                         $linetotal += $float2;
 
                         $taxAmount = (float) ($iLTax ?? 0);

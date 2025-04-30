@@ -198,7 +198,7 @@ Route::get('/sync-brands',[PublicController::class,'syncWooBrand']);
 Route::get('/sync-product/{slug?}',[PublicController::class,'wooProduct']);
 Route::get('/thumbnail/{thumbnailId?}',[PublicController::class,'getThumbnail']);
 Route::get('/synProductMeta/{id}',[PublicController::class,'syncProductMeta']);
-
+Route::get('/sync-user',[PublicController::class,'syncUser']);
 Route::get('/test-ip',[ProductController::class,'rewealLocation']);
 
 Route::fallback(function () {

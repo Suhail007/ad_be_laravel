@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Woo;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductMeta;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -560,5 +561,11 @@ class PublicController extends Controller
             //throw $th;
             return response()->json(['value'=>$value, 'next'=>$nextPro]);
         }
+    }
+    public function syncUser(){
+        $page = request()->get('page')??1;
+        $perPage = request()->get('perPage')??100;
+        $users = User::with('meta')->paginate($perPage,['*'],'page',$page);
+        return response()->json(['users'=>$users,'status'=>true]);
     }
 }
