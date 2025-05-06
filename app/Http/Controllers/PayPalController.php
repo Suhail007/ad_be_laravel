@@ -185,6 +185,8 @@ class PayPalController extends Controller
         $order_wholesale_role = $request->input('order_role'); // $request->input('order_wholesale_role');
         $shippingLines = $request->input('shipping_lines');
 
+        $orderDate = $request->input('orderDate')??now()->format('Y-m-d H:i:s');
+
         $paytype = $request->input('paymentType');
         if ($paytype == 'card') {
             $payment_token = $request->input('payment_token');
@@ -449,6 +451,7 @@ class PayPalController extends Controller
                         ['post_id' => $orderId, 'meta_key' => '_order_tax', 'meta_value' => $order_tax ?? 0],
                         ['post_id' => $orderId, 'meta_key' => '_order_shipping', 'meta_value' => $floattotal],
                         ['post_id' => $orderId, 'meta_key' => '_order_shipping_tax', 'meta_value' => 0],
+                        ['post_id' => $orderId, 'meta_key' => '_order_date', 'meta_value' => $orderDate??null],
                     ];
                     try {
                         if ($isPercentageCoupone) {
@@ -1348,6 +1351,7 @@ class PayPalController extends Controller
                         ['post_id' => $orderId, 'meta_key' => '_cart_discount', 'meta_value' => $cartDiscount ?? 0],
                         ['post_id' => $orderId, 'meta_key' => '_cart_discount_tax', 'meta_value' => $cartDiscountTax ?? 0],
                         ['post_id' => $orderId, 'meta_key' => '_order_tax', 'meta_value' => $order_tax ?? 0],
+                        ['post_id' => $orderId, 'meta_key' => '_order_date', 'meta_value' => $orderDate??null],
                     ];
 
                     try {
