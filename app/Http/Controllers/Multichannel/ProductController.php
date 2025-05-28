@@ -360,6 +360,10 @@ class ProductController extends Controller
                     '_sku',
                     '_thumbnail_id',
                     '_product_image_gallery',
+                    'limit_session_start',
+                    'limit_session_end',
+                    'min_order_limit_per_user',
+                    'max_order_limit_per_user',
                 ]);
             },
             'variations' => function ($query)  {
@@ -375,6 +379,10 @@ class ProductController extends Controller
                                 'min_quantity_var',
                                 '_sku',
                                 '_thumbnail_id',
+                                'limit_session_start',
+                                'limit_session_end',
+                                'min_order_limit_per_user',
+                                'max_order_limit_per_user',
                             ]);
                     }
                 ]);
