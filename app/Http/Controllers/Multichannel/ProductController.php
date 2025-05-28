@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductMeta;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -33,14 +34,14 @@ class ProductController extends Controller
         $product = Product::with([
             'meta' => function ($query) use ($priceTier) {
                 $query->select('meta_id','post_id', 'meta_key', 'meta_value')
-                    ->whereIn('meta_key', ['_price', '_stock', '_stock_status', '_sku', '_thumbnail_id', '_product_image_gallery','min_quantity','max_quantity', $priceTier]);
+                    ->whereIn('meta_key', ['_price', '_stock', '_stock_status', '_sku', '_thumbnail_id', '_product_image_gallery','min_quantity','max_quantity', $priceTier,'limit_session_start','limit_session_end','min_order_limit_per_user','max_order_limit_per_user']);
             },
             'variations' => function ($query) use ($priceTier) {
                 $query->select('ID', 'post_parent', 'post_title', 'post_name')
                     ->with([
                         'varients' => function ($query) use ($priceTier) {
                             $query->select('meta_id','post_id', 'meta_key', 'meta_value')
-                                ->whereIn('meta_key', ['_price', '_stock_status', '_stock', '_sku', '_thumbnail_id', $priceTier,'max_quantity_var','min_quantity_var'])
+                                ->whereIn('meta_key', ['_price', '_stock_status', '_stock', '_sku', '_thumbnail_id', $priceTier,'max_quantity_var','min_quantity_var','limit_session_start','limit_session_end','min_order_limit_per_user','max_order_limit_per_user'])
                                 // ->orWhere(function ($query) {
                                 //     $query->where('meta_key', 'like', 'attribute_%'); // slow down 
                                 // })
@@ -102,8 +103,7 @@ class ProductController extends Controller
 
         foreach ($data['quantities'] as $quantity) {
             $postId = $quantity['post_id'];
-
-            // ✅ Prepare meta fields to update (1 row per key)
+            $optionalDelete = false;
             $metaFields = [
                 $quantity['type'] => $quantity['value'],
             ];
@@ -114,6 +114,7 @@ class ProductController extends Controller
 
             if (!empty($quantity['limit_session_end'])) {
                 $metaFields['limit_session_end'] = $quantity['limit_session_end'];
+                $optionalDelete = true;
             }
 
             if (!empty($quantity['min_order_limit_per_user'])) {
@@ -122,9 +123,8 @@ class ProductController extends Controller
 
             if (!empty($quantity['max_order_limit_per_user'])) {
                 $metaFields['max_order_limit_per_user'] = $quantity['max_order_limit_per_user'];
+                $optionalDelete = true;
             }
-
-            // ✅ Insert or update each meta field
             foreach ($metaFields as $metaKey => $metaValue) {
                 ProductMeta::updateOrCreate(
                     [
@@ -136,11 +136,10 @@ class ProductController extends Controller
                     ]
                 );
             }
-
-            // ✅ Optional: Delete user-specific limit sessions when limits are changed
-            // DB::table('product_limit_session')
-            //     ->where('product_variation_id', $postId)
-            //     ->delete();
+            // optional: delete user-specific limit sessions when limits are changed
+            if($optionalDelete){
+                DB::table('product_limit_session')->where('product_variation_id', $postId)->delete();
+            }
         }
 
         return response()->json(['status' => true, 'message' => 'Quantities updated successfully.']);
