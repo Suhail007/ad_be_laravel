@@ -99,25 +99,51 @@ class ProductController extends Controller
             ]);
         }
         $data = $request->all();
+
         foreach ($data['quantities'] as $quantity) {
-            // Check if meta already exists with meta_id and meta_key (optionally you could also add post_id to prevent conflicts)
-            $meta = ProductMeta::updateOrCreate(
-                [    
-                    'meta_key' => $quantity['type'],  
-                    'post_id' => $quantity['post_id'],  // Adding post_id to prevent conflicts with other entries
-                ],
-                [
-                    'meta_value' => $quantity['value'], 
-                    'limit_session_start' => $quantity['limit_session_start'],
-                    'limit_session_end' => $quantity['limit_session_end'],
-                    'min_order_limit_per_user' => $quantity['min_order_limit_per_user'],
-                    'max_order_limit_per_user' => $quantity['max_order_limit_per_user'],
-                ]
-            );
-            // on change delete the limit session on user level 
+            $postId = $quantity['post_id'];
+
+            // ✅ Prepare meta fields to update (1 row per key)
+            $metaFields = [
+                $quantity['type'] => $quantity['value'],
+            ];
+
+            if (!empty($quantity['limit_session_start'])) {
+                $metaFields['limit_session_start'] = $quantity['limit_session_start'];
+            }
+
+            if (!empty($quantity['limit_session_end'])) {
+                $metaFields['limit_session_end'] = $quantity['limit_session_end'];
+            }
+
+            if (!empty($quantity['min_order_limit_per_user'])) {
+                $metaFields['min_order_limit_per_user'] = $quantity['min_order_limit_per_user'];
+            }
+
+            if (!empty($quantity['max_order_limit_per_user'])) {
+                $metaFields['max_order_limit_per_user'] = $quantity['max_order_limit_per_user'];
+            }
+
+            // ✅ Insert or update each meta field
+            foreach ($metaFields as $metaKey => $metaValue) {
+                ProductMeta::updateOrCreate(
+                    [
+                        'post_id' => $postId,
+                        'meta_key' => $metaKey,
+                    ],
+                    [
+                        'meta_value' => $metaValue,
+                    ]
+                );
+            }
+
+            // ✅ Optional: Delete user-specific limit sessions when limits are changed
+            // DB::table('product_limit_session')
+            //     ->where('product_variation_id', $postId)
+            //     ->delete();
         }
 
-        return response()->json(['status' => true,'message' => 'Quantities updated successfully.']);
+        return response()->json(['status' => true, 'message' => 'Quantities updated successfully.']);
     }
     
     public function getPurchaseLimitProduct(Request $request){

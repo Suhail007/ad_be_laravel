@@ -201,12 +201,11 @@ class CartController extends Controller
             ->where('user_id', $userId)
             ->first();
 
-        $startTime = $productLimitInfo['limit_session_start'] ?: now()->subDay()->startOfDay();
-        $endTime = $productLimitInfo['limit_session_end'] ?: now()->addDay()->endOfDay();
-
+        $startTime = Carbon::parse($productLimitInfo->get('limit_session_start', now()->subDay()->startOfDay()));
+        $endTime = Carbon::parse($productLimitInfo->get('limit_session_end', now()->addDay()->endOfDay()));
         if ($currentDateTime >= $startTime && $currentDateTime <= $endTime) {
             if ($limitSession) {
-                $remain_count = $productLimitInfo['max_order_limit_per_user'] - $limitSession->order_count;
+                $remain_count = $productLimitInfo->get('max_order_limit_per_user', 0) - $limitSession->order_count;
                 if ($remain_count <= 0) {
                     return false;
                 }
@@ -250,7 +249,7 @@ class CartController extends Controller
                         return response()->json([
                             'status' => false,
                             'username' => $user->user_login,
-                            'message' =>"❌ Customer quota full, you've reached the order limit for this product.",
+                            'message' =>"Customer quota full, you've reached the order limit for this product.",
                             'time' => now()->toDateTimeString(),
                             'cart_count' => 0,
                             'cart_items' => [],
@@ -319,7 +318,7 @@ class CartController extends Controller
                         return response()->json([
                             'status' => false,
                             'username' => $user->user_login,
-                            'message' =>"❌ Customer quota full, you've reached the order limit for this product.",
+                            'message' =>"Customer quota full, you've reached the order limit for this product.",
                             'time' => now()->toDateTimeString(),
                             'cart_count' => 0,
                             'cart_items' => [],
@@ -543,7 +542,7 @@ class CartController extends Controller
                         return response()->json([
                             'status' => false,
                             'username' => $user->user_login,
-                            'message' =>"❌ Customer quota full, you've reached the order limit for this product.",
+                            'message' =>"Customer quota full, you've reached the order limit for this product.",
                             'time' => now()->toDateTimeString(),
                             'cart_count' => 0,
                             'cart_items' => [],
@@ -582,7 +581,7 @@ class CartController extends Controller
                         return response()->json([
                             'status' => false,
                             'username' => $user->user_login,
-                            'message' =>"❌ Customer quota full, you've reached the order limit for this product.",
+                            'message' =>"Customer quota full, you've reached the order limit for this product.",
                             'time' => now()->toDateTimeString(),
                             'cart_count' => 0,
                             'cart_items' => [],
@@ -993,7 +992,7 @@ class CartController extends Controller
                 return response()->json([
                     'status' => false,
                     'username' => $user->user_login,
-                    'message' =>"❌ Customer quota full, you've reached the order limit for this product.",
+                    'message' =>"Customer quota full, you've reached the order limit for this product.",
                     'time' => now()->toDateTimeString(),
                     'cart_count' => 0,
                     'cart_items' => [],
