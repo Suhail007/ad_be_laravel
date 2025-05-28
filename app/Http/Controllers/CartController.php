@@ -228,7 +228,7 @@ class CartController extends Controller
 
         $cartItems = [];
         $newMsgShow = false;
-        $currentDateTime = now(); // take from request
+        $currentDateTime = $request->input('currentDateTime') ?? now(); // take from request eg. 2025-05-28 10:00:00
         $count = 0;
         foreach ($variations as $variation) {
             $cartItem = Cart::where('user_id', $user_id)
@@ -515,7 +515,7 @@ class CartController extends Controller
 
         $cartItems = [];
         $count = 0;
-        $currentDateTime = now(); // take from request
+        $currentDateTime = $request->input('currentDateTime') ?? now(); // take from request eg. 2025-05-28 10:00:00
         foreach ($items as $item) {
             $product_id = $item['product_id'];
             $variation_id = $item['variation_id'];
@@ -969,7 +969,7 @@ class CartController extends Controller
     public function updateCartQuantity(Request $request)
     {
         $user = JWTAuth::parseToken()->authenticate();
-        $currentDateTime = now(); // take from request
+        $currentDateTime = $request->input('currentDateTime') ?? now(); // take from request eg. 2025-05-28 10:00:00
         if (!$user) {
             return response()->json(['status' => false, 'message' => 'User not authenticated'], 200);
         }
