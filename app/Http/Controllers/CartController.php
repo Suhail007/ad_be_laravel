@@ -14,6 +14,7 @@ use App\Models\ProductMeta;
 use App\Models\User;
 use App\Models\UserCoupon;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class CartController extends Controller
 {
@@ -173,6 +174,46 @@ class CartController extends Controller
         return $totalCount;
     }
 
+    /**
+     * Check if user has reached their order limit for a product
+     *
+     * @param int $productId
+     * @param int $variationId
+     * @param int $userId
+     * @param Carbon $currentDateTime
+     * @return bool Returns true if limit reached, false otherwise
+     */
+    private function checkProductLimit($productId, $variationId, $userId, $currentDateTime)
+    {
+        $productLimitInfo = ProductMeta::where('post_id', $variationId ?? $productId)
+            ->whereIn('meta_key', [
+                'limit_session_start',
+                'limit_session_end',
+                'min_order_limit_per_user',
+                'max_order_limit_per_user',
+                'max_quantity_var',
+                'max_quantity',
+            ])
+            ->pluck('meta_value', 'meta_key');
+
+        $limitSession = DB::table('product_limit_session')
+            ->where('product_variation_id', $variationId ?? $productId)
+            ->where('user_id', $userId)
+            ->first();
+
+        $startTime = $productLimitInfo['limit_session_start'] ?: now()->subDay()->startOfDay();
+        $endTime = $productLimitInfo['limit_session_end'] ?: now()->addDay()->endOfDay();
+
+        if ($currentDateTime >= $startTime && $currentDateTime <= $endTime) {
+            if ($limitSession) {
+                $remain_count = $productLimitInfo['max_order_limit_per_user'] - $limitSession->order_count;
+                if ($remain_count <= 0) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 
     public function bulkAddToCart(Request $request)
     {
@@ -188,7 +229,7 @@ class CartController extends Controller
 
         $cartItems = [];
         $newMsgShow = false;
-
+        $currentDateTime = now(); // take from request
         $count = 0;
         foreach ($variations as $variation) {
             $cartItem = Cart::where('user_id', $user_id)
@@ -202,6 +243,20 @@ class CartController extends Controller
                 $cartItem->quantity += $newQty;
                 //cart limit
                 if ($cartItem->isLimit) {
+
+                    // check if customer have reached the limit
+                    $limitCheck = $this->checkProductLimit($product_id, $variation['variation_id'], $user_id, $currentDateTime);
+                    if ($limitCheck == false) {
+                        return response()->json([
+                            'status' => false,
+                            'username' => $user->user_login,
+                            'message' =>"❌ Customer quota full, you've reached the order limit for this product.",
+                            'time' => now()->toDateTimeString(),
+                            'cart_count' => 0,
+                            'cart_items' => [],
+                        ], 200);
+                    }
+
                     if ($cartItem->quantity < $cartItem->min) {
                         $count++;
                         $reduceQTY = abs($oldQty - $cartItem->min);
@@ -229,8 +284,50 @@ class CartController extends Controller
             } else {
                 $newQty = $variation['quantity'];
                 if ($variation['isLimit']) {
+                    // $productLimitInfo = ProductMeta::where('post_id', $variation['variation_id'] ?? $product_id)
+                    //     ->whereIn('meta_key', [
+                    //         'limit_session_start',
+                    //         'limit_session_end',
+                    //         'min_order_limit_per_user',
+                    //         'max_order_limit_per_user',
+                    //         'max_quantity_var',
+                    //         'max_quantity', 
+                    //     ])
+                    //     ->pluck('meta_value', 'meta_key');
+                    // $limitSession = DB::table('product_limit_session')
+                    //     ->where('product_variation_id', $variation['variation_id'] ?? $product_id)
+                    //     ->where('user_id', $user_id)->first();
+                    // $startTime = $productLimitInfo['limit_session_start'] ?: now()->subDay()->startOfDay();
+                    // $endTime = $productLimitInfo['limit_session_end'] ?: now()->addDay()->endOfDay();
+                    // if ($currentDateTime >= $startTime && $currentDateTime <= $endTime) {
+                    //     if ($limitSession) {
+                    //         $remain_count = $productLimitInfo['max_order_limit_per_user'] - $limitSession->order_count;
+                    //         if ($remain_count <= 0) {
+                    //             return response()->json([
+                    //                 'status' => false,
+                    //                 'username' => $user->user_login,
+                    //                 'message' =>"Customer quota full, you've reached the order limit for this product.",
+                    //                 'time' => now()->toDateTimeString(),
+                    //                 'cart_count' => 0,
+                    //                 'cart_items' => [],
+                    //             ], 200);
+                    //         }
+                    //     }
+                    // }
+                    $limitCheck = $this->checkProductLimit($product_id, $variation['variation_id'], $user_id, $currentDateTime);
+                    if ($limitCheck == false) {
+                        return response()->json([
+                            'status' => false,
+                            'username' => $user->user_login,
+                            'message' =>"❌ Customer quota full, you've reached the order limit for this product.",
+                            'time' => now()->toDateTimeString(),
+                            'cart_count' => 0,
+                            'cart_items' => [],
+                        ], 200);
+                    }
 
                     if ($variation['quantity'] < $variation['min']) {
+                        
                         $newQty = $variation['min'];
                         $count++;
                     }
@@ -239,6 +336,8 @@ class CartController extends Controller
                         $newQty = $variation['max'];
                         $count++;
                     }
+                    
+                    
                 }
                 try {
                     if (in_array($variation['variation_id'], $this->couponProductID())) {
@@ -417,6 +516,7 @@ class CartController extends Controller
 
         $cartItems = [];
         $count = 0;
+        $currentDateTime = now(); // take from request
         foreach ($items as $item) {
             $product_id = $item['product_id'];
             $variation_id = $item['variation_id'];
@@ -436,6 +536,20 @@ class CartController extends Controller
                 $cartItem->quantity = $quantity;
                 //cart limit
                 if ($cartItem->isLimit) {
+
+                    // check if customer have reached the limit
+                    $limitCheck = $this->checkProductLimit($product_id, $variation_id, $user_id, $currentDateTime);
+                    if ($limitCheck == false) {
+                        return response()->json([
+                            'status' => false,
+                            'username' => $user->user_login,
+                            'message' =>"❌ Customer quota full, you've reached the order limit for this product.",
+                            'time' => now()->toDateTimeString(),
+                            'cart_count' => 0,
+                            'cart_items' => [],
+                        ], 200);
+                    }
+
                     if ($cartItem->quantity < $cartItem->min) {
                         $count++;
                         $reduceQTY = abs($oldQuantity - $cartItem->min);
@@ -462,6 +576,18 @@ class CartController extends Controller
                 }
             } else {
                 if ($isLimit) {
+                    // check if customer have reached the limit
+                    $limitCheck = $this->checkProductLimit($product_id, $variation_id, $user_id, $currentDateTime);
+                    if ($limitCheck == false) {
+                        return response()->json([
+                            'status' => false,
+                            'username' => $user->user_login,
+                            'message' =>"❌ Customer quota full, you've reached the order limit for this product.",
+                            'time' => now()->toDateTimeString(),
+                            'cart_count' => 0,
+                            'cart_items' => [],
+                        ], 200);
+                    }
                     if ($quantity < $min) {
                         return response()->json(['status' => false, 'message' => 'Quantity cannot be less than ' . $min]);
                     }
@@ -844,6 +970,7 @@ class CartController extends Controller
     public function updateCartQuantity(Request $request)
     {
         $user = JWTAuth::parseToken()->authenticate();
+        $currentDateTime = now(); // take from request
         if (!$user) {
             return response()->json(['status' => false, 'message' => 'User not authenticated'], 200);
         }
@@ -860,6 +987,18 @@ class CartController extends Controller
         $oldQuantity = $cartItem->quantity;
         $cartItem->quantity = $request->quantity;
         if ($cartItem->isLimit) {
+            // check if customer have reached the limit
+            $limitCheck = $this->checkProductLimit($cartItem->product_id, $cartItem->variation_id, $user->ID, $currentDateTime);
+            if ($limitCheck == false) {
+                return response()->json([
+                    'status' => false,
+                    'username' => $user->user_login,
+                    'message' =>"❌ Customer quota full, you've reached the order limit for this product.",
+                    'time' => now()->toDateTimeString(),
+                    'cart_count' => 0,
+                    'cart_items' => [],
+                ], 200);
+            }
             if ($cartItem->quantity < $cartItem->min) {
                 $reduceQTY = abs($oldQuantity - $cartItem->min);
                 $cartItem->quantity = $cartItem->min;

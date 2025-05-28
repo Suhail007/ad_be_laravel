@@ -1540,10 +1540,29 @@ class PayPalController extends Controller
                             'order_item_type' => 'line_item'
                         ]);
 
-                        Cart::where('user_id', $user->ID)
+                        $cartItem = Cart::where('user_id', $user->ID)
                             ->where('product_id', $item['product_id'])
                             ->where('variation_id', $item['variation_id'] ?? null)
-                            ->delete();
+                            ->first();
+                        if ($cartItem->isLimit && isset($cartItem->max) && $cartItem->max > 0) {
+                            $productLimitSession = DB::table('product_limit_session')
+                                ->where('product_variation_id', $item['variation_id'] ?? $item['product_id'])
+                                ->where('user_id', $user->ID)
+                                ->first();
+                            if ($productLimitSession) {
+                                $productLimitSession->order_count++;
+                            } else {
+                                DB::table('product_limit_session')->insert([
+                                    'product_variation_id' => $item['variation_id'] ?? $item['product_id'],
+                                    'user_id' => $user->ID,
+                                    'order_count' => 1,
+                                ]);
+                            }
+                        }
+
+                        if ($cartItem) {
+                            $cartItem->delete(); // delete cart item
+                        }
 
 
                         $productPrice = $item['product_price'];

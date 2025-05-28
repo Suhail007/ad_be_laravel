@@ -79,6 +79,10 @@ class ProductController extends Controller
             'quantities.*.value' => 'required|numeric',
             'quantities.*.type' => 'required|in:max_quantity,min_quantity,max_quantity_var,min_quantity_var',
             'quantities.*.post_id' => 'required|integer', // Assuming post_id is required
+            'quantities.*.limit_session_start' => 'nullable|date_format:Y-m-d H:i:s',
+            'quantities.*.limit_session_end' => 'nullable|date_format:Y-m-d H:i:s',
+            'quantities.*.min_order_limit_per_user' => 'nullable|integer',
+            'quantities.*.max_order_limit_per_user' => 'nullable|integer',
         ]);
         if ($validate->fails()) {
             $errors = $validate->errors()->toArray();
@@ -104,8 +108,13 @@ class ProductController extends Controller
                 ],
                 [
                     'meta_value' => $quantity['value'], 
+                    'limit_session_start' => $quantity['limit_session_start'],
+                    'limit_session_end' => $quantity['limit_session_end'],
+                    'min_order_limit_per_user' => $quantity['min_order_limit_per_user'],
+                    'max_order_limit_per_user' => $quantity['max_order_limit_per_user'],
                 ]
             );
+            // on change delete the limit session on user level 
         }
 
         return response()->json(['status' => true,'message' => 'Quantities updated successfully.']);
@@ -205,8 +214,8 @@ class ProductController extends Controller
         if (!$isAdmin) {
             return response()->json(['status' => false, 'message' => 'You are not allowed']);
         }
-        $productKeys = ['max_quantity', 'min_quantity'];
-        $variantKeys = ['max_quantity_var', 'min_quantity_var'];
+        $productKeys = ['max_quantity', 'min_quantity', 'limit_session_start', 'limit_session_end', 'min_order_limit_per_user', 'max_order_limit_per_user'];
+        $variantKeys = ['max_quantity_var', 'min_quantity_var', 'limit_session_start', 'limit_session_end', 'min_order_limit_per_user', 'max_order_limit_per_user'];
         $productDeleted = ProductMeta::where('post_id', $id)
             ->whereIn('meta_key', $productKeys)
             ->delete();
