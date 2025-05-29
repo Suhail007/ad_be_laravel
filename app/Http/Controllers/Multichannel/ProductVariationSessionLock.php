@@ -200,7 +200,7 @@ class ProductVariationSessionLock extends Controller
                             ) {
                                 return response()->json([
                                     'status' => false,
-                                    'message' => "Session for post_id {$postId} overlaps with an existing session between {$existingSession['limit_session_start']} and {$existingSession['limit_session_end']}."
+                                    'message' => "Session for post_id {$postId->post_title} overlaps with an existing session between {$existingSession['limit_session_start']} and {$existingSession['limit_session_end']}."
                                 ]);
                             }
                         }
