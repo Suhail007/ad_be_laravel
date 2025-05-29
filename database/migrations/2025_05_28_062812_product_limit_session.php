@@ -16,6 +16,10 @@ return new class extends Migration
             $table->unsignedBigInteger('product_variation_id');
             $table->unsignedBigInteger('user_id');
             $table->integer('order_count')->default(0);
+            $table->integer('session_id')->nullable();
+            $table->integer('blocked_attemps')->nullable();
+            $table->dateTime('blocked_attemp_time')->nullable();
+            $table->string('log')->nullable();
             $table->timestamps();
             $table->index(['product_variation_id', 'user_id']);
         });

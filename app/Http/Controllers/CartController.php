@@ -203,8 +203,14 @@ class CartController extends Controller
 
         $startTime = Carbon::parse($productLimitInfo->get('limit_session_start', now()->subDay()->startOfDay()));
         $endTime = Carbon::parse($productLimitInfo->get('limit_session_end', now()->addDay()->endOfDay()));
+        // if no time set then consider also lock condition 
         if ($currentDateTime >= $startTime && $currentDateTime <= $endTime) {
             if ($limitSession) {
+                if($productLimitInfo->get('max_order_limit_per_user', 0) == 0){
+                    // limit not set mean customer can order 
+                    return true;
+                }
+                // if have limit, 
                 $remain_count = $productLimitInfo->get('max_order_limit_per_user', 0) - $limitSession->order_count;
                 if ($remain_count <= 0) {
                     return false;

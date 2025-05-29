@@ -17,6 +17,7 @@ use App\Http\Controllers\CleanupController;
 use App\Http\Controllers\DiscountRuleController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\Multichannel\ProductController as MultichannelProductController;
+use App\Http\Controllers\Multichannel\ProductVariationSessionLock;
 use App\Http\Controllers\MyAcccountController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\UserCouponController;
@@ -51,11 +52,12 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
     //multichanel 
     Route::get('get-variations/{id}',[MultichannelProductController::class,'getProductVariation']);
-    Route::post('set-purchase-limit',[MultichannelProductController::class,'updateQuantity']);
-    Route::get('get-purchase-limit-products',[MultichannelProductController::class,'getPurchaseLimitProduct']);
+    Route::post('set-purchase-limit',[ProductVariationSessionLock::class,'updateOrCreate']);
+    Route::get('get-purchase-limit-products',[ProductVariationSessionLock::class,'index']);
+    // Route::post('set-purchase-limit',[MultichannelProductController::class,'updateQuantity']);
+    // Route::get('get-purchase-limit-products',[MultichannelProductController::class,'getPurchaseLimitProduct']);
     Route::delete('unset-purchase-limit/{id}',[MultichannelProductController::class,'removePurchaseLimit']);
     Route::get('search-purchase-limit-products',[MultichannelProductController::class,'searchPurchaseLimitProduct']);
-
     //menu cleanup 
     Route::get('/cleanup',[CleanupController::class,'menuCleanUp']);
     //brand list 
@@ -132,7 +134,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('/wishlist/remove', [WishlistController::class, 'removeFromWishlist']);
     Route::post('/wishlist/remove-all', [WishlistController::class, 'removeAllFromWishlist']);
 });
-
+    
 Route::get('/offers',[DiscountRuleController::class, 'offers']);
 Route::get('/bxgy',[DiscountRuleController::class, 'bxgyOffers']);
 Route::get('/percent-sale',[DiscountRuleController::class, 'percentageSale']);

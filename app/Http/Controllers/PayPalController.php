@@ -644,7 +644,7 @@ class PayPalController extends Controller
                         ->where('product_id', $item['product_id'])
                         ->where('variation_id', $item['variation_id'] ?? null)
                         ->first();
-                        if ($cartItem->isLimit && isset($cartItem->max) && $cartItem->max > 0) {
+                        if (isset($cartItem->isLimit) && $cartItem->isLimit && isset($cartItem->max) && $cartItem->max > 0) {
                             $productVariationId = $item['variation_id'] ?? $item['product_id'];
 
                             $productLimitSession = DB::table('product_limit_session')
@@ -1573,7 +1573,7 @@ class PayPalController extends Controller
                             ->where('product_id', $item['product_id'])
                             ->where('variation_id', $item['variation_id'] ?? null)
                             ->first();
-                            if ($cartItem->isLimit && isset($cartItem->max) && $cartItem->max > 0) {
+                            if (isset($cartItem->isLimit) && $cartItem->isLimit && isset($cartItem->max) && $cartItem->max > 0) {
                                 $productVariationId = $item['variation_id'] ?? $item['product_id'];
     
                                 $productLimitSession = DB::table('product_limit_session')
