@@ -269,7 +269,7 @@ class ProductVariationSessionLock extends Controller
         $logData = [];
 
         // Step 1: Get product or variation with meta + variations
-        $product = Product::with(['meta', 'variations.meta'])->where('ID', $productId)
+        $product = Product::with(['meta', 'variations.varients'])->where('ID', $productId)
             ->orWhereHas('variations', function ($q) use ($productId) {
                 $q->where('ID', $productId);
             })->first();
