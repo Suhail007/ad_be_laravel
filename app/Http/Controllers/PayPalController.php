@@ -14,6 +14,7 @@ use App\Models\OrderMeta;
 use App\Models\ProductMeta;
 use App\Models\User;
 use App\Models\UserCoupon;
+use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Exception;
 use GuzzleHttp\Client;
@@ -1568,39 +1569,68 @@ class PayPalController extends Controller
                             'order_item_name' => $item['product_name'],
                             'order_item_type' => 'line_item'
                         ]);
-
                         $cartItem = Cart::where('user_id', $user->ID)
-                            ->where('product_id', $item['product_id'])
-                            ->where('variation_id', $item['variation_id'] ?? null)
-                            ->first();
-                            if (isset($cartItem->isLimit) && $cartItem->isLimit && isset($cartItem->max) && $cartItem->max > 0) {
-                                $productVariationId = $item['variation_id'] ?? $item['product_id'];
-    
+                        ->where('product_id', $item['product_id'])
+                        ->where('variation_id', $item['variation_id'] ?? null)
+                        ->first();
+                    
+                        if (isset($cartItem->isLimit) && $cartItem->isLimit && isset($cartItem->max) && $cartItem->max > 0) {
+                            $productVariationId = $item['variation_id'] ?? $item['product_id'];
+                        
+                            // Step 1: Get active session from ProductMeta
+                            $sessionMeta = ProductMeta::where('post_id', $productVariationId)
+                                ->where('meta_key', 'sessions_limit_data')
+                                ->first();
+                        
+                            $activeSessionId = null;
+                        
+                            if ($sessionMeta) {
+                                $sessions = json_decode($sessionMeta->meta_value, true) ?? [];
+                                $now = now();
+                        
+                                foreach ($sessions as $session) {
+                                    if (
+                                        isset($session['isActive']) && $session['isActive'] &&
+                                        isset($session['limit_session_start']) && isset($session['limit_session_end']) &&
+                                        $now->between(Carbon::parse($session['limit_session_start']), Carbon::parse($session['limit_session_end']))
+                                    ) {
+                                        $activeSessionId = $session['session_limt_id'] ?? null;
+                                        break;
+                                    }
+                                }
+                            }
+                        
+                            // Step 2: If an active session exists, update or insert order count
+                            if ($activeSessionId) {
                                 $productLimitSession = DB::table('product_limit_session')
                                     ->where('product_variation_id', $productVariationId)
                                     ->where('user_id', $user->ID)
+                                    ->where('session_id', $activeSessionId)
                                     ->first();
-    
+                        
                                 if ($productLimitSession) {
-                                    // Increment and update the existing record
                                     DB::table('product_limit_session')
                                         ->where('id', $productLimitSession->id)
                                         ->update([
                                             'order_count' => $productLimitSession->order_count + 1,
+                                            'updated_at' => now(),
                                         ]);
                                 } else {
-                                    // Insert new record
                                     DB::table('product_limit_session')->insert([
                                         'product_variation_id' => $productVariationId,
                                         'user_id' => $user->ID,
+                                        'session_id' => $activeSessionId,
                                         'order_count' => 1,
+                                        'created_at' => now(),
+                                        'updated_at' => now(),
                                     ]);
                                 }
                             }
-    
-
+                        }
+                        
+                        // Step 3: Remove item from cart
                         if ($cartItem) {
-                            $cartItem->delete(); // delete cart item
+                            $cartItem->delete();
                         }
 
 
