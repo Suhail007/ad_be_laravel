@@ -175,50 +175,65 @@ class CartController extends Controller
     }
 
     /**
-     * Check if user has reached their order limit for a product
-     *
-     * @param int $productId
-     * @param int $variationId
-     * @param int $userId
-     * @param Carbon $currentDateTime
-     * @return bool Returns true if limit reached, false otherwise
-     */
-    private function checkProductLimit($productId, $variationId, $userId, $currentDateTime)
-    {
-        $productLimitInfo = ProductMeta::where('post_id', $variationId ?? $productId)
-            ->whereIn('meta_key', [
-                'limit_session_start',
-                'limit_session_end',
-                'min_order_limit_per_user',
-                'max_order_limit_per_user',
-                'max_quantity_var',
-                'max_quantity',
-            ])
-            ->pluck('meta_value', 'meta_key');
+ * Check if user has reached their order limit for a product
+ *
+ * @param int $productId
+ * @param int|null $variationId
+ * @param int $userId
+ * @param Carbon $currentDateTime
+ * @return bool Returns true if user is allowed to order, false if limit reached
+ */
+private function checkProductLimit($productId, $variationId, $userId, $currentDateTime)
+{
+    $postId = $variationId ?? $productId;
 
-        $limitSession = DB::table('product_limit_session')
-            ->where('product_variation_id', $variationId ?? $productId)
-            ->where('user_id', $userId)
-            ->first();
+    // Step 1: Get session limit data from ProductMeta
+    $sessionMeta = ProductMeta::where('post_id', $postId)
+        ->where('meta_key', 'sessions_limit_data')
+        ->first();
 
-        $startTime = Carbon::parse($productLimitInfo->get('limit_session_start', now()->subDay()->startOfDay()));
-        $endTime = Carbon::parse($productLimitInfo->get('limit_session_end', now()->addDay()->endOfDay()));
-        // if no time set then consider also lock condition 
-        if ($currentDateTime >= $startTime && $currentDateTime <= $endTime) {
-            if ($limitSession) {
-                if($productLimitInfo->get('max_order_limit_per_user', 0) == 0){
-                    // limit not set mean customer can order 
-                    return true;
-                }
-                // if have limit, 
-                $remain_count = $productLimitInfo->get('max_order_limit_per_user', 0) - $limitSession->order_count;
-                if ($remain_count <= 0) {
-                    return false;
-                }
-            }
-        }
+    if (!$sessionMeta) {
+        return true; // No session rules — allow order
+    }
+
+    $sessions = json_decode($sessionMeta->meta_value, true) ?? [];
+    if (empty($sessions)) {
         return true;
     }
+
+    // Step 2: Get current user's session tracking record (if any)
+    $userSession = DB::table('product_limit_session')
+        ->where('product_variation_id', $postId)
+        ->where('user_id', $userId)
+        ->first();
+
+    // Step 3: Check each active session
+    foreach ($sessions as $session) {
+        if (!isset($session['isActive']) || !$session['isActive']) {
+            continue;
+        }
+
+        $startTime = Carbon::parse($session['limit_session_start'] ?? '2000-01-01 00:00:00');
+        $endTime = Carbon::parse($session['limit_session_end'] ?? '2099-12-31 23:59:59');
+
+        if ($currentDateTime->between($startTime, $endTime)) {
+            // If no limit set, allow
+            if (empty($session['max_order_limit_per_user'])) {
+                return true;
+            }
+
+            $orderCount = $userSession->order_count ?? 0;
+            $remaining = (int) $session['max_order_limit_per_user'] - $orderCount;
+
+            if ($remaining <= 0) {
+                return false; // User reached limit
+            }
+        }
+    }
+
+    return true; // No blocking sessions or limit not reached
+}
+
 
     public function bulkAddToCart(Request $request)
     {
