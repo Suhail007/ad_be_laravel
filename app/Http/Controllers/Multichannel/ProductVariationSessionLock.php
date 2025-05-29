@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Multichannel;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductMeta;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -90,12 +92,12 @@ class ProductVariationSessionLock extends Controller
 
         // Add search functionality
         if (!empty($searchTerm)) {
-            $query->where(function($q) use ($searchTerm) {
+            $query->where(function ($q) use ($searchTerm) {
                 $q->where('post_title', 'LIKE', "%{$searchTerm}%")
-                  ->orWhereHas('meta', function($q) use ($searchTerm) {
-                      $q->where('meta_key', '_sku')
-                        ->where('meta_value', 'LIKE', "%{$searchTerm}%");
-                  });
+                    ->orWhereHas('meta', function ($q) use ($searchTerm) {
+                        $q->where('meta_key', '_sku')
+                            ->where('meta_value', 'LIKE', "%{$searchTerm}%");
+                    });
             });
         }
 
@@ -252,7 +254,6 @@ class ProductVariationSessionLock extends Controller
                     'meta_value' => json_encode($existingSessions),
                 ]
             );
-
         }
 
         return response()->json(['status' => true, 'message' => 'Quantities updated successfully.']);
@@ -261,5 +262,65 @@ class ProductVariationSessionLock extends Controller
     public function show(Request $request) {}
     public function edit(Request $request) {}
     public function destroy(Request $request) {}
-    
+
+    public function getPurchaseLimitProductById(Request $request, $id)
+    {
+        $productId = $id;
+        $logData = [];
+
+        // Step 1: Get product or variation with meta + variations
+        $product = Product::with(['meta', 'variations.meta'])->where('ID', $productId)
+            ->orWhereHas('variations', function ($q) use ($productId) {
+                $q->where('ID', $productId);
+            })->first();
+
+        if (!$product) {
+            return response()->json(['status' => false, 'message' => 'Product not found']);
+        }
+
+        $ids = [];
+
+        // Step 2: Check for sessions_limit_data in product meta
+        $productMeta = collect($product->meta ?? []);
+        $hasSessionLimit = $productMeta->where('meta_key', 'sessions_limit_data')->isNotEmpty();
+        if ($hasSessionLimit) {
+            $ids[] = $product->ID;
+        }
+
+        // Step 3: Check each variation for session limits
+        foreach ($product->variations ?? [] as $variation) {
+            $variationMeta = collect($variation->meta ?? []);
+            if ($variationMeta->where('meta_key', 'sessions_limit_data')->isNotEmpty()) {
+                $ids[] = $variation->ID;
+            }
+        }
+
+        // Step 4: Fetch all product_limit_session records for matched IDs
+        $records = DB::table('product_limit_session')
+            ->whereIn('product_variation_id', $ids)
+            ->get();
+
+        foreach ($records as $record) {
+            $user = User::where('ID', $record->user_id)->first();
+
+            if ($user) {
+                $logData[] = [
+                    'product_variation_id' => $record->product_variation_id,
+                    'user_id' => $user->ID,
+                    'name' => $user->user_login,
+                    'email' => $user->user_email,
+                    'capabilities' => $user->capabilities,
+                    'account_no' => $user->account,
+                    'order_count' => $record->order_count,
+                    'session_id' => $record->session_id,
+                    'blocked_attempts' => $record->blocked_attemps,
+                    'blocked_time' => $record->blocked_attemp_time,
+                    'log' => $record->log,
+                    'last_updated' => $record->updated_at,
+                ];
+            }
+        }
+
+        return response()->json(['status' => true, 'logData' => $logData]);
+    }
 }
