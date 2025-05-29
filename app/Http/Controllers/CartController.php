@@ -187,52 +187,69 @@ private function checkProductLimit($productId, $variationId, $userId, $currentDa
 {
     $postId = $variationId ?? $productId;
 
-    // Step 1: Get session limit data from ProductMeta
+    // Step 1: Get session limits
     $sessionMeta = ProductMeta::where('post_id', $postId)
         ->where('meta_key', 'sessions_limit_data')
         ->first();
 
-    if (!$sessionMeta) {
-        return true; // No session rules — allow order
-    }
+    if (!$sessionMeta) return true;
 
     $sessions = json_decode($sessionMeta->meta_value, true) ?? [];
-    if (empty($sessions)) {
-        return true;
-    }
+    if (empty($sessions)) return true;
 
-    // Step 2: Get current user's session tracking record (if any)
-    $userSession = DB::table('product_limit_session')
-        ->where('product_variation_id', $postId)
-        ->where('user_id', $userId)
-        ->first();
-
-    // Step 3: Check each active session
+    // Step 2: Check against each active session
     foreach ($sessions as $session) {
-        if (!isset($session['isActive']) || !$session['isActive']) {
-            continue;
-        }
+        if (empty($session['isActive'])) continue;
 
         $startTime = Carbon::parse($session['limit_session_start'] ?? '2000-01-01 00:00:00');
         $endTime = Carbon::parse($session['limit_session_end'] ?? '2099-12-31 23:59:59');
 
         if ($currentDateTime->between($startTime, $endTime)) {
-            // If no limit set, allow
-            if (empty($session['max_order_limit_per_user'])) {
-                return true;
-            }
+            // Step 3: Limit exists, check user's usage
+            $sessionId = $session['session_limt_id'] ?? null;
+            $maxLimit = (int) ($session['max_order_limit_per_user'] ?? 0);
 
-            $orderCount = $userSession->order_count ?? 0;
-            $remaining = (int) $session['max_order_limit_per_user'] - $orderCount;
+            if ($maxLimit === 0) return true;
+
+            $limitRecord = DB::table('product_limit_session')
+                ->where('product_variation_id', $postId)
+                ->where('user_id', $userId)
+                ->where('session_id', $sessionId)
+                ->first();
+
+            $orderCount = $limitRecord->order_count ?? 0;
+            $remaining = $maxLimit - $orderCount;
 
             if ($remaining <= 0) {
-                return false; // User reached limit
+                // Step 4: Log blocked attempt
+                $blockTime = now();
+                $newAttempt = ($limitRecord->blocked_attemps ?? 0) + 1;
+                $existingLog = $limitRecord->log ?? '';
+                $logMessage = "Blocked at {$blockTime->format('Y-m-d H:i:s')} (limit: $maxLimit, ordered: $orderCount)\n";
+
+                DB::table('product_limit_session')
+                    ->updateOrInsert(
+                        [
+                            'product_variation_id' => $postId,
+                            'user_id' => $userId,
+                            'session_id' => $sessionId,
+                        ],
+                        [
+                            'blocked_attemps' => $newAttempt,
+                            'blocked_attemp_time' => $blockTime,
+                            'log' => $existingLog . $logMessage,
+                            'updated_at' => $blockTime,
+                        ]
+                    );
+
+                return false; // User is blocked
             }
         }
     }
 
-    return true; // No blocking sessions or limit not reached
+    return true;
 }
+
 
 
     public function bulkAddToCart(Request $request)
