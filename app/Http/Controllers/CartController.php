@@ -183,72 +183,70 @@ class CartController extends Controller
  * @param Carbon $currentDateTime
  * @return bool Returns true if user is allowed to order, false if limit reached
  */
-private function checkProductLimit($productId, $variationId, $userId, $currentDateTime)
-{
-    $postId = $variationId ?? $productId;
+    private function checkProductLimit($productId, $variationId, $userId, $currentDateTime){
+        $postId = $variationId ?? $productId;
 
-    // Step 1: Get session limits
-    $sessionMeta = ProductMeta::where('post_id', $postId)
-        ->where('meta_key', 'sessions_limit_data')
-        ->first();
+        $currentTime = $currentDateTime instanceof Carbon
+            ? $currentDateTime
+            : Carbon::parse($currentDateTime);
+        $sessionMeta = ProductMeta::where('post_id', $postId)
+            ->where('meta_key', 'sessions_limit_data')
+            ->first();
 
-    if (!$sessionMeta) return true;
+        if (!$sessionMeta) return true;
 
-    $sessions = json_decode($sessionMeta->meta_value, true) ?? [];
-    if (empty($sessions)) return true;
+        $sessions = json_decode($sessionMeta->meta_value, true) ?? [];
+        if (empty($sessions)) return true;
 
-    // Step 2: Check against each active session
-    foreach ($sessions as $session) {
-        if (empty($session['isActive'])) continue;
+        // Step 2: Check against each active session
+        foreach ($sessions as $session) {
+            if (empty($session['isActive'])) continue;
 
-        $startTime = Carbon::parse($session['limit_session_start'] ?? '2000-01-01 00:00:00');
-        $endTime = Carbon::parse($session['limit_session_end'] ?? '2099-12-31 23:59:59');
+            $startTime = Carbon::parse($session['limit_session_start'] ?? '2000-01-01 00:00:00');
+            $endTime = Carbon::parse($session['limit_session_end'] ?? '2099-12-31 23:59:59');
 
-        if ($currentDateTime->between($startTime, $endTime)) {
-            // Step 3: Limit exists, check user's usage
-            $sessionId = $session['session_limt_id'] ?? null;
-            $maxLimit = (int) ($session['max_order_limit_per_user'] ?? 0);
+            if ($currentTime->between($startTime, $endTime)) {
+                $sessionId = $session['session_limt_id'] ?? null;
+                $maxLimit = (int) ($session['max_order_limit_per_user'] ?? 0);
 
-            if ($maxLimit === 0) return true;
+                if ($maxLimit === 0) return true;
 
-            $limitRecord = DB::table('product_limit_session')
-                ->where('product_variation_id', $postId)
-                ->where('user_id', $userId)
-                ->where('session_id', $sessionId)
-                ->first();
+                $limitRecord = DB::table('product_limit_session')
+                    ->where('product_variation_id', $postId)
+                    ->where('user_id', $userId)
+                    ->where('session_id', $sessionId)
+                    ->first();
 
-            $orderCount = $limitRecord->order_count ?? 0;
-            $remaining = $maxLimit - $orderCount;
+                $orderCount = $limitRecord->order_count ?? 0;
+                $remaining = $maxLimit - $orderCount;
 
-            if ($remaining <= 0) {
-                // Step 4: Log blocked attempt
-                $blockTime = now();
-                $newAttempt = ($limitRecord->blocked_attemps ?? 0) + 1;
-                $existingLog = $limitRecord->log ?? '';
-                $logMessage = "Blocked at {$blockTime->format('Y-m-d H:i:s')} (limit: $maxLimit, ordered: $orderCount)\n";
+                if ($remaining <= 0) {
+                    $blockTime = now();
+                    $newAttempt = ($limitRecord->blocked_attemps ?? 0) + 1;
+                    $existingLog = $limitRecord->log ?? '';
+                    $logMessage = "Blocked at {$blockTime->format('Y-m-d H:i:s')} (limit: $maxLimit, ordered: $orderCount)\n";
 
-                DB::table('product_limit_session')
-                    ->updateOrInsert(
-                        [
-                            'product_variation_id' => $postId,
-                            'user_id' => $userId,
-                            'session_id' => $sessionId,
-                        ],
-                        [
-                            'blocked_attemps' => $newAttempt,
-                            'blocked_attemp_time' => $blockTime,
-                            'log' => $existingLog . $logMessage,
-                            'updated_at' => $blockTime,
-                        ]
-                    );
+                    DB::table('product_limit_session')
+                        ->updateOrInsert(
+                            [
+                                'product_variation_id' => $postId,
+                                'user_id' => $userId,
+                                'session_id' => $sessionId,
+                            ],
+                            [
+                                'blocked_attemps' => $newAttempt,
+                                'blocked_attemp_time' => $blockTime,
+                                'log' => $existingLog . $logMessage,
+                                'updated_at' => $blockTime,
+                            ]
+                        );
 
-                return false; // User is blocked
+                    return false;
+                }
             }
         }
+        return true;
     }
-
-    return true;
-}
 
 
 

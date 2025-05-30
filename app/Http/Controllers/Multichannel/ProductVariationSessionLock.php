@@ -290,7 +290,7 @@ class ProductVariationSessionLock extends Controller
 
         // Step 3: Check each variation for session limits
         foreach ($product->variations ?? [] as $variation) {
-            $variationMeta = collect($variation->meta ?? []);
+            $variationMeta = collect($variation->varients ?? []);
             if ($variationMeta->where('meta_key', 'sessions_limit_data')->isNotEmpty()) {
                 $ids[] = $variation->ID;
             }
