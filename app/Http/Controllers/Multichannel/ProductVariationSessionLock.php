@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductMeta;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -324,4 +325,100 @@ class ProductVariationSessionLock extends Controller
 
         return response()->json(['status' => true, 'logData' => $logData]);
     }
+
+    public function getProductsWithActiveSession(Request $request)
+    {
+        $perPage = $request->query('perPage', 15);
+        $sortBy = $request->query('sortBy', 'post_modified');
+        $sortOrder = $request->query('sortOrder', 'desc');
+        $page = $request->query('page', 1);
+
+        $isAdmin = false;
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            $capabilities = $user->capabilities ?? [];
+
+            $isAdmin = isset($capabilities['administrator']);
+        } catch (\Throwable $th) {
+        }
+
+        if (!$isAdmin) {
+            return response()->json(['status' => false, 'message' => 'Hey, you are not allowed']);
+        }
+
+        $now = now();
+        $productIdsWithActiveSession = [];
+
+        // Step 1: Fetch all sessions_limit_data entries
+        $metaRecords = ProductMeta::where('meta_key', 'sessions_limit_data')->get();
+
+        foreach ($metaRecords as $meta) {
+            $sessions = json_decode($meta->meta_value, true);
+            if (is_array($sessions)) {
+                foreach ($sessions as $session) {
+                    if (
+                        isset($session['isActive']) && $session['isActive'] &&
+                        isset($session['limit_session_start']) &&
+                        isset($session['limit_session_end']) &&
+                        $now->between(Carbon::parse($session['limit_session_start']), Carbon::parse($session['limit_session_end']))
+                    ) {
+                        $productIdsWithActiveSession[] = $meta->post_id;
+                        break; // one active session is enough
+                    }
+                }
+            }
+        }
+
+        if (empty($productIdsWithActiveSession)) {
+            return response()->json(['status' => true, 'products' => []]);
+        }
+
+        // Step 2: Load matching products
+        $products = Product::with([
+            'meta' => function ($query) {
+                $query->select('post_id', 'meta_key', 'meta_value')
+                    ->whereIn('meta_key', [
+                        '_price',
+                        '_stock_status',
+                        '_stock',
+                        '_sku',
+                        '_thumbnail_id',
+                        '_product_image_gallery',
+                        'max_quantity',
+                        'min_quantity',
+                        'sessions_limit_data'
+                    ]);
+            },
+            'variations' => function ($query) {
+                $query->select('ID', 'post_parent', 'post_title', 'post_name')
+                    ->with([
+                        'varients' => function ($query) {
+                            $query->select('post_id', 'meta_key', 'meta_value')
+                                ->whereIn('meta_key', [
+                                    '_price',
+                                    '_stock_status',
+                                    '_stock',
+                                    '_sku',
+                                    'max_quantity_var',
+                                    'min_quantity_var',
+                                    '_thumbnail_id',
+                                    'sessions_limit_data'
+                                ]);
+                        }
+                    ]);
+            },
+            'thumbnail'
+        ])
+            ->whereIn('ID', $productIdsWithActiveSession)
+            ->where('post_type', 'product')
+            ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+            ->orderBy($sortBy, $sortOrder)
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        return response()->json([
+            'status' => true,
+            'products' => $products
+        ]);
+    }
+
 }

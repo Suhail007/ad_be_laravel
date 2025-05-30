@@ -54,8 +54,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::get('get-variations/{id}',[MultichannelProductController::class,'getProductVariation']);
     Route::post('set-purchase-limit',[ProductVariationSessionLock::class,'updateOrCreate']);
     Route::get('get-purchase-limit-products',[ProductVariationSessionLock::class,'index']);
-
     Route::get('get-purchase-limit-products-by-id/{id}',[ProductVariationSessionLock::class,'getPurchaseLimitProductById']);
+    Route::get('/get-active-purchase-limit-products',[ProductVariationSessionLock::class,'getProductsWithActiveSession']);
     // Route::post('set-purchase-limit',[MultichannelProductController::class,'updateQuantity']);
     // Route::get('get-purchase-limit-products',[MultichannelProductController::class,'getPurchaseLimitProduct']);
     Route::delete('unset-purchase-limit/{id}',[MultichannelProductController::class,'removePurchaseLimit']);
