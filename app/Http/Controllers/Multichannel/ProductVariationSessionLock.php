@@ -200,9 +200,10 @@ class ProductVariationSessionLock extends Controller
                                 $existingStart && $existingEnd &&
                                 $newStart <= $existingEnd && $newEnd >= $existingStart
                             ) {
+                                $post = DB::table('wp_posts')->where('ID',$postId)->first();
                                 return response()->json([
                                     'status' => false,
-                                    'message' => "Session for post_id {$postId->post_title} overlaps with an existing session between {$existingSession['limit_session_start']} and {$existingSession['limit_session_end']}."
+                                    'message' => "Session for {$post->post_title} overlaps with an existing session between {$existingSession['limit_session_start']} and {$existingSession['limit_session_end']}."
                                 ]);
                             }
                         }
