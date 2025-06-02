@@ -19,7 +19,7 @@ return new class extends Migration
             $table->integer('session_id')->nullable();
             $table->integer('blocked_attemps')->nullable();
             $table->dateTime('blocked_attemp_time')->nullable();
-            $table->string('log')->nullable();
+            $table->longText('log')->nullable();
             $table->timestamps();
             $table->index(['product_variation_id', 'user_id']);
         });

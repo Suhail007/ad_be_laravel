@@ -195,7 +195,7 @@ class PayPalController extends Controller
                 $total = 0;
                 $checkout->update(
                     [
-                        // 'total' => $shippingLines[0]['total'] + $amount, 
+                        // 'total' => $shippingLines[0]['total'] + $amount,
                         'extra' => $lineItems,
                         'paymentType' => $paytype,
                     ]
@@ -230,14 +230,14 @@ class PayPalController extends Controller
                     try {
                         if (isset($item['discount_amt']) && $item['discount_amt']) {
                             if($item['type'] == 'fixed_price'){
-                                
+
                             } else {
                                 $cartDiscount += $item['discount_amt'];
                             }
 
                             $couponIDs[] = $item['applicable_rules'][0]['rule_id'];
 
-                            //coupon user limit validation and functionality 
+                            //coupon user limit validation and functionality
                             try {
                                 if ($item['applicable_rules'][0]['userUseLimit'] == 1 && $item['applicable_rules'][0]['label'] == "Spaceman10") {
                                     $limitCouponID = $item['applicable_rules'][0]['rule_id'];
@@ -281,7 +281,7 @@ class PayPalController extends Controller
                     $total += round($float1, 2);
                 }
 
-                //cart discount 
+                //cart discount
                 $cartDiscountTax = 0;
                 if ($cartDiscount > 0 && $isVape) {
                     $cartDiscountTax = $cartDiscount * 0.15;
@@ -663,13 +663,12 @@ class PayPalController extends Controller
                                 foreach ($sessions as $session) {
                                     if (
                                         isset($session['isActive']) && $session['isActive'] &&
-                                        isset($session['limit_session_start']) && isset($session['limit_session_end']) &&
-                                        $now->between(Carbon::parse($session['limit_session_start']), Carbon::parse($session['limit_session_end']))
-                                    ) {
+                                        $now->between(Carbon::parse($session['limit_session_start'] ?? '2000-01-01 00:00:00'), Carbon::parse($session['limit_session_end'] ?? '2099-01-01 00:00:00'))
+                                        ) {
                                         $activeSessionId = $session['session_limt_id'] ?? null;
                                         break;
                                     }
-                                }
+                                }     
                             }
 
                             // Step 2: If an active session exists, update or insert order count
@@ -721,16 +720,16 @@ class PayPalController extends Controller
                         $float2 = 0.00;
                         $float2 = $item['quantity'] * $productPrice;
                         $float2 = round($float2, 2);
-                                                
+
                         // 16/04/2025
                         if (!empty($item['taxonomies']) && in_array(1835, $item['taxonomies'])) { // 1835-> casper-blend
                             $giveawaySaleCasper += $float2;
                         }
                         if (!empty($item['taxonomies']) && in_array(2687, $item['taxonomies'])) { // 2687->krature-hydroxy
                             $giveawaySaleKrature += $float2;
-                        
+
                         }
-                        
+
                         $linetotal += $float2;
 
                         $taxAmount = (float) ($iLTax ?? 0);
@@ -748,7 +747,7 @@ class PayPalController extends Controller
                             $indirect_tax_amount = 0.00;
                         }
 
-                        
+
                         $itemMeta = [
                             ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
@@ -765,7 +764,7 @@ class PayPalController extends Controller
 
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => isset($item['type']) && $item['type'] == 'fixed_price' ? (isset($item['subTotal']) ? $item['subTotal'] : 0) : ($linetotal ?? 0)],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => isset($item['type']) && $item['type'] == 'fixed_price' ? ((isset($item['subTotal']) ? $item['subTotal'] : 0) + (isset($item['discount_amt']) ? $item['discount_amt'] : 0)) : ($linetotal ?? 0)],
-                            
+
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => $iLTax ?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' => $iLTax ?? 0],
                             ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' =>  $serializedData],
@@ -875,7 +874,7 @@ class PayPalController extends Controller
                                     OrderItemMeta::insert($meta);
                                 }
 
-                                $lineTotalValue = $float2 - $discountAmount; //product price with tax 
+                                $lineTotalValue = $float2 - $discountAmount; //product price with tax
                                 // dd($lineTotalValue);
                                 foreach ($itemMeta as &$meta) {
                                     if ($meta['meta_key'] == '_line_total') {
@@ -1267,7 +1266,7 @@ class PayPalController extends Controller
 
                             $couponIDs[] = $item['applicable_rules'][0]['rule_id'];
 
-                            //coupon user limit validation and functionality 
+                            //coupon user limit validation and functionality
                             try {
                                 if ($item['applicable_rules'][0]['userUseLimit'] == 1 && $item['applicable_rules'][0]['label'] == "Spaceman10") {
                                     $limitCouponID = $item['applicable_rules'][0]['rule_id'];
@@ -1311,7 +1310,7 @@ class PayPalController extends Controller
                     $total += round($float1, 2);
                 }
 
-                //cart discount 
+                //cart discount
                 $cartDiscountTax = 0;
                 if ($cartDiscount > 0 && $isVape) {
                     $cartDiscountTax = $cartDiscount * 0.15;
@@ -1604,33 +1603,32 @@ class PayPalController extends Controller
                         ->where('product_id', $item['product_id'])
                         ->where('variation_id', $item['variation_id'] ?? null)
                         ->first();
-                    
+
                         if (isset($cartItem->isLimit) && $cartItem->isLimit && isset($cartItem->max) && $cartItem->max > 0) {
                             $productVariationId = $item['variation_id'] ?? $item['product_id'];
-                        
+
                             // Step 1: Get active session from ProductMeta
                             $sessionMeta = ProductMeta::where('post_id', $productVariationId)
                                 ->where('meta_key', 'sessions_limit_data')
                                 ->first();
-                        
+
                             $activeSessionId = null;
-                        
+
                             if ($sessionMeta) {
                                 $sessions = json_decode($sessionMeta->meta_value, true) ?? [];
                                 $now = now();
-                        
+
                                 foreach ($sessions as $session) {
                                     if (
                                         isset($session['isActive']) && $session['isActive'] &&
-                                        isset($session['limit_session_start']) && isset($session['limit_session_end']) &&
-                                        $now->between(Carbon::parse($session['limit_session_start']), Carbon::parse($session['limit_session_end']))
-                                    ) {
+                                        $now->between(Carbon::parse($session['limit_session_start'] ?? '2000-01-01 00:00:00'), Carbon::parse($session['limit_session_end'] ?? '2099-01-01 00:00:00'))
+                                        ) {
                                         $activeSessionId = $session['session_limt_id'] ?? null;
                                         break;
                                     }
                                 }
                             }
-                        
+
                             // Step 2: If an active session exists, update or insert order count
                             if ($activeSessionId) {
                                 $productLimitSession = DB::table('product_limit_session')
@@ -1638,7 +1636,7 @@ class PayPalController extends Controller
                                     ->where('user_id', $user->ID)
                                     ->where('session_id', $activeSessionId)
                                     ->first();
-                        
+
                                 if ($productLimitSession) {
                                     DB::table('product_limit_session')
                                         ->where('id', $productLimitSession->id)
@@ -1658,7 +1656,7 @@ class PayPalController extends Controller
                                 }
                             }
                         }
-                        
+
                         // Step 3: Remove item from cart
                         if ($cartItem) {
                             $cartItem->delete();
@@ -1824,7 +1822,7 @@ class PayPalController extends Controller
                                     OrderItemMeta::insert($meta);
                                 }
 
-                                $lineTotalValue = $float2 - $discountAmount; //product price with tax 
+                                $lineTotalValue = $float2 - $discountAmount; //product price with tax
                                 // dd($lineTotalValue);
                                 foreach ($itemMeta as &$meta) {
                                     if ($meta['meta_key'] == '_line_total') {
@@ -1945,7 +1943,7 @@ class PayPalController extends Controller
                             'shipping_tax_amount' => 0,
                         ]);
                     }
-                    
+
                     // dd($dd);
                     DB::table('wp_wc_orders')->insert([
                         'id' => $orderId,
