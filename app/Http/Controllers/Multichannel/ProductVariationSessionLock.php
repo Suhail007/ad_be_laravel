@@ -669,4 +669,40 @@ class ProductVariationSessionLock extends Controller
             'products' => $products
         ]);
     }
+
+    public function deactivateAllSessionsForProduct(Request $request, $id){
+        $isAdmin = false;
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            $capabilities = $user->capabilities ?? [];
+            $isAdmin = isset($capabilities['administrator']);
+        } catch (\Throwable $th) {
+        }
+        if (!$isAdmin) {
+            return response()->json(['status' => false, 'message' => 'Hey, you are not allowed']);
+        }
+
+        $product = Product::with(['meta','variations','variations.varients'])
+        ->where('ID', $id)->first();
+        if(!$product){
+            return response()->json(['status' => false, 'message' => 'Product meta not found']);
+        }
+        $sessions = json_decode($product->meta->where('meta_key', 'sessions_limit_data')->first()->meta_value, true);
+        foreach($sessions as $session){
+            $session['isActive'] = false;
+        }
+        $product->meta->where('meta_key', 'sessions_limit_data')->first()->meta_value = json_encode($sessions);
+        $product->meta->save();
+        foreach($product->variations as $variation){
+            $sessions = json_decode($variation->varients->where('meta_key', 'sessions_limit_data')->first()->meta_value, true);
+            foreach($sessions as $session){
+                $session['isActive'] = false;
+            }
+            $variation->varients->where('meta_key', 'sessions_limit_data')->first()->meta_value = json_encode($sessions);
+            $variation->varients->save();
+        }
+        $product->save();
+        return response()->json(['status' => true, 'message' => 'Sessions deactivated successfully']);
+    }
+    
 }
