@@ -175,14 +175,14 @@ class CartController extends Controller
     }
 
     /**
- * Check if user has reached their order limit for a product
- *
- * @param int $productId
- * @param int|null $variationId
- * @param int $userId
- * @param Carbon $currentDateTime
- * @return bool Returns true if user is allowed to order, false if limit reached
- */
+     * Check if user has reached their order limit for a product
+     *
+     * @param int $productId
+     * @param int|null $variationId
+     * @param int $userId
+     * @param Carbon $currentDateTime
+     * @return bool Returns true if user is allowed to order, false if limit reached
+     */
     private function checkProductLimit($productId, $variationId, $userId, $currentDateTime){
         $postId = $variationId ?? $productId;
 

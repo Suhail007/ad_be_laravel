@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductMeta;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
+
+use function PHPUnit\Framework\isEmpty;
 
 class ProductVariationSessionLock extends Controller
 {
@@ -110,8 +112,157 @@ class ProductVariationSessionLock extends Controller
             'products' => $products
         ]);
     }
-    public function updateOrCreate(Request $request)
-    {
+    // public function updateOrCreate(Request $request)
+    // {
+    //     $isAdmin = false;
+    //     $adminId = null;
+    //     $adminName = 'Admin';
+
+    //     try {
+    //         $user = JWTAuth::parseToken()->authenticate();
+    //         $adminId = $user->id;
+    //         $adminName = $user->name ?? 'Admin';
+
+    //         $data = $user->capabilities;
+    //         foreach ($data as $key => $value) {
+    //             if ($key == 'administrator') {
+    //                 $isAdmin = true;
+    //             }
+    //         }
+    //     } catch (\Throwable $th) {
+    //     }
+
+    //     if (!$isAdmin) {
+    //         return response()->json(['status' => false, 'message' => 'Hey you are not Allowed']);
+    //     }
+
+    //     $validate = Validator::make($request->all(), [
+    //         'quantities' => 'required|array',
+    //         'quantities.*.value' => 'required|numeric',
+    //         'quantities.*.post_id' => 'required|integer',
+    //         'quantities.*.session_limit' => 'nullable|array',
+    //         'quantities.*.session_limit.*.session_limt_id' => 'nullable|integer',
+    //         'quantities.*.session_limit.*.limit_session_start' => 'nullable|date_format:Y-m-d H:i:s',
+    //         'quantities.*.session_limit.*.limit_session_end' => 'nullable|date_format:Y-m-d H:i:s',
+    //         'quantities.*.session_limit.*.min_order_limit_per_user' => 'nullable|integer',
+    //         'quantities.*.session_limit.*.max_order_limit_per_user' => 'nullable|integer',
+    //     ]);
+
+    //     if ($validate->fails()) {
+    //         $errors = $validate->errors()->toArray();
+    //         $formattedErrors = [];
+    //         foreach ($errors as $key => $errorMessages) {
+    //             $formattedErrors[] = [
+    //                 'field' => $key,
+    //                 'messages' => $errorMessages
+    //             ];
+    //         }
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => $formattedErrors
+    //         ]);
+    //     }
+
+    //     $data = $request->all();
+
+    //     foreach ($data['quantities'] as $quantity) {
+    //         $postId = $quantity['post_id'];
+    //         $metaKey = 'sessions_limit_data';
+
+    //         $existingMeta = ProductMeta::where('post_id', $postId)->where('meta_key', $metaKey)->first();
+    //         $existingSessions = [];
+
+    //         if ($existingMeta) {
+    //             $existingSessions = json_decode($existingMeta->meta_value, true) ?? [];
+    //         }
+
+    //         $existingIds = array_column($existingSessions, 'session_limt_id');
+    //         $maxId = $existingIds ? max(array_filter($existingIds)) : 0;
+    //         // strong logic for session limit
+    //         if (!empty($quantity['session_limit']) && is_array($quantity['session_limit'])) {
+    //             foreach ($quantity['session_limit'] as $newSession) {
+    //                 $matched = false;
+
+    //                 if (empty($newSession['session_limt_id'])) {
+    //                     $maxId += 1;
+    //                     $newSession['session_limt_id'] = $maxId;
+    //                 }
+
+    //                 $newStart = strtotime($newSession['limit_session_start'] ?? '');
+    //                 $newEnd = strtotime($newSession['limit_session_end'] ?? '');
+
+    //                 foreach ($existingSessions as $existingSession) {
+    //                     $existingId = $existingSession['session_limt_id'] ?? null;
+
+    //                     if ($existingId != $newSession['session_limt_id']) {
+    //                         $existingStart = strtotime($existingSession['limit_session_start'] ?? '');
+    //                         $existingEnd = strtotime($existingSession['limit_session_end'] ?? '');
+
+    //                         if (
+    //                             $newStart && $newEnd &&
+    //                             $existingStart && $existingEnd &&
+    //                             $newStart <= $existingEnd && $newEnd >= $existingStart
+    //                         ) {
+    //                             $post= DB::table('wp_posts')->find($postId);
+    //                             return response()->json([
+    //                                 'status' => false,
+    //                                 'message' => "Session for {$post->post_title} overlaps with an existing session between {$existingSession['limit_session_start']} and {$existingSession['limit_session_end']}."
+    //                             ]);
+    //                         }
+    //                     }
+    //                 }
+
+    //                 $currentTime = now()->format('Y-m-d H:i:s');
+    //                 $logEntry = [
+    //                     'userID' => $adminId,
+    //                     'message' => "This rule " . (empty($newSession['session_limt_id']) ? 'created' : 'updated') . " by {$adminName} at {$currentTime}",
+    //                     'date' => $currentTime
+    //                 ];
+    //                 foreach ($existingSessions as &$existingSession) {
+    //                     if (
+    //                         isset($existingSession['session_limt_id']) &&
+    //                         $existingSession['session_limt_id'] == $newSession['session_limt_id']
+    //                     ) {
+    //                         $existingSession = array_merge($existingSession, $newSession);
+    //                         $existingSession['log_list'] = $existingSession['log_list'] ?? [];
+    //                         $existingSession['log_list'][] = $logEntry;
+    //                         $matched = true;
+    //                         break;
+    //                     }
+    //                 }
+
+    //                 if (!$matched) {
+    //                     $newSession['log_list'] = [$logEntry];
+    //                     $existingSessions[] = $newSession;
+    //                 }
+    //             }
+    //         }
+    //         if (!empty($quantity['type']) && isset($quantity['value'])) {
+    //             ProductMeta::updateOrCreate(
+    //                 [
+    //                     'post_id' => $postId,
+    //                     'meta_key' => $quantity['type'],
+    //                 ],
+    //                 [
+    //                     'meta_value' => $quantity['value'],
+    //                 ]
+    //             );
+    //         }
+
+    //         ProductMeta::updateOrCreate(
+    //             [
+    //                 'post_id' => $postId,
+    //                 'meta_key' => $metaKey,
+    //             ],
+    //             [
+    //                 'meta_value' => json_encode($existingSessions),
+    //             ]
+    //         );
+    //     }
+
+    //     return response()->json(['status' => true, 'message' => 'Quantities updated successfully.']);
+    // }
+    public function updateOrCreate(Request $request){
         $isAdmin = false;
         $adminId = null;
         $adminName = 'Admin';
@@ -120,9 +271,7 @@ class ProductVariationSessionLock extends Controller
             $user = JWTAuth::parseToken()->authenticate();
             $adminId = $user->id;
             $adminName = $user->name ?? 'Admin';
-
-            $data = $user->capabilities;
-            foreach ($data as $key => $value) {
+            foreach ($user->capabilities as $key => $value) {
                 if ($key == 'administrator') {
                     $isAdmin = true;
                 }
@@ -147,118 +296,118 @@ class ProductVariationSessionLock extends Controller
         ]);
 
         if ($validate->fails()) {
-            $errors = $validate->errors()->toArray();
-            $formattedErrors = [];
-            foreach ($errors as $key => $errorMessages) {
-                $formattedErrors[] = [
-                    'field' => $key,
-                    'messages' => $errorMessages
-                ];
-            }
             return response()->json([
                 'status' => false,
-                'message' => $formattedErrors
+                'message' => $validate->errors()->toArray()
             ]);
         }
 
-        $data = $request->all();
+        DB::beginTransaction();
 
-        foreach ($data['quantities'] as $quantity) {
-            $postId = $quantity['post_id'];
-            $metaKey = 'sessions_limit_data';
+        try {
+            foreach ($request->quantities as $quantity) {
+                $postId = $quantity['post_id'];
+                $metaKey = 'sessions_limit_data';
 
-            $existingMeta = ProductMeta::where('post_id', $postId)->where('meta_key', $metaKey)->first();
-            $existingSessions = [];
+                $meta = ProductMeta::where('post_id', $postId)->where('meta_key', $metaKey)->first();
+                $existingSessions = $meta ? json_decode($meta->meta_value, true) ?? [] : [];
+                $existingIds = array_column($existingSessions, 'session_limt_id');
+                $maxId = $existingIds ? max($existingIds) : 0;
 
-            if ($existingMeta) {
-                $existingSessions = json_decode($existingMeta->meta_value, true) ?? [];
-            }
+                $newSessions = $quantity['session_limit'] ?? [];
 
-            $existingIds = array_column($existingSessions, 'session_limt_id');
-            $maxId = $existingIds ? max(array_filter($existingIds)) : 0;
-            // strong logic for session limit
-            if (!empty($quantity['session_limit']) && is_array($quantity['session_limit'])) {
-                foreach ($quantity['session_limit'] as $newSession) {
-                    $matched = false;
-
-                    if (empty($newSession['session_limt_id'])) {
-                        $maxId += 1;
-                        $newSession['session_limt_id'] = $maxId;
-                    }
-
+                foreach ($newSessions as $newSession) {
                     $newStart = strtotime($newSession['limit_session_start'] ?? '');
                     $newEnd = strtotime($newSession['limit_session_end'] ?? '');
 
-                    foreach ($existingSessions as $existingSession) {
-                        $existingId = $existingSession['session_limt_id'] ?? null;
-
-                        if ($existingId != $newSession['session_limt_id']) {
-                            $existingStart = strtotime($existingSession['limit_session_start'] ?? '');
-                            $existingEnd = strtotime($existingSession['limit_session_end'] ?? '');
-
-                            if (
-                                $newStart && $newEnd &&
-                                $existingStart && $existingEnd &&
-                                $newStart <= $existingEnd && $newEnd >= $existingStart
-                            ) {
-                                $post = DB::table('wp_posts')->where('ID',$postId)->first();
-                                return response()->json([
-                                    'status' => false,
-                                    'message' => "Session for {$post->post_title} overlaps with an existing session between {$existingSession['limit_session_start']} and {$existingSession['limit_session_end']}."
-                                ]);
-                            }
-                        }
+                    if ($newStart && $newEnd && $newStart > $newEnd) {
+                        return response()->json(['status' => false, 'message' => 'Start date cannot be after end date']);
                     }
 
                     $currentTime = now()->format('Y-m-d H:i:s');
                     $logEntry = [
                         'userID' => $adminId,
-                        'message' => "This rule " . (empty($newSession['session_limt_id']) ? 'created' : 'updated') . " by {$adminName} at {$currentTime}",
+                        'message' => "This rule " . (!empty($newSession['session_limt_id']) ? 'updated' : 'created') . " by {$adminName} at {$currentTime}",
                         'date' => $currentTime
                     ];
-                    foreach ($existingSessions as &$existingSession) {
-                        if (
-                            isset($existingSession['session_limt_id']) &&
-                            $existingSession['session_limt_id'] == $newSession['session_limt_id']
-                        ) {
-                            $existingSession = array_merge($existingSession, $newSession);
-                            $existingSession['log_list'] = $existingSession['log_list'] ?? [];
-                            $existingSession['log_list'][] = $logEntry;
+
+                    $matched = false;
+
+                    // If ID provided, try to update
+                    if (!empty($newSession['session_limt_id'])) {
+                        foreach ($existingSessions as &$existingSession) {
+                            if ($existingSession['session_limt_id'] == $newSession['session_limt_id']) {
+                                $existingSession = array_merge($existingSession, $newSession);
+                                $existingSession['log_list'][] = $logEntry;
+                                $matched = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        // If ID not provided, match by exact session values
+                        foreach ($existingSessions as &$existingSession) {
+                            if (
+                                $existingSession['limit_session_start'] === $newSession['limit_session_start'] &&
+                                $existingSession['limit_session_end'] === $newSession['limit_session_end'] &&
+                                $existingSession['max_order_limit_per_user'] === $newSession['max_order_limit_per_user'] &&
+                                $existingSession['min_order_limit_per_user'] === ($newSession['min_order_limit_per_user'] ?? null) &&
+                                $existingSession['isActive'] == $newSession['isActive'] &&
+                                trim($existingSession['session_note']) === trim($newSession['session_note'])
+                            ) {
+                                $existingSession['log_list'][] = $logEntry;
+                                $matched = true;
+                                break;
+                            }
+                        }
+
+                        // If not matched and does not overlap, assign new ID
+                        if (!$matched) {
+                            foreach ($existingSessions as $existingSession) {
+                                $existingStart = strtotime($existingSession['limit_session_start'] ?? '');
+                                $existingEnd = strtotime($existingSession['limit_session_end'] ?? '');
+                                if (
+                                    $newStart && $newEnd &&
+                                    $existingStart && $existingEnd &&
+                                    $newStart <= $existingEnd && $newEnd >= $existingStart
+                                ) {
+                                    $post = DB::table('wp_posts')->find($postId);
+                                    return response()->json([
+                                        'status' => false,
+                                        'message' => "Session for {$post->post_title} overlaps with existing session between {$existingSession['limit_session_start']} and {$existingSession['limit_session_end']}."
+                                    ]);
+                                }
+                            }
+
+                            $maxId++;
+                            $newSession['session_limt_id'] = $maxId;
+                            $newSession['log_list'] = [$logEntry];
+                            $existingSessions[] = $newSession;
                             $matched = true;
-                            break;
                         }
                     }
-
-                    if (!$matched) {
-                        $newSession['log_list'] = [$logEntry];
-                        $existingSessions[] = $newSession;
-                    }
                 }
-            }
-            if (!empty($quantity['type']) && isset($quantity['value'])) {
+
+                // Save updated max_quantity if provided
+                if (!empty($quantity['type']) && isset($quantity['value'])) {
+                    ProductMeta::updateOrCreate(
+                        ['post_id' => $postId, 'meta_key' => $quantity['type']],
+                        ['meta_value' => $quantity['value']]
+                    );
+                }
+
+                // Save session_limit_data
                 ProductMeta::updateOrCreate(
-                    [
-                        'post_id' => $postId,
-                        'meta_key' => $quantity['type'],
-                    ],
-                    [
-                        'meta_value' => $quantity['value'],
-                    ]
+                    ['post_id' => $postId, 'meta_key' => $metaKey],
+                    ['meta_value' => json_encode($existingSessions)]
                 );
             }
 
-            ProductMeta::updateOrCreate(
-                [
-                    'post_id' => $postId,
-                    'meta_key' => $metaKey,
-                ],
-                [
-                    'meta_value' => json_encode($existingSessions),
-                ]
-            );
+            DB::commit();
+            return response()->json(['status' => true, 'message' => 'Quantities updated successfully.']);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['status' => false, 'message' => 'Something went wrong', 'error' => $e->getMessage()]);
         }
-
-        return response()->json(['status' => true, 'message' => 'Quantities updated successfully.']);
     }
     public function create(Request $request) {}
     public function show(Request $request) {}
@@ -325,7 +474,7 @@ class ProductVariationSessionLock extends Controller
 
         return response()->json(['status' => true, 'logData' => $logData]);
     }
-
+    
     public function getProductsWithActiveSession(Request $request)
     {
         $perPage = $request->query('perPage', 15);
@@ -421,4 +570,103 @@ class ProductVariationSessionLock extends Controller
         ]);
     }
 
+    public function getProductsWithInactiveSession(Request $request){
+        $perPage = $request->query('perPage', 15);
+        $sortBy = $request->query('sortBy', 'post_modified');
+        $sortOrder = $request->query('sortOrder', 'desc');
+        $page = $request->query('page', 1);
+
+        $isAdmin = false;
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            $capabilities = $user->capabilities ?? [];
+            $isAdmin = isset($capabilities['administrator']);
+        } catch (\Throwable $th) {
+        }
+
+        if (!$isAdmin) {
+            return response()->json(['status' => false, 'message' => 'Hey, you are not allowed']);
+        }
+
+        $now = now();
+        $productIdsWithInactiveSession = [];
+
+        $metaRecords = ProductMeta::where('meta_key', 'sessions_limit_data')->get();
+
+        foreach ($metaRecords as $meta) {
+            $sessions = json_decode($meta->meta_value, true);
+            $hasActiveSession = false;
+
+            if (is_array($sessions)) {
+                foreach ($sessions as $session) {
+                    if (
+                        isset($session['isActive']) && $session['isActive']
+                        // && isset($session['limit_session_start']) && isset($session['limit_session_end'])
+                    ) {
+                        // $start = Carbon::parse($session['limit_session_start']);
+                        // $end = Carbon::parse($session['limit_session_end']);
+
+                        // if ($now->between($start, $end)) {
+                            $hasActiveSession = true;
+                            break;
+                        // }
+                    }
+                }
+
+                if (!$hasActiveSession) {
+                    $productIdsWithInactiveSession[] = $meta->post_id;
+                }
+            }
+        }
+
+        if (empty($productIdsWithInactiveSession)) {
+            return response()->json(['status' => true, 'products' => []]);
+        }
+
+        $products = Product::with([
+            'meta' => function ($query) {
+                $query->select('post_id', 'meta_key', 'meta_value')
+                    ->whereIn('meta_key', [
+                        '_price',
+                        '_stock_status',
+                        '_stock',
+                        '_sku',
+                        '_thumbnail_id',
+                        '_product_image_gallery',
+                        'max_quantity',
+                        'min_quantity',
+                        'sessions_limit_data'
+                    ]);
+            },
+            'variations' => function ($query) {
+                $query->select('ID', 'post_parent', 'post_title', 'post_name')
+                    ->with([
+                        'varients' => function ($query) {
+                            $query->select('post_id', 'meta_key', 'meta_value')
+                                ->whereIn('meta_key', [
+                                    '_price',
+                                    '_stock_status',
+                                    '_stock',
+                                    '_sku',
+                                    'max_quantity_var',
+                                    'min_quantity_var',
+                                    '_thumbnail_id',
+                                    'sessions_limit_data'
+                                ]);
+                        }
+                    ]);
+            },
+            'thumbnail'
+        ])
+            ->whereIn('ID', $productIdsWithInactiveSession)
+            ->where('post_type', 'product')
+            ->select('ID', 'post_title', 'post_modified', 'post_name', 'post_date')
+            ->orderBy($sortBy, $sortOrder)
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        return response()->json([
+            'status' => true,
+            'products' => $products
+        ]);
+    }
 }
