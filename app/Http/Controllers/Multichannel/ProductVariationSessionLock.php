@@ -68,6 +68,7 @@ class ProductVariationSessionLock extends Controller
                         '_thumbnail_id',
                         '_product_image_gallery',
                         'sessions_limit_data',
+                        'sessions_limit_data_created_at',
                     ]);
             },
             'variations' => function ($query) {
@@ -84,6 +85,7 @@ class ProductVariationSessionLock extends Controller
                                     '_sku',
                                     '_thumbnail_id',
                                     'sessions_limit_data',
+                                    'sessions_limit_data_created_at',
                                 ]);
                         }
                     ]);
@@ -246,6 +248,11 @@ class ProductVariationSessionLock extends Controller
                         ['meta_value' => $quantity['value']]
                     );
 
+                    ProductMeta::firstOrCreate(
+                        ['post_id' => $postId, 'meta_key' => 'sessions_limit_data_created_at'],
+                        ['meta_value' => now()->format('Y-m-d H:i:s')]
+                    );
+
                     // update cart also
                     $limitValue = $quantity['value'] ?? 0;
                     $isLimit = $limitValue > 0;
@@ -286,7 +293,6 @@ class ProductVariationSessionLock extends Controller
     public function show(Request $request) {}
     public function edit(Request $request) {}
     public function destroy(Request $request) {}
-
     public function getPurchaseLimitProductById(Request $request, $id)
     {
         $productId = $id;
@@ -347,7 +353,6 @@ class ProductVariationSessionLock extends Controller
 
         return response()->json(['status' => true, 'logData' => $logData]);
     }
-
     public function getProductsWithActiveSession(Request $request)
     {
         $perPage = $request->query('perPage', 15);
@@ -408,7 +413,8 @@ class ProductVariationSessionLock extends Controller
                         '_product_image_gallery',
                         'max_quantity',
                         'min_quantity',
-                        'sessions_limit_data'
+                        'sessions_limit_data',
+                        'sessions_limit_data_created_at'
                     ]);
             },
             'variations' => function ($query) {
@@ -424,7 +430,8 @@ class ProductVariationSessionLock extends Controller
                                     'max_quantity_var',
                                     'min_quantity_var',
                                     '_thumbnail_id',
-                                    'sessions_limit_data'
+                                    'sessions_limit_data',
+                                    'sessions_limit_data_created_at'
                                 ]);
                         }
                     ]);
@@ -442,7 +449,6 @@ class ProductVariationSessionLock extends Controller
             'products' => $products
         ]);
     }
-
     public function getProductsWithInactiveSession(Request $request){
         $perPage = $request->query('perPage', 15);
         $sortBy = $request->query('sortBy', 'post_modified');
@@ -508,7 +514,8 @@ class ProductVariationSessionLock extends Controller
                         '_product_image_gallery',
                         'max_quantity',
                         'min_quantity',
-                        'sessions_limit_data'
+                        'sessions_limit_data',
+                        'sessions_limit_data_created_at'
                     ]);
             },
             'variations' => function ($query) {
@@ -524,7 +531,8 @@ class ProductVariationSessionLock extends Controller
                                     'max_quantity_var',
                                     'min_quantity_var',
                                     '_thumbnail_id',
-                                    'sessions_limit_data'
+                                    'sessions_limit_data',
+                                    'sessions_limit_data_created_at'
                                 ]);
                         }
                     ]);
@@ -542,8 +550,102 @@ class ProductVariationSessionLock extends Controller
             'products' => $products
         ]);
     }
-
+    
     public function deactivateAllSessionsForProduct(Request $request, $id){
+        $isAdmin = false;
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            $capabilities = $user->capabilities ?? [];
+            $isAdmin = isset($capabilities['administrator']);
+        } catch (\Throwable $th) {
+        }
+
+        if (!$isAdmin) {
+            return response()->json(['status' => false, 'message' => 'Hey, you are not allowed']);
+        }
+
+        $product = Product::with(['meta', 'variations.varients'])->where('ID', $id)->first();
+        if (!$product) {
+            return response()->json(['status' => false, 'message' => 'Product not found']);
+        }
+
+        $productMeta = $product->meta->keyBy('meta_key');
+
+        if ($productMeta->has('sessions_limit_data')) {
+            $sessions = json_decode($productMeta['sessions_limit_data']->meta_value, true);
+            if (is_array($sessions)) {
+                foreach ($sessions as &$session) {
+                    $session['isActive'] = false;
+                }
+
+                $productMeta['sessions_limit_data']->meta_value = json_encode($sessions);
+                $productMeta['sessions_limit_data']->save();
+
+                foreach ($sessions as $s) {
+                    DB::table('product_limit_session')->updateOrInsert(
+                        ['session_id' => $s['session_id'] ?? uniqid(), 'product_variation_id' => $product->ID],
+                        [
+                            'is_active' => false,
+                            'deactivated_at' => now(),
+                            'source' => 'product'
+                        ]
+                    );
+                }
+            }
+        }
+
+        if ($productMeta->has('max_quantity')) {
+            $oldMax = $productMeta['max_quantity']->meta_value;
+            ProductMeta::updateOrCreate(
+                ['post_id' => $product->ID, 'meta_key' => 'deactivated_max_quantity'],
+                ['meta_value' => $oldMax]
+            );
+            $productMeta['max_quantity']->meta_value = null;
+            $productMeta['max_quantity']->save();
+        }
+
+        foreach ($product->variations as $variation) {
+            $varMeta = $variation->varients->keyBy('meta_key');
+
+            // Handle sessions_limit_data
+            if ($varMeta->has('sessions_limit_data')) {
+                $sessions = json_decode($varMeta['sessions_limit_data']->meta_value, true);
+                if (is_array($sessions)) {
+                    foreach ($sessions as &$session) {
+                        $session['isActive'] = false;
+                    }
+
+                    $varMeta['sessions_limit_data']->meta_value = json_encode($sessions);
+                    $varMeta['sessions_limit_data']->save();
+
+                    foreach ($sessions as $s) {
+                        DB::table('product_limit_session')->updateOrInsert(
+                            ['session_id' => $s['session_id'] ?? uniqid(), 'product_variation_id' => $variation->ID],
+                            [
+                                'is_active' => false,
+                                'deactivated_at' => now(),
+                                'source' => 'variation'
+                            ]
+                        );
+                    }
+                }
+            }
+
+            // Move max_quantity_var → deactivated_max_quantity_var
+            if ($varMeta->has('max_quantity_var')) {
+                $oldMax = $varMeta['max_quantity_var']->meta_value;
+                ProductMeta::updateOrCreate(
+                    ['post_id' => $variation->ID, 'meta_key' => 'deactivated_max_quantity_var'],
+                    ['meta_value' => $oldMax]
+                );
+                $varMeta['max_quantity_var']->meta_value = null;
+                $varMeta['max_quantity_var']->save();
+            }
+        }
+
+        return response()->json(['status' => true, 'message' => 'Sessions deactivated and quantity limits archived successfully']);
+    }
+    public function activateAllSessionsForProduct(Request $request, $id){
         $isAdmin = false;
         try {
             $user = JWTAuth::parseToken()->authenticate();
@@ -554,27 +656,75 @@ class ProductVariationSessionLock extends Controller
         if (!$isAdmin) {
             return response()->json(['status' => false, 'message' => 'Hey, you are not allowed']);
         }
+        $product = Product::with(['meta', 'variations.varients'])->where('ID', $id)->first();
+        if (!$product) {
+            return response()->json(['status' => false, 'message' => 'Product not found']);
+        }
 
-        $product = Product::with(['meta','variations','variations.varients'])
-        ->where('ID', $id)->first();
-        if(!$product){
-            return response()->json(['status' => false, 'message' => 'Product meta not found']);
-        }
-        $sessions = json_decode($product->meta->where('meta_key', 'sessions_limit_data')->first()->meta_value, true);
-        foreach($sessions as $session){
-            $session['isActive'] = false;
-        }
-        $product->meta->where('meta_key', 'sessions_limit_data')->first()->meta_value = json_encode($sessions);
-        $product->meta->save();
-        foreach($product->variations as $variation){
-            $sessions = json_decode($variation->varients->where('meta_key', 'sessions_limit_data')->first()->meta_value, true);
-            foreach($sessions as $session){
-                $session['isActive'] = false;
+        $productMeta = $product->meta->keyBy('meta_key');
+        if ($productMeta->has('sessions_limit_data')) {
+            $sessions = json_decode($productMeta['sessions_limit_data']->meta_value, true);
+            if (is_array($sessions)) {
+                foreach ($sessions as &$session) {
+                    $session['isActive'] = true;
+                }
+
+                $productMeta['sessions_limit_data']->meta_value = json_encode($sessions);
+                $productMeta['sessions_limit_data']->save();
+
+                foreach ($sessions as $s) {
+                    DB::table('product_limit_session')->updateOrInsert(
+                        ['session_id' => $s['session_id'] ?? uniqid(), 'product_variation_id' => $product->ID],
+                        [
+                            'is_active' => true,
+                            'activated_at' => now(),
+                            'source' => 'product'
+                        ]
+                    );
+                }
             }
-            $variation->varients->where('meta_key', 'sessions_limit_data')->first()->meta_value = json_encode($sessions);
-            $variation->varients->save();
         }
-        $product->save();
-        return response()->json(['status' => true, 'message' => 'Sessions deactivated successfully']);
+        if ($productMeta->has('deactivated_max_quantity')) {
+            $oldValue = $productMeta['deactivated_max_quantity']->meta_value;
+            ProductMeta::updateOrCreate(
+                ['post_id' => $product->ID, 'meta_key' => 'max_quantity'],
+                ['meta_value' => $oldValue]
+            );
+            $productMeta['deactivated_max_quantity']->delete();
+        }
+        foreach ($product->variations as $variation) {
+            $varMeta = $variation->varients->keyBy('meta_key');
+            if ($varMeta->has('sessions_limit_data')) {
+                $sessions = json_decode($varMeta['sessions_limit_data']->meta_value, true);
+                if (is_array($sessions)) {
+                    foreach ($sessions as &$session) {
+                        $session['isActive'] = true;
+                    }
+
+                    $varMeta['sessions_limit_data']->meta_value = json_encode($sessions);
+                    $varMeta['sessions_limit_data']->save();
+
+                    foreach ($sessions as $s) {
+                        DB::table('product_limit_session')->updateOrInsert(
+                            ['session_id' => $s['session_id'] ?? uniqid(), 'product_variation_id' => $variation->ID],
+                            [
+                                'is_active' => true,
+                                'activated_at' => now(),
+                                'source' => 'variation'
+                            ]
+                        );
+                    }
+                }
+            }
+            if ($varMeta->has('deactivated_max_quantity_var')) {
+                $oldValue = $varMeta['deactivated_max_quantity_var']->meta_value;
+                ProductMeta::updateOrCreate(
+                    ['post_id' => $variation->ID, 'meta_key' => 'max_quantity_var'],
+                    ['meta_value' => $oldValue]
+                );
+                $varMeta['deactivated_max_quantity_var']->delete();
+            }
+        }
+        return response()->json(['status' => true, 'message' => 'Sessions activated and quantity limits restored successfully']);
     }
 }
