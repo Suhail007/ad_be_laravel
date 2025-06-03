@@ -247,25 +247,25 @@ class ProductVariationSessionLock extends Controller
                     );
 
                     // update cart also
-                    // $limitValue = $quantity['value'] ?? 0;
-                    // $isLimit = $limitValue > 0;
-                    // $updateData = [
-                    //     'isLimit' => $isLimit,
-                    //     'max' => $isLimit ? $limitValue : null,
-                    // ];
-                    // $updatedRows = Cart::where('variation_id', $postId)->get();
+                    $limitValue = $quantity['value'] ?? 0;
+                    $isLimit = $limitValue > 0;
+                    $updateData = [
+                        'isLimit' => $isLimit,
+                        'max' => $isLimit ? $limitValue : null,
+                    ];
+                    $updatedRows = Cart::where('variation_id', $postId)->get();
 
-                    // if ($updatedRows->isEmpty()) {
-                    //     $updatedRows = Cart::where('product_id', $postId)->get();
-                    // }
-                    // foreach ($updatedRows as $cartItem) {
-                    //     $cartItem->isLimit = $updateData['isLimit'];
-                    //     $cartItem->max = $updateData['max'];
-                    //     if ($isLimit && $cartItem->qty > $limitValue) {
-                    //         $cartItem->qty = $limitValue;
-                    //     }
-                    //     $cartItem->save();
-                    // }
+                    if ($updatedRows->isEmpty()) {
+                        $updatedRows = Cart::where('product_id', $postId)->get();
+                    }
+                    foreach ($updatedRows as $cartItem) {
+                        $cartItem->isLimit = $updateData['isLimit'];
+                        $cartItem->max = $updateData['max'];
+                        if ($isLimit && $cartItem->qty > $limitValue) {
+                            $cartItem->qty = $limitValue;
+                        }
+                        $cartItem->save();
+                    }
                 }
 
                 // Save session_limit_data
