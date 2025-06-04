@@ -658,7 +658,7 @@ class PayPalController extends Controller
 
                             if ($sessionMeta) {
                                 $sessions = json_decode($sessionMeta->meta_value, true) ?? [];
-                                $now = now();
+                                $now = Carbon::parse($orderDate);
 
                                 foreach ($sessions as $session) {
                                     if (
@@ -1616,7 +1616,7 @@ class PayPalController extends Controller
 
                             if ($sessionMeta) {
                                 $sessions = json_decode($sessionMeta->meta_value, true) ?? [];
-                                $now = now();
+                                $now = Carbon::parse($orderDate);
 
                                 foreach ($sessions as $session) {
                                     if (
