@@ -705,9 +705,9 @@ class ProductVariationSessionLock extends Controller
         if ($productMeta->has('sessions_limit_data')) {
             $sessions = json_decode($productMeta['sessions_limit_data']->meta_value, true);
             if (is_array($sessions)) {
-                foreach ($sessions as &$session) {
-                    $session['isActive'] = false;
-                }
+                // foreach ($sessions as &$session) {
+                //     $session['isActive'] = false;
+                // }
 
                 $productMeta['sessions_limit_data']->meta_value = json_encode($sessions);
                 $productMeta['sessions_limit_data']->save();
@@ -731,9 +731,9 @@ class ProductVariationSessionLock extends Controller
             if ($varMeta->has('sessions_limit_data')) {
                 $sessions = json_decode($varMeta['sessions_limit_data']->meta_value, true);
                 if (is_array($sessions)) {
-                    foreach ($sessions as &$session) {
-                        $session['isActive'] = false;
-                    }
+                    // foreach ($sessions as &$session) {
+                    //     $session['isActive'] = false;
+                    // }
 
                     $varMeta['sessions_limit_data']->meta_value = json_encode($sessions);
                     $varMeta['sessions_limit_data']->save();
@@ -741,7 +741,6 @@ class ProductVariationSessionLock extends Controller
                 }
             }
 
-            // Move max_quantity_var → deactivated_max_quantity_var
             if ($varMeta->has('max_quantity_var')) {
                 $oldMax = $varMeta['max_quantity_var']->meta_value;
                 ProductMeta::updateOrCreate(
@@ -775,9 +774,9 @@ class ProductVariationSessionLock extends Controller
         if ($productMeta->has('sessions_limit_data')) {
             $sessions = json_decode($productMeta['sessions_limit_data']->meta_value, true);
             if (is_array($sessions)) {
-                foreach ($sessions as &$session) {
-                    $session['isActive'] = true;
-                }
+                // foreach ($sessions as &$session) {
+                //     $session['isActive'] = true;
+                // }
 
                 $productMeta['sessions_limit_data']->meta_value = json_encode($sessions);
                 $productMeta['sessions_limit_data']->save();
@@ -807,9 +806,9 @@ class ProductVariationSessionLock extends Controller
             if ($varMeta->has('sessions_limit_data')) {
                 $sessions = json_decode($varMeta['sessions_limit_data']->meta_value, true);
                 if (is_array($sessions)) {
-                    foreach ($sessions as &$session) {
-                        $session['isActive'] = true;
-                    }
+                    // foreach ($sessions as &$session) {
+                    //     $session['isActive'] = true;
+                    // }
 
                     $varMeta['sessions_limit_data']->meta_value = json_encode($sessions);
                     $varMeta['sessions_limit_data']->save();
