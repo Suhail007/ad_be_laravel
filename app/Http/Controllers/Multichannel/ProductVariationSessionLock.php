@@ -171,8 +171,13 @@ class ProductVariationSessionLock extends Controller
                 $newSessions = $quantity['session_limit'] ?? [];
 
                 foreach ($newSessions as $newSession) {
-                    $newStart = strtotime($newSession['limit_session_start'] ?? '');
-                    $newEnd = strtotime($newSession['limit_session_end'] ?? '');
+
+                    // $newStart = strtotime($newSession['limit_session_start'] ?? '');
+                    // $newEnd = strtotime($newSession['limit_session_end'] ?? '');
+
+                    $newStart = !empty($newSession['limit_session_start']) ? strtotime($newSession['limit_session_start']) : null;
+                    $newEnd = !empty($newSession['limit_session_end']) ? strtotime($newSession['limit_session_end']) : null;
+
 
                     if ($newStart && $newEnd && $newStart > $newEnd) {
                         return response()->json(['status' => false, 'message' => 'Start date cannot be after end date']);
@@ -217,19 +222,38 @@ class ProductVariationSessionLock extends Controller
                         // If not matched and does not overlap, assign new ID
                         if (!$matched) {
                             foreach ($existingSessions as $existingSession) {
-                                $existingStart = strtotime($existingSession['limit_session_start'] ?? '');
-                                $existingEnd = strtotime($existingSession['limit_session_end'] ?? '');
+                                // $existingStart = strtotime($existingSession['limit_session_start'] ?? '');
+                                // $existingEnd = strtotime($existingSession['limit_session_end'] ?? '');
+                                // if (
+                                //     $newStart && $newEnd &&
+                                //     $existingStart && $existingEnd &&
+                                //     $newStart <= $existingEnd && $newEnd >= $existingStart
+                                // ) {
+                                //     $post = DB::table('wp_posts')->find($postId);
+                                //     return response()->json([
+                                //         'status' => false,
+                                //         'message' => "Session for {$post->post_title} overlaps with existing session between {$existingSession['limit_session_start']} and {$existingSession['limit_session_end']}."
+                                //     ]);
+                                // }
+                                $conflictsWithActive = $existingSession['isActive'] ?? false;
+                                $existingStart = !empty($existingSession['limit_session_start']) ? strtotime($existingSession['limit_session_start']) : null;
+                                $existingEnd = !empty($existingSession['limit_session_end']) ? strtotime($existingSession['limit_session_end']) : null;
+
+                                // Check for overlap if newStart or newEnd is not given, but existing session is active
                                 if (
-                                    $newStart && $newEnd &&
-                                    $existingStart && $existingEnd &&
-                                    $newStart <= $existingEnd && $newEnd >= $existingStart
+                                    $conflictsWithActive && (
+                                        ($newStart && $newEnd && $existingStart && $existingEnd &&
+                                            $newStart <= $existingEnd && $newEnd >= $existingStart) ||
+                                        (!$newStart && !$newEnd && $existingStart && $existingEnd && now()->between($existingStart, $existingEnd))
+                                    )
                                 ) {
                                     $post = DB::table('wp_posts')->find($postId);
                                     return response()->json([
                                         'status' => false,
-                                        'message' => "Session for {$post->post_title} overlaps with existing session between {$existingSession['limit_session_start']} and {$existingSession['limit_session_end']}."
+                                        'message' => "Session for {$post->post_title} overlaps with active session between {$existingSession['limit_session_start']} and {$existingSession['limit_session_end']}."
                                     ]);
                                 }
+
                             }
 
                             $maxId++;
