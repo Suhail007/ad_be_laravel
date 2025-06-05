@@ -183,7 +183,7 @@ class CartController extends Controller
      * @param Carbon $currentDateTime
      * @return bool Returns true if user is allowed to order, false if limit reached
      */
-    private function checkProductLimit($productId, $variationId, $userId, $currentDateTime, $maxQty = 0){
+    private function checkProductLimit($productId, $variationId, $userId, $currentDateTime, $maxQty = 0, $cartQty = 1){
         $postId = $variationId ?? $productId;
 
         $currentTime = $currentDateTime instanceof Carbon
@@ -222,13 +222,19 @@ class CartController extends Controller
                 $maxQty = $maxQty ?? 0;
                 $blockReason = null;
 
-                if ($maxLimit > 0 && $orderCount >= $maxLimit) {
+                $incomingQty = $cartQty ?? 1; // requested cart qty (4)  limit is 5 and 2 already ordered 
+
+                $willExceedQty = $maxQty > 0 && ($limitCount + $incomingQty) > $maxQty;
+                $willExceedOrders = $maxLimit > 0 && $orderCount >= $maxLimit;
+
+                if ($willExceedOrders) {
                     $blockReason = "order_count";
                 }
-    
-                if ($maxQty > 0 && $limitCount >= $maxQty) {
+
+                if ($willExceedQty) {
                     $blockReason = $blockReason ? "both" : "limit_count";
                 }
+
     
                 if ($blockReason) {
                     $blockTime = now();
@@ -290,7 +296,7 @@ class CartController extends Controller
                 if ($cartItem->isLimit) {
 
                     // check if customer have reached the limit
-                    $limitCheck = $this->checkProductLimit($product_id, $variation['variation_id'], $user_id, $currentDateTime, $cartItem->max);
+                    $limitCheck = $this->checkProductLimit($product_id, $variation['variation_id'], $user_id, $currentDateTime, $cartItem->max, $cartItem->quantity);
                     if ($limitCheck == false) {
                         return response()->json([
                             'status' => false,
@@ -329,7 +335,7 @@ class CartController extends Controller
             } else {
                 $newQty = $variation['quantity'];
                 if ($variation['isLimit']) {
-                    $limitCheck = $this->checkProductLimit($product_id, $variation['variation_id'], $user_id, $currentDateTime, $variation['max']);
+                    $limitCheck = $this->checkProductLimit($product_id, $variation['variation_id'], $user_id, $currentDateTime, $variation['max'], $newQty);
                     if ($limitCheck == false) {
                         
                         $count++;
@@ -557,7 +563,7 @@ class CartController extends Controller
                 if ($cartItem->isLimit) {
 
                     // check if customer have reached the limit
-                    $limitCheck = $this->checkProductLimit($product_id, $variation_id, $user_id, $currentDateTime, $cartItem->max);
+                    $limitCheck = $this->checkProductLimit($product_id, $variation_id, $user_id, $currentDateTime, $cartItem->max , $cartItem->quantity);
                     if ($limitCheck == false) {
                         $count++;
                         continue;
@@ -598,7 +604,7 @@ class CartController extends Controller
             } else {
                 if ($isLimit) {
                     // check if customer have reached the limit
-                    $limitCheck = $this->checkProductLimit($product_id, $variation_id, $user_id, $currentDateTime, $max);
+                    $limitCheck = $this->checkProductLimit($product_id, $variation_id, $user_id, $currentDateTime, $max, $quantity);
                     if ($limitCheck == false) {
                         $count++;
                         continue;
@@ -1013,7 +1019,7 @@ class CartController extends Controller
         $cartItem->quantity = $request->quantity;
         if ($cartItem->isLimit) {
             // check if customer have reached the limit
-            $limitCheck = $this->checkProductLimit($cartItem->product_id, $cartItem->variation_id, $user->ID, $currentDateTime, $cartItem->max);
+            $limitCheck = $this->checkProductLimit($cartItem->product_id, $cartItem->variation_id, $user->ID, $currentDateTime, $cartItem->max, $cartItem->quantity);
             if ($limitCheck == false) {
                 return response()->json([
                     'status' => false,
