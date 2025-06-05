@@ -321,7 +321,7 @@ class ProductVariationSessionLock extends Controller
     {
         $productId = $id;
         $logData = [];
-
+        $sessionID = $request->query('sessionID', null);
         // Step 1: Get product or variation with meta + variations
         $product = Product::with(['meta', 'variations.varients'])->where('ID', $productId)
             ->orWhereHas('variations', function ($q) use ($productId) {
@@ -352,6 +352,9 @@ class ProductVariationSessionLock extends Controller
         // Step 4: Fetch all product_limit_session records for matched IDs
         $records = DB::table('product_limit_session')
             ->whereIn('product_variation_id', $ids)
+            ->when($sessionID, function ($query) use ($sessionID) {
+                $query->where('session_id', $sessionID);
+            })
             ->get();
 
         foreach ($records as $record) {
