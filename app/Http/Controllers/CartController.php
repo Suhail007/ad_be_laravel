@@ -181,7 +181,7 @@ class CartController extends Controller
      * @param int|null $variationId
      * @param int $userId
      * @param Carbon $currentDateTime
-     * @return bool Returns true if user is allowed to order, false if limit reached
+     * @return array Returns true if user is allowed to order, false if limit reached
      */
     private function checkProductLimit($productId, $variationId, $userId, $currentDateTime, $maxQty = 0, $cartQty = 1){
         $postId = $variationId ?? $productId;
@@ -189,16 +189,20 @@ class CartController extends Controller
         $currentTime = $currentDateTime instanceof Carbon
             ? $currentDateTime
             : Carbon::parse($currentDateTime);
+
         $sessionMeta = ProductMeta::where('post_id', $postId)
             ->where('meta_key', 'sessions_limit_data')
             ->first();
 
-        if (!$sessionMeta) return true;
+        if (!$sessionMeta) {
+            return ['status' => true, 'canAdd' => true, 'allowedQty' => $maxQty];
+        }
 
         $sessions = json_decode($sessionMeta->meta_value, true) ?? [];
-        if (empty($sessions)) return true;
+        if (empty($sessions)) {
+            return ['status' => true, 'canAdd' => true, 'allowedQty' => $maxQty];
+        }
 
-        // Step 2: Check against each active session
         foreach ($sessions as $session) {
             if (empty($session['isActive'])) continue;
 
@@ -209,7 +213,9 @@ class CartController extends Controller
                 $sessionId = $session['session_limt_id'] ?? null;
                 $maxLimit = (int) ($session['max_order_limit_per_user'] ?? 0);
 
-                if ($maxLimit === 0 && $maxQty === 0) return true;
+                if ($maxLimit === 0 && $maxQty === 0) {
+                    return ['status' => true, 'canAdd' => true, 'allowedQty' => $cartQty];
+                }
 
                 $limitRecord = DB::table('product_limit_session')
                     ->where('product_variation_id', $postId)
@@ -219,28 +225,20 @@ class CartController extends Controller
 
                 $orderCount = $limitRecord->order_count ?? 0;
                 $limitCount = $limitRecord->limit_count ?? 0;
-                $maxQty = $maxQty ?? 0;
-                $blockReason = null;
 
-                $incomingQty = $cartQty ?? 1; // requested cart qty (4)  limit is 5 and 2 already ordered 
+                $remainingQty = $maxQty > 0 ? max(0, $maxQty - $limitCount) : $cartQty;
+                $remainingOrders = $maxLimit > 0 ? max(0, $maxLimit - $orderCount) : 1;
 
+                // Determine if adding current cartQty would exceed allowed qty
+                $incomingQty = $cartQty ?? 1;
                 $willExceedQty = $maxQty > 0 && ($limitCount + $incomingQty) > $maxQty;
                 $willExceedOrders = $maxLimit > 0 && $orderCount >= $maxLimit;
 
-                if ($willExceedOrders) {
-                    $blockReason = "order_count";
-                }
-
-                if ($willExceedQty) {
-                    $blockReason = $blockReason ? "both" : "limit_count";
-                }
-
-    
-                if ($blockReason) {
+                if ($willExceedQty || $willExceedOrders) {
                     $blockTime = now();
                     $newAttempt = ($limitRecord->blocked_attemps ?? 0) + 1;
                     $existingLog = $limitRecord->log ?? '';
-                    $logMessage = "Blocked at {$blockTime->format('Y-m-d H:i:s')} (reason: $blockReason, limit: $maxLimit orders / $maxQty qty, used: $orderCount orders / $limitCount qty)\n";
+                    $logMessage = "Blocked at {$blockTime->format('Y-m-d H:i:s')} (limit: $maxLimit orders / $maxQty qty, used: $orderCount orders / $limitCount qty)\n";
 
                     DB::table('product_limit_session')
                         ->updateOrInsert(
@@ -257,12 +255,27 @@ class CartController extends Controller
                             ]
                         );
 
-                    return false;
+                    return [
+                        'status' => false,
+                        'canAdd' => false,
+                        'allowedQty' => $remainingQty,
+                        'remainingOrders' => $remainingOrders,
+                    ];
                 }
+
+                // Valid
+                return [
+                    'status' => true,
+                    'canAdd' => true,
+                    'allowedQty' => $remainingQty,
+                    'remainingOrders' => $remainingOrders,
+                ];
             }
         }
-        return true;
+
+        return ['status' => true, 'canAdd' => true, 'allowedQty' => $maxQty];
     }
+
 
 
 
@@ -297,15 +310,23 @@ class CartController extends Controller
 
                     // check if customer have reached the limit
                     $limitCheck = $this->checkProductLimit($product_id, $variation['variation_id'], $user_id, $currentDateTime, $cartItem->max, $cartItem->quantity);
-                    if ($limitCheck == false) {
-                        return response()->json([
-                            'status' => false,
-                            'username' => $user->user_login,
-                            'message' =>"Customer quota full, you've reached the order limit for this product.",
-                            'time' => now()->toDateTimeString(),
-                            'cart_count' => 0,
-                            'cart_items' => [],
-                        ], 200);
+                    if ($limitCheck['status'] == false) {
+                        if($limitCheck['allowedQty'] > 0){
+                            $cartItem->quantity = $limitCheck['allowedQty'];
+                            $cartItem->save();
+                            $count++;
+                        } else {
+                            $count++;
+                            continue;
+                        }
+                        // return response()->json([
+                        //     'status' => false,
+                        //     'username' => $user->user_login,
+                        //     'message' =>"Customer quota full, you've reached the order limit for this product.",
+                        //     'time' => now()->toDateTimeString(),
+                        //     'cart_count' => 0,
+                        //     'cart_items' => [],
+                        // ], 200);
                     }
 
                     if ($cartItem->quantity < $cartItem->min) {
@@ -336,10 +357,14 @@ class CartController extends Controller
                 $newQty = $variation['quantity'];
                 if ($variation['isLimit']) {
                     $limitCheck = $this->checkProductLimit($product_id, $variation['variation_id'], $user_id, $currentDateTime, $variation['max'], $newQty);
-                    if ($limitCheck == false) {
-                        
-                        $count++;
-                        continue;
+                    if ($limitCheck['status'] == false) {
+                        if($limitCheck['allowedQty'] > 0){
+                            $newQty = $limitCheck['allowedQty'];
+                            $count++;
+                        } else {
+                            $count++;
+                            continue;
+                        }
 
                         // return response()->json([
                         //     'status' => false,
@@ -564,9 +589,14 @@ class CartController extends Controller
 
                     // check if customer have reached the limit
                     $limitCheck = $this->checkProductLimit($product_id, $variation_id, $user_id, $currentDateTime, $cartItem->max , $cartItem->quantity);
-                    if ($limitCheck == false) {
-                        $count++;
-                        continue;
+                    if ($limitCheck['status'] == false) {
+                        if($limitCheck['allowedQty'] > 0){
+                            $cartItem->quantity = $limitCheck['allowedQty'];
+                            $count++;
+                        } else {
+                            $count++;
+                            continue;
+                        }
                         // return response()->json([
                         //     'status' => false,
                         //     'username' => $user->user_login,
@@ -605,9 +635,14 @@ class CartController extends Controller
                 if ($isLimit) {
                     // check if customer have reached the limit
                     $limitCheck = $this->checkProductLimit($product_id, $variation_id, $user_id, $currentDateTime, $max, $quantity);
-                    if ($limitCheck == false) {
-                        $count++;
-                        continue;
+                    if ($limitCheck['status'] == false) {
+                        if($limitCheck['allowedQty'] > 0){
+                            $quantity = $limitCheck['allowedQty'];
+                            $count++;
+                        } else {
+                            $count++;
+                            continue;
+                        }
                         // return response()->json([
                         //     'status' => false,
                         //     'username' => $user->user_login,
@@ -1020,15 +1055,20 @@ class CartController extends Controller
         if ($cartItem->isLimit) {
             // check if customer have reached the limit
             $limitCheck = $this->checkProductLimit($cartItem->product_id, $cartItem->variation_id, $user->ID, $currentDateTime, $cartItem->max, $cartItem->quantity);
-            if ($limitCheck == false) {
-                return response()->json([
-                    'status' => false,
-                    'username' => $user->user_login,
-                    'message' =>"Customer quota full, you've reached the order limit for this product.",
-                    'time' => now()->toDateTimeString(),
-                    'cart_count' => 0,
-                    'cart_items' => [],
-                ], 200);
+            if ($limitCheck['status'] == false) {
+                $quantity = $limitCheck['allowedQty'];
+                if($quantity > 0){
+                    $cartItem->quantity = $quantity;
+                } else {
+                    return response()->json([
+                        'status' => false,
+                        'username' => $user->user_login,
+                        'message' =>"Customer quota full, you've reached the order limit for this product.",
+                        'time' => now()->toDateTimeString(),
+                        'cart_count' => 0,
+                        'cart_items' => [],
+                    ], 200);
+                }
             }
             if ($cartItem->quantity < $cartItem->min) {
                 $reduceQTY = abs($oldQuantity - $cartItem->min);
