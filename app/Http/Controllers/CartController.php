@@ -1097,6 +1097,8 @@ class CartController extends Controller
                         'cart_items' => [],
                     ], 200);
                 }
+                $checkout = Checkout::where('user_id', $user->ID)->first();
+                $isFreeze = $checkout ? $checkout->isFreeze : false;
                 if ($isFreeze) {
                     $this->adjustStock($cartItem, $oldQuantity, $cartItem->quantity);
                 }
