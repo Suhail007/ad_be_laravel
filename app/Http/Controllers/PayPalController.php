@@ -671,6 +671,7 @@ class PayPalController extends Controller
                                 }     
                             }
 
+                            
                             // Step 2: If an active session exists, update or insert order count
                             if ($activeSessionId) {
                                 $productLimitSession = DB::table('product_limit_session')
@@ -680,21 +681,47 @@ class PayPalController extends Controller
                                     ->first();
 
                                 if ($productLimitSession) {
-                                    DB::table('product_limit_session')
+                                    $limitCount = $productLimitSession->limit_count + $cartItem->quantity;
+                                    if($limitCount >= $cartItem->max){
+                                        // 4+1 = 5 increase the order count by 1
+                                        DB::table('product_limit_session')
                                         ->where('id', $productLimitSession->id)
                                         ->update([
                                             'order_count' => $productLimitSession->order_count + 1,
+                                            'limit_count' =>$productLimitSession->limit_count + $cartItem->quantity,
                                             'updated_at' => now(),
                                         ]);
+                                    } else {
+                                        // 2+1 = 3 increase the limit count by $cartItem->quantity
+                                        DB::table('product_limit_session')
+                                        ->where('id', $productLimitSession->id)
+                                        ->update([
+                                            'limit_count' =>$productLimitSession->limit_count + $cartItem->quantity,
+                                            'updated_at' => now(),
+                                        ]);
+                                    }
                                 } else {
-                                    DB::table('product_limit_session')->insert([
-                                        'product_variation_id' => $productVariationId,
-                                        'user_id' => $user->ID,
-                                        'session_id' => $activeSessionId,
-                                        'order_count' => 1,
-                                        'created_at' => now(),
-                                        'updated_at' => now(),
-                                    ]);
+                                    if($cartItem->quantity < $cartItem->max){
+                                        DB::table('product_limit_session')->insert([
+                                            'product_variation_id' => $productVariationId,
+                                            'user_id' => $user->ID,
+                                            'session_id' => $activeSessionId,
+                                            'order_count' => 0,
+                                            'limit_count' => $cartItem->quantity, //1
+                                            'created_at' => now(),
+                                            'updated_at' => now(),
+                                        ]);
+                                    } else {
+                                        DB::table('product_limit_session')->insert([
+                                            'product_variation_id' => $productVariationId,
+                                            'user_id' => $user->ID,
+                                            'session_id' => $activeSessionId,
+                                            'order_count' => 1,
+                                            'limit_count' =>$cartItem->quantity, //1
+                                            'created_at' => now(),
+                                            'updated_at' => now(),
+                                        ]);
+                                    }
                                 }
                             }
                         }

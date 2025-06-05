@@ -1055,33 +1055,7 @@ class CartController extends Controller
         if ($cartItem->isLimit) {
             // check if customer have reached the limit
             $limitCheck = $this->checkProductLimit($cartItem->product_id, $cartItem->variation_id, $user->ID, $currentDateTime, $cartItem->max, $cartItem->quantity);
-            if ($limitCheck['status'] == false) {
-                $quantity = $limitCheck['allowedQty'];
-                if($quantity > 0){
-                    $cartItem->quantity = $quantity;
-                } else {
-                    return response()->json([
-                        'status' => false,
-                        'username' => $user->user_login,
-                        'message' =>"Customer quota full, you've reached the order limit for this product.",
-                        'time' => now()->toDateTimeString(),
-                        'cart_count' => 0,
-                        'cart_items' => [],
-                    ], 200);
-                }
-            }
-            if ($cartItem->quantity < $cartItem->min) {
-                $reduceQTY = abs($oldQuantity - $cartItem->min);
-                $cartItem->quantity = $cartItem->min;
-                $cartItem->save();
-
-                $checkout = Checkout::where('user_id', $user->ID)->first();
-                $isFreeze = $checkout ? $checkout->isFreeze : false;
-
-                if ($isFreeze) {
-                    $this->adjustStock($cartItem, $oldQuantity, $reduceQTY);
-                }
-            }
+            
             if ($cartItem->quantity > $cartItem->max) {
 
                 $reduceQTY = abs($oldQuantity - $cartItem->max);
@@ -1096,8 +1070,37 @@ class CartController extends Controller
                 }
             }
 
+            if ($cartItem->quantity < $cartItem->min) {
+                $reduceQTY = abs($oldQuantity - $cartItem->min);
+                $cartItem->quantity = $cartItem->min;
+                $cartItem->save();
 
-            if ($request->quantity <= $cartItem->max && $request->quantity >= $cartItem->min) {
+                $checkout = Checkout::where('user_id', $user->ID)->first();
+                $isFreeze = $checkout ? $checkout->isFreeze : false;
+
+                if ($isFreeze) {
+                    $this->adjustStock($cartItem, $oldQuantity, $reduceQTY);
+                }
+            }
+            if ($limitCheck['status'] == false) {
+                $quantity = $limitCheck['allowedQty'];
+                if($quantity > 0){
+                    $cartItem->quantity = $quantity;
+                    $cartItem->save();
+                } else {
+                    return response()->json([
+                        'status' => false,
+                        'username' => $user->user_login,
+                        'message' =>"Customer quota full, you've reached the order limit for this product.",
+                        'time' => now()->toDateTimeString(),
+                        'cart_count' => 0,
+                        'cart_items' => [],
+                    ], 200);
+                }
+                if ($isFreeze) {
+                    $this->adjustStock($cartItem, $oldQuantity, $cartItem->quantity);
+                }
+            } else if ($request->quantity <= $cartItem->max && $request->quantity >= $cartItem->min) {
                 $cartItem->quantity = $request->quantity;
                 $cartItem->save();
                 $checkout = Checkout::where('user_id', $user->ID)->first();
