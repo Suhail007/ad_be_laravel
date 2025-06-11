@@ -303,8 +303,15 @@ class CartController extends Controller
 
             if ($cartItem) {
                 $newQty = $variation['quantity'];
-                $oldQty = $cartItem->quantity;
+                $oldQty = $cartItem->quantity;// new 
+                $stockLevel = ProductMeta::where('post_id', $variation['variation_id'])
+                    ->where('meta_key', '_stock')
+                    ->value('meta_value');
                 $cartItem->quantity += $newQty;
+                //check if stock is enough
+                if($stockLevel < $newQty + $oldQty && !$isFreeze){
+                    $cartItem->quantity = $stockLevel;
+                }
                 //cart limit
                 if ($cartItem->isLimit) {
 
