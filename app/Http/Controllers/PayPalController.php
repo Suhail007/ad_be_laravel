@@ -396,7 +396,7 @@ class PayPalController extends Controller
                         'pinged' => '',
                         'post_content_filtered' => '',
                         'post_excerpt' => '',
-                        'post_status' => 'wc-processing',
+                        'post_status' => 'pre-processing',
                         'comment_status' => 'open',
                         'ping_status' => 'closed',
                         'post_name' => 'order-' . uniqid(),
@@ -1010,7 +1010,7 @@ class PayPalController extends Controller
 
                     DB::table('wp_wc_orders')->insert([
                         'id' => $orderId,
-                        'status' => 'wc-processing',
+                        'status' => 'pre-processing',
                         'currency' => 'USD',
                         'type' => 'shop_order',
                         'tax_amount' => $order_tax ?? 0,
@@ -1100,7 +1100,7 @@ class PayPalController extends Controller
                     DB::table('wp_wc_order_stats')->insert([
                         'order_id' => $orderId,
                         'parent_id' => 0,
-                        'status' => 'wc-processing',
+                        'status' => 'pre-processing',
                         'date_created' => now(),
                         'date_created_gmt' => now(),
                         'num_items_sold' => $productCount,
@@ -1382,7 +1382,7 @@ class PayPalController extends Controller
                         'pinged' => '',
                         'post_content_filtered' => '',
                         'post_excerpt' => '',
-                        'post_status' => 'wc-processing',
+                        'post_status' => 'pre-processing',
                         'comment_status' => 'open',
                         'ping_status' => 'closed',
                         'post_name' => 'order-' . uniqid(),
@@ -2000,7 +2000,7 @@ class PayPalController extends Controller
                     // dd($dd);
                     DB::table('wp_wc_orders')->insert([
                         'id' => $orderId,
-                        'status' => 'wc-processing',
+                        'status' => 'pre-processing',
                         'currency' => 'USD',
                         'type' => 'shop_order',
                         'tax_amount' => $order_tax ?? 0,
@@ -2091,7 +2091,7 @@ class PayPalController extends Controller
                     DB::table('wp_wc_order_stats')->insert([
                         'order_id' => $orderId,
                         'parent_id' => 0,
-                        'status' => 'wc-processing',
+                        'status' => 'pre-processing',
                         'date_created' => now(),
                         'date_created_gmt' => now(),
                         'num_items_sold' => $productCount,
