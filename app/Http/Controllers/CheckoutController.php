@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Jobs\UnfreezeCart;
 use App\Models\UserMeta;
+use App\Services\GeoRestrictionService;
 use Carbon\Carbon;
 use Exception;
 use GuzzleHttp\Client;
@@ -147,6 +148,51 @@ class CheckoutController extends Controller
             'message' => $paymentResult,
         ], 200);
     }
+    private function checkGeoRestrictions($shippingInfo)
+    {
+        $location = [
+            'state' => $shippingInfo['state'] ?? null,
+            'city' => $shippingInfo['city'] ?? null,
+            'zip' => $shippingInfo['zip'] ?? null
+        ];
+
+        // Get cart items
+        $cartItems = Cart::where('user_id', JWTAuth::parseToken()->authenticate()->ID)->get();
+        $restrictedProducts = [];
+
+        foreach ($cartItems as $cartItem) {
+            $productId = $cartItem->product_id;
+            
+            // Check if product is restricted
+            $isRestricted = app(GeoRestrictionService::class)->isProductRestricted($productId, $location);
+            $variationAttributes = [];
+            if ($isRestricted) {
+                $product = $cartItem->product;
+                $variation = $cartItem->variation;
+                if ($variation) {
+                    $attributes = DB::select("SELECT meta_value FROM wp_postmeta WHERE post_id = ? AND meta_key LIKE 'attribute_%'", [$variation->ID]);
+                    foreach ($attributes as $attribute) {
+                        $variationAttributes[] = $attribute->meta_value;
+                    }
+                }
+                $restrictedProducts[] = [
+                    'product_id' => $product->ID,
+                    'variation_id' => $variation ? $variation->ID : null,
+                    'product_name' => $product->post_title,
+                    'product_image' => $product->thumbnail_url??null,
+                    'product_slug' => $product->post_name,
+                    'variation' => $variationAttributes??[],
+                    'requested_quantity' => $cartItem->quantity,
+                    'available_quantity'=>0,
+                    'wholesale_price' => $this->getWholesalePrice($variation, $product, JWTAuth::parseToken()->authenticate()->price_tier),
+                    'reason' => 'This product is unavailable for shipping to your location'
+                ];
+            }
+        }
+
+        return $restrictedProducts;
+    }
+
     public function checkoutAddress(Request $request)
     {
         try {
@@ -171,6 +217,17 @@ class CheckoutController extends Controller
         // if($isRestrictedState){
         //     return response()->json(['status' => false, 'message' => 'We are not accepting orders to the selected shipping state']);
         // }
+        // Check for geo-restrictions
+        $restrictedProducts = $this->checkGeoRestrictions($data['shipping']);
+        if (!empty($restrictedProducts)) {
+            return response()->json([
+                'status' => true,
+                'message' => 'Some products in your cart cannot be shipped to your location',
+                'restricted_products' => $restrictedProducts,
+                'reason'=>'geo_restriction',
+                'location'=>$data['shipping'],
+            ]);
+        }
         $checkout = Checkout::updateOrCreate(
             ['user_id' => $user->ID],
             [
