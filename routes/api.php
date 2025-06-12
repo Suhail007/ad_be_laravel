@@ -16,6 +16,7 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CleanupController;
 use App\Http\Controllers\DiscountRuleController;
 use App\Http\Controllers\MenuController;
+use App\Http\Controllers\Multichannel\GeoRestrictionController;
 use App\Http\Controllers\Multichannel\ProductController as MultichannelProductController;
 use App\Http\Controllers\Multichannel\ProductVariationSessionLock;
 use App\Http\Controllers\MyAcccountController;
@@ -51,6 +52,18 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::get('/userList/{value}', [LoginController::class, 'users']);
 
     //multichanel 
+    // Geo Restriction Routes
+    Route::get('/search-to-apply',[GeoRestrictionController::class,'searchToApply'])->middleware('geo.restriction');
+    Route::get('/get-location-list',[GeoRestrictionController::class,'getLocationList'])->middleware('geo.restriction');
+    Route::prefix('geo-restrictions')->middleware('geo.restriction')->group(function () {
+        Route::get('/', [GeoRestrictionController::class, 'index']);
+        Route::post('/', [GeoRestrictionController::class, 'store']);
+        Route::get('/{id}', [GeoRestrictionController::class, 'show']);
+        Route::put('/{id}', [GeoRestrictionController::class, 'update']);
+        Route::delete('/{id}', [GeoRestrictionController::class, 'destroy']);
+        Route::post('/{id}/toggle', [GeoRestrictionController::class, 'toggleStatus']);
+        Route::post('/preview', [GeoRestrictionController::class, 'preview']);
+    });
     Route::get('get-variations/{id}',[MultichannelProductController::class,'getProductVariation']);
     Route::post('set-purchase-limit',[ProductVariationSessionLock::class,'updateOrCreate']);
     Route::get('get-purchase-limit-products',[ProductVariationSessionLock::class,'index']);

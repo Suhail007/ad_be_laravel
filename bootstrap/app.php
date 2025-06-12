@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth' => Authenticate::class,
             'jwt.auth' => \Tymon\JWTAuth\Http\Middleware\Authenticate::class,
+            'geo.restriction' => \App\Http\Middleware\GeoRestictionMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
