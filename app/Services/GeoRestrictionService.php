@@ -100,21 +100,21 @@ class GeoRestrictionService
     {
         $matches = false;
         
-        if ($restrictedLocation['type'] === 'city') {
-            $matches = strtolower($location['city']) === strtolower($restrictedLocation['value']);
-        } elseif ($restrictedLocation['type'] === 'state') {
+        if ($restrictedLocation['type'] === 'state') {
             $matches = strtolower($location['state']) === strtolower($restrictedLocation['value']);
-        } elseif ($restrictedLocation['type'] === 'zip') {
+        } else if ($restrictedLocation['type'] === 'city') {
+            $matches = strtolower($location['city']) === strtolower($restrictedLocation['value']);
+        }  else if ($restrictedLocation['type'] === 'zip') {
             $matches = $location['zip'] === $restrictedLocation['value'];
         }
 
-        if ($restrictedLocation['type'] === 'state') {
-            return strtolower($location['state']) === strtolower($restrictedLocation['value']);
-        }
+        // if ($restrictedLocation['type'] === 'state') {
+        //     return strtolower($location['state']) === strtolower($restrictedLocation['value']);
+        // }
 
-        if ($restrictedLocation['type'] === 'zip') {
-            return $location['zip'] === $restrictedLocation['value'];
-        }
+        // if ($restrictedLocation['type'] === 'zip') {
+        //     return $location['zip'] === $restrictedLocation['value'];
+        // }
 
         return $matches;
     }
