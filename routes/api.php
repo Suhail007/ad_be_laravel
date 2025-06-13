@@ -63,6 +63,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::delete('/{id}', [GeoRestrictionController::class, 'destroy']);
         Route::post('/{id}/toggle', [GeoRestrictionController::class, 'toggleStatus']);
         Route::post('/preview', [GeoRestrictionController::class, 'preview']);
+        Route::post('/{id}/duplicate', [GeoRestrictionController::class, 'duplicate']);
     });
     Route::get('get-variations/{id}',[MultichannelProductController::class,'getProductVariation']);
     Route::post('set-purchase-limit',[ProductVariationSessionLock::class,'updateOrCreate']);

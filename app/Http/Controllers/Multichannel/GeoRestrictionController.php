@@ -596,4 +596,47 @@ class GeoRestrictionController extends Controller
         }
     }
 
+    public function duplicate($id)
+    {
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+
+            $originalRestriction = GeoRestriction::findOrFail($id);
+            
+            DB::beginTransaction();
+
+            // Create a new restriction with the same data but modified name and inactive status
+            $newRestriction = $originalRestriction->replicate();
+            $newRestriction->name = $originalRestriction->name . ' - (COPY)';
+            $newRestriction->is_active = false;
+            $newRestriction->save();
+
+            // Log the duplication
+            GeoRestrictionLog::create([
+                'geo_restriction_id' => $newRestriction->id,
+                'user_id' => $user->ID,
+                'action' => 'duplicated',
+                'changes' => [
+                    'original_id' => $originalRestriction->id,
+                    'original_name' => $originalRestriction->name
+                ]
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Geo restriction rule duplicated successfully',
+                'data' => $newRestriction
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => 'Error duplicating geo restriction: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 }
