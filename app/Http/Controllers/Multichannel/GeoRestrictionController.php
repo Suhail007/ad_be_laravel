@@ -93,7 +93,7 @@ class GeoRestrictionController extends Controller
         }elseif($searchIn == 'city'){
             $data = DB::table('location_list')->where('city','LIKE','%'.$searchTerm.'%')->take(10)->get();
         }elseif($searchIn == 'state'){
-            $data = DB::table('location_list')->where('state_name','LIKE','%'.$searchTerm.'%')->take(10)->get();
+            $data = DB::table('location_list')->where('state_id','LIKE','%'.$searchTerm.'%')->take(10)->get();
         }
         return response()->json([
             'status' => true,
