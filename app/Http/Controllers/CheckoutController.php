@@ -218,16 +218,16 @@ class CheckoutController extends Controller
         //     return response()->json(['status' => false, 'message' => 'We are not accepting orders to the selected shipping state']);
         // }
         // Check for geo-restrictions
-        $restrictedProducts = $this->checkGeoRestrictions($data['shipping']);
-        if (!empty($restrictedProducts)) {
-            return response()->json([
-                'status' => true,
-                'message' => 'Some products in your cart cannot be shipped to your location',
-                'restricted_products' => $restrictedProducts,
-                'reason'=>'geo_restriction',
-                'location'=>$data['shipping'],
-            ]);
-        }
+        // $restrictedProducts = $this->checkGeoRestrictions($data['shipping']);
+        // if (!empty($restrictedProducts)) {
+        //     return response()->json([
+        //         'status' => true,
+        //         'message' => 'Some products in your cart cannot be shipped to your location',
+        //         'restricted_products' => $restrictedProducts,
+        //         'reason'=>'geo_restriction',
+        //         'location'=>$data['shipping'],
+        //     ]);
+        // }
         $checkout = Checkout::updateOrCreate(
             ['user_id' => $user->ID],
             [

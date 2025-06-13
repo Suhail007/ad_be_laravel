@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Woo\ProductController;
 use App\Models\Cart;
+use App\Models\Checkout;
 use App\Models\Product;
 use App\Models\ProductMeta;
 use App\Models\User;
+use App\Services\GeoRestrictionService;
 use Illuminate\Http\Request;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Automattic\WooCommerce\Client;
@@ -25,7 +27,7 @@ class WooCommerceController extends Controller
         return 'unknown';
     }
 
-    public function show(Request $request, $slug)
+    public function showOld(Request $request, $slug)
     {
         $auth = false;
         try {
@@ -290,6 +292,294 @@ class WooCommerceController extends Controller
         return response()->json($response);
     }
 
+    public function show(Request $request, $slug)
+    {
+        $auth = false;
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            if ($user->ID) {
+                if ($user->ID == 5417) {
+                    $dummyProductList = (new ProductController())->dummyProductList();
+                    $product = Product::with([
+                        'meta',
+                        'categories.taxonomies',
+                        'categories.children',
+                        'categories.categorymeta'
+                    ])->where('post_name', $slug) ->where('post_status', 'trash')
+
+                    ->whereIn('ID', $dummyProductList) 
+                    ->whereHas('meta', function ($query) {
+                        $query->where('meta_key', '_stock_status')
+                            ->where('meta_value', 'instock');
+                    })
+                    ->firstOrFail();
+                } else {
+                    $role=  key($user->capabilities); // "mm_price_2"
+                    $product = Product::with([
+                        'meta',
+                        'categories.taxonomies',
+                        'categories.children',
+                        'categories.categorymeta'
+                    ])->where('post_name', $slug) ->where('post_status', 'publish')
+                    ->whereHas('meta', function ($query) {
+                        $query->where('meta_key', '_stock_status')
+                            ->where('meta_value', 'instock');
+                    })
+                    ->firstOrFail();
+
+                    
+                    //user role match with category visibility 
+                    // foreach($product->categories as $cat){
+                    //     foreach($cat->categorymeta as $meta){
+                    //         if($meta->meta_key == "user_roles"){
+                    //             $user_roles = unserialize($meta->meta_value);
+                    //             if (!in_array($role, $user_roles)) {
+                    //                 return response()->json(['status'=>false, 'message'=>'Product not available for you']);
+                    //             }
+                    //         }
+                    //     }
+                    // }
+                    
+                    
+                    // //user role match with category visibility 
+                    $check1 = false;
+                    $check2 = false;
+                    foreach($product->categories as $cat){
+                        foreach($cat->categorymeta as $meta){
+                            if($meta->meta_key == "user_roles"){
+                                $user_roles = unserialize($meta->meta_value);
+                                if (!in_array($role, $user_roles)) {
+                                    $check1 = true;
+                                }
+                            }
+                            if($meta->meta_key == "visibility" && $meta->meta_value =="protected"){
+                                $check2 = true;
+                            }
+                            if($check1 == true && $check2 == true){
+                                return response()->json(['status'=>false, 'message'=>'Product not available for you']);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $th) {
+            $product = Product::with([
+                'meta',
+                'categories.taxonomies',
+                'categories.children',
+                'categories.categorymeta'
+            ]) 
+            ->whereHas('meta', function ($query) {
+                $query->where('meta_key', '_stock_status')
+                    ->where('meta_value', 'instock');
+            })
+            ->whereDoesntHave('categories.categorymeta', function ($query) {
+                $query->where('meta_key', 'visibility')
+                    ->where('meta_value', 'protected');
+            })
+                ->where('post_name', $slug)->first();
+            if (!$product) {
+                return response()->json(['status' => false, 'message' => 'Product Not Found, Login to see Products']);
+            }
+        }
+
+        // Get all meta data in a single query
+        $metaData = ProductMeta::where('post_id', $product->ID)
+            ->get()
+            ->pluck('meta_value', 'meta_key')
+            ->toArray();
+
+        $categories = $product->categories->map(function ($category) {
+            return [
+                'id' => $category->term_id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'taxonomy' => $category->taxonomies,
+                'meta' => $category->categorymeta->pluck('meta_value', 'meta_key')->toArray(),
+                'children' => $category->children,
+            ];
+        });
+
+        $brands = $product->categories->filter(function ($category) {
+            // Check if the category's taxonomy type is 'brand'
+            return $this->getTaxonomyType($category->taxonomies) === 'brand';
+        })->map(function ($category) {
+            $meta = $category->categorymeta->pluck('meta_value', 'meta_key')->toArray();
+            if (isset($meta['thumbnail_id'])) {
+                $meta['thumbnail_url']  = Product::where('ID', $meta['thumbnail_id'])->value('guid')??null;
+            }
+            return [
+                'id' => $category->term_id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'taxonomy' => $category->taxonomies,
+                'meta' => $meta,
+                'children' => $category->children,
+            ];
+        });
+
+        $thumbnailUrl = $this->getThumbnailUrl($product->ID);
+        $galleryImagesUrls = $this->getGalleryImagesUrls($product->ID);
+        $price = $metaData['_price'] ?? '';
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            if ($user->ID) {
+                // geo resticted Product info mesage 
+                $geoRresticted = [];
+                $priceTier = $user->price_tier ?? '';
+                $variations = $this->getVariations($product->ID, $priceTier);
+                $checkout = Checkout::where('user_id', $user->ID)->first();
+                $location = [];
+                if($checkout){
+                    $location = [
+                        'state' => $checkout['shipping']['state'] ?? '',
+                        'city' => $checkout['shipping']['city'] ?? '',
+                        'zip' => $checkout['shipping']['postcode'] ?? ''
+                    ];
+                } else {
+                    $location = [
+                        'state' => $user->meta()->where('meta_key', 'shipping_state')->value('meta_value') ?? '',
+                        'city' => $user->meta()->where('meta_key', 'shipping_city')->value('meta_value') ?? '',
+                        'zip' => $user->meta()->where('meta_key', 'shipping_postcode')->value('meta_value') ?? ''
+                    ];
+                }
+                $isRestricted = false;
+                // $geoRestrictionService = app(GeoRestrictionService::class);
+                // $isRestricted = $geoRestrictionService->isProductRestricted($product->ID, $location);
+
+                if ($isRestricted) {
+                    $geoRresticted[] = [
+                        'location' => $location,
+                        'restriction' => $isRestricted,
+                        'reason' => 'This product is not available for shipping to your location. We\'re unable to deliver this item to your shipping address due to shipping restrictions.'
+                    ];
+                }
+                $response = [
+                    'id' => $product->ID,
+                    'name' => $product->post_title,
+                    'slug' => $product->post_name,
+                    'permalink' => url('/product/' . $product->post_name),
+                    'geo_restricted' => $geoRresticted??[],
+                    'your_location' => $location,
+                    'date_created' => $product->post_date,
+                    'date_created_gmt' => $product->post_date_gmt,
+                    'date_modified' => $product->post_modified,
+                    'date_modified_gmt' => $product->post_modified_gmt,
+                    'type' => $product->post_type,
+                    'status' => $product->post_status,
+                    'min_quantity' => $metaData['min_quantity'] ?? false,
+                    'max_quantity' => $metaData['max_quantity'] ?? false,
+                    'featured' => $metaData['_featured'] ?? false,
+                    'catalog_visibility' => $metaData['_visibility'] ?? 'visible',
+                    'description' => $product->post_content,
+                    'short_description' => $product->post_excerpt,
+                    'sku' => $metaData['_sku'] ?? '',
+                    'price' => $price ?? $metaData['_regular_price'] ?? $metaData['_price'] ?? null,
+                    'ad_price' => ProductMeta::where('post_id', $product->ID)->where('meta_key', $priceTier)->value('meta_value') ?? $this->getVariationsPrice($product->ID, $priceTier),
+                    'regular_price' => $metaData['_regular_price'] ?? '',
+                    'sale_price' => $metaData['_sale_price'] ?? '',
+                    'date_on_sale_from' => $metaData['_sale_price_dates_from'] ?? null,
+                    'date_on_sale_from_gmt' => $metaData['_sale_price_dates_from_gmt'] ?? null,
+                    'date_on_sale_to' => $metaData['_sale_price_dates_to'] ?? null,
+                    'date_on_sale_to_gmt' => $metaData['_sale_price_dates_to_gmt'] ?? null,
+                    'purchasable' => $product->post_status === 'publish',
+                    'total_sales' => $metaData['total_sales'] ?? 0,
+                    'virtual' => $metaData['_virtual'] ?? false,
+                    'downloadable' => $metaData['_downloadable'] ?? false,
+                    'downloads' => [],  // Add logic for downloads if needed
+                    'download_limit' => $metaData['_download_limit'] ?? -1,
+                    'download_expiry' => $metaData['_download_expiry'] ?? -1,
+                    'external_url' => $metaData['_product_url'] ?? '',
+                    'button_text' => $metaData['_button_text'] ?? '',
+                    'tax_status' => $metaData['_tax_status'] ?? 'taxable',
+                    'tax_class' => $metaData['_tax_class'] ?? '',
+                    'manage_stock' => $metaData['_manage_stock'] ?? false,
+                    'stock_quantity' => $metaData['_stock'] ?? null,
+                    'backorders' => $metaData['_backorders'] ?? 'no',
+                    'backorders_allowed' => ($metaData['_backorders'] ?? '') === 'yes',
+                    'backordered' => ($metaData['_backorders'] ?? '') === 'notify',
+                    'low_stock_amount' => $metaData['_low_stock_amount'] ?? null,
+                    'sold_individually' => $metaData['_sold_individually'] ?? false,
+                    'weight' => $metaData['_weight'] ?? '',
+                    'dimensions' => [
+                        'length' => $metaData['_length'] ?? '',
+                        'width' => $metaData['_width'] ?? '',
+                        'height' => $metaData['_height'] ?? ''
+                    ],
+                    'shipping_required' => $metaData['_shipping'] ?? true,
+                    'shipping_taxable' => $metaData['_shipping_taxable'] ?? true,
+                    'shipping_class' => $metaData['_shipping_class'] ?? '',
+                    'shipping_class_id' => $metaData['_shipping_class_id'] ?? 0,
+                    'reviews_allowed' => $product->comment_status === 'open',
+                    'average_rating' => $metaData['_wc_average_rating'] ?? '0.00',
+                    'rating_count' => $metaData['_wc_rating_count'] ?? 0,
+                    'parent_id' => $product->post_parent,
+                    'purchase_note' => $metaData['_purchase_note'] ?? '',
+                    'categories' => $categories,
+                    'brands' => $brands,
+                    'images' => $galleryImagesUrls,
+                    'thumbnail_url' => $thumbnailUrl,
+                    'variations' => $variations,
+                    'menu_order' => $product->menu_order,
+                    'stock_status' => $metaData['_stock_status'] ?? 'instock',
+                    'has_options' => $metaData['_has_options'] ?? true,
+                    'post_password' => $product->post_password,
+                    '_links' => [
+                        'self' => [
+                            ['href' => url('/wp-json/wc/v3/products/' . $product->ID)]
+                        ],
+                        'collection' => [
+                            ['href' => url('/wp-json/wc/v3/products')]
+                        ]
+                    ],
+                ];
+            }
+        } catch (\Throwable $th) {
+            $response = [
+                'id' => $product->ID,
+                'name' => $product->post_title,
+                'slug' => $product->post_name,
+                'permalink' => url('/product/' . $product->post_name),
+                'date_created' => $product->post_date,
+                'date_created_gmt' => $product->post_date_gmt,
+                'date_modified' => $product->post_modified,
+                'date_modified_gmt' => $product->post_modified_gmt,
+                'type' => $product->post_type,
+                'status' => $product->post_status,
+                'featured' => $metaData['_featured'] ?? false,
+                'catalog_visibility' => $metaData['_visibility'] ?? 'visible',
+                'description' => $product->post_content,
+                'short_description' => $product->post_excerpt,
+                'sku' => $metaData['_sku'] ?? '',
+                'weight' => $metaData['_weight'] ?? '',
+                'dimensions' => [
+                    'length' => $metaData['_length'] ?? '',
+                    'width' => $metaData['_width'] ?? '',
+                    'height' => $metaData['_height'] ?? ''
+                ],
+
+                'parent_id' => $product->post_parent,
+                'categories' => $categories,
+                'brands' => $brands,
+                'images' => $galleryImagesUrls,
+                'thumbnail_url' => $thumbnailUrl,
+                'variations' => [],
+                'menu_order' => $product->menu_order,
+                'meta_data' => $metaData,
+                'stock_status' => $metaData['_stock_status'] ?? 'instock',
+                'has_options' => $metaData['_has_options'] ?? true,
+                '_links' => [
+                    'self' => [
+                        ['href' => url('/wp-json/wc/v3/products/' . $product->ID)]
+                    ],
+                    'collection' => [
+                        ['href' => url('/wp-json/wc/v3/products')]
+                    ]
+                ],
+            ];
+        }
+        return response()->json($response);
+    }
 
     private function getVariations($productId, $priceTier = '')
     {
@@ -489,301 +779,6 @@ class WooCommerceController extends Controller
             echo $response;
         }
         curl_close($ch);
-    }
-
-
-    public function getAllOrders()
-    {
-        $woocommerce = $this->woocommerce();
-
-        return $woocommerce->get('customers/3');
-    }
-
-    // public function createNewOrder(Request $request)
-    // {
-
-    //     $orderData = $request->all();
-    //     try {
-    //         $user = JWTAuth::parseToken()->authenticate();
-    //         DB::beginTransaction();
-    //         $options = DB::select("SELECT option_value FROM wp_options WHERE option_name= 'wt_last_order_number'");
-    //         $currentValue = (int)$options[0]->option_value;
-    //         dd($currentValue);
-    //         $orderId = DB::table('wp_posts')->insertGetId([
-    //             'post_author' => $user->ID,
-    //             'post_date' => now(),
-    //             'post_date_gmt' => now(),
-    //             'post_content' => '',
-    //             'post_title' => 'Order',
-    //             'to_ping' => '',
-    //             'pinged' => '',
-    //             'post_content_filtered' => '',
-    //             'post_excerpt' => '',
-    //             'post_status' => 'wc-processing',
-    //             'comment_status' => 'closed',
-    //             'ping_status' => 'closed',
-    //             'post_name' => 'order-' . uniqid(),
-    //             'post_modified' => now(),
-    //             'post_modified_gmt' => now(),
-    //             'post_type' => 'shop_order',
-    //             'guid' => 'https://ad.phantasm.solutions/?post_type=shop_order&p=' . uniqid(),
-    //         ]);
-    //         $metaData = [
-    //             ['post_id' => $orderId, 'meta_key' => '_billing_first_name', 'meta_value' => $orderData['billing']['first_name']],
-    //             ['post_id' => $orderId, 'meta_key' => '_billing_last_name', 'meta_value' => $orderData['billing']['last_name']],
-    //             ['post_id' => $orderId, 'meta_key' => '_billing_address_1', 'meta_value' => $orderData['billing']['address_1']],
-    //             ['post_id' => $orderId, 'meta_key' => '_billing_address_2', 'meta_value' => $orderData['billing']['address_2']],
-    //             ['post_id' => $orderId, 'meta_key' => '_billing_city', 'meta_value' => $orderData['billing']['city']],
-    //             ['post_id' => $orderId, 'meta_key' => '_billing_state', 'meta_value' => $orderData['billing']['state']],
-    //             ['post_id' => $orderId, 'meta_key' => '_billing_postcode', 'meta_value' => $orderData['billing']['postcode']],
-    //             ['post_id' => $orderId, 'meta_key' => '_billing_country', 'meta_value' => $orderData['billing']['country']],
-    //             ['post_id' => $orderId, 'meta_key' => '_billing_email', 'meta_value' => $orderData['billing']['email']],
-    //             ['post_id' => $orderId, 'meta_key' => '_billing_phone', 'meta_value' => $orderData['billing']['phone']],
-    //             ['post_id' => $orderId, 'meta_key' => '_shipping_first_name', 'meta_value' => $orderData['shipping']['first_name']],
-    //             ['post_id' => $orderId, 'meta_key' => '_shipping_last_name', 'meta_value' => $orderData['shipping']['last_name']],
-    //             ['post_id' => $orderId, 'meta_key' => '_shipping_address_1', 'meta_value' => $orderData['shipping']['address_1']],
-    //             ['post_id' => $orderId, 'meta_key' => '_shipping_address_2', 'meta_value' => $orderData['shipping']['address_2']],
-    //             ['post_id' => $orderId, 'meta_key' => '_shipping_city', 'meta_value' => $orderData['shipping']['city']],
-    //             ['post_id' => $orderId, 'meta_key' => '_shipping_state', 'meta_value' => $orderData['shipping']['state']],
-    //             ['post_id' => $orderId, 'meta_key' => '_shipping_postcode', 'meta_value' => $orderData['shipping']['postcode']],
-    //             ['post_id' => $orderId, 'meta_key' => '_shipping_country', 'meta_value' => $orderData['shipping']['country']],
-    //             ['post_id' => $orderId, 'meta_key' => '_payment_method', 'meta_value' => $orderData['payment_method']],
-    //             ['post_id' => $orderId, 'meta_key' => '_payment_method_title', 'meta_value' => $orderData['payment_method_title']],
-    //             ['post_id' => $orderId, 'meta_key' => '_transaction_id', 'meta_value' => uniqid()],
-    //             ['post_id' => $orderId, 'meta_key' => '_order_total', 'meta_value' => $orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {
-    //                 return $carry + $item['quantity'] * $item['price'];
-    //             }, 0)],
-    //             ['post_id' => $orderId, 'meta_key' => '_order_currency', 'meta_value' => 'USD'],
-    //             ['post_id' => $orderId, 'meta_key' => '_order_key', 'meta_value' => 'wc_order_' . uniqid()],
-    //             ['post_id' => $orderId, 'meta_key' => '_customer_user', 'meta_value' => $user->ID],  // Assuming customer ID is 1
-    //             ['post_id' => $orderId, 'meta_key' => '_created_via', 'meta_value' => 'checkout'],
-    //             ['post_id' => $orderId, 'meta_key' => '_order_stock_reduced', 'meta_value' => 'yes'],
-    //             ['post_id' => $orderId, 'meta_key' => '_billing_address_index', 'meta_value' => implode(' ', $orderData['billing'])],
-    //             ['post_id' => $orderId, 'meta_key' => '_shipping_address_index', 'meta_value' => implode(' ', $orderData['shipping'])],
-    //             ['post_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $currentValue],
-    //         ];
-    //         foreach ($metaData as $meta) {
-    //             DB::table('wp_postmeta')->insert($meta);
-    //         }
-    //         $totalAmount = $orderData['shipping_lines'][0]['total'] + array_reduce($orderData['line_items'], function ($carry, $item) {
-    //             return $carry + $item['quantity'] * $item['price'];
-    //         }, 0);
-    //         $productCount = count($orderData['line_items']);
-    //         foreach ($orderData['line_items'] as $item) {
-    //             $orderItemId = DB::table('wp_woocommerce_order_items')->insertGetId([
-    //                 'order_id' => $orderId,
-    //                 'order_item_name' => $item['name'],
-    //                 'order_item_type' => 'line_item'
-    //             ]);
-
-    //             $itemMeta = [
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_product_id', 'meta_value' => $item['product_id']],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_variation_id', 'meta_value' => $item['variation_id'] ?? 0],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_qty', 'meta_value' => $item['quantity']],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_tax_class', 'meta_value' => $item['tax_class'] ?? ''],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal', 'meta_value' => $item['quantity'] * $item['price']],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_line_subtotal_tax', 'meta_value' => 0],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_line_total', 'meta_value' => $item['quantity'] * $item['price']],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax', 'meta_value' => 0],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_line_tax_data', 'meta_value' => serialize(['total' => [], 'subtotal' => []])],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount', 'meta_value' => 0],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis', 'meta_value' => 0],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j1', 'meta_value' => 0],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis_j1', 'meta_value' => 0],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_amount_j2', 'meta_value' => 0],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_indirect_tax_basis_j2', 'meta_value' => 0],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_priced', 'meta_value' => 'yes'],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_role', 'meta_value' => $item['wholesale_role']],
-    //                 ['order_item_id' => $orderItemId, 'meta_key' => '_wwp_wholesale_price', 'meta_value' => $item['wholesale_price']],
-    //             ];
-
-    //             foreach ($itemMeta as $meta) {
-    //                 DB::table('wp_woocommerce_order_itemmeta')->insert($meta);
-    //                 if ($item['variation_id']) {
-    //                     $productMeta = ProductMeta::where('post_id', $item['variation_id'])->where('meta_key', '_stock')->first();
-    //                     if ($productMeta) {
-    //                         $productMeta->meta_value -= $item['quantity'];
-    //                         $productMeta->save();
-    //                     }
-    //                 } else {
-    //                     $productMeta = ProductMeta::where('post_id', $item['product_id'])->where('meta_key', '_stock')->first();
-    //                     if ($productMeta) {
-    //                         $productMeta->meta_value -= $item['quantity'];
-    //                         $productMeta->save();
-    //                     }
-    //                 }
-    //                 Cart::where('user_id', $request->user()->id)
-    //                     ->where('product_id', $item['product_id'])
-    //                     ->where('variation_id', $item['variation_id'] ?? null)
-    //                     ->delete();
-    //             }
-    //             DB::table('wp_wc_order_product_lookup')->insert([
-    //                 'order_item_id' => $orderItemId,
-    //                 'order_id' => $orderId,
-    //                 'product_id' => $item['product_id'],
-    //                 'variation_id' => $item['variation_id'] ?? 0,
-    //                 'customer_id' => $user->ID, 
-    //                 'date_created' => now(),
-    //                 'product_qty' => $item['quantity'],
-    //                 'product_net_revenue' => $item['quantity'] * $item['price'],
-    //                 'product_gross_revenue' => $item['quantity'] * $item['price'],
-    //             ]);
-    //         }
-    //         DB::table('wp_wc_orders')->insert([
-    //             'id' => $orderId,
-    //             'status' => 'wc-processing',
-    //             'currency' => 'USD',
-    //             'type' => 'shop_order',
-    //             'tax_amount' => 0,
-    //             'total_amount' => $totalAmount,
-    //             'customer_id' => $user->ID,  // Assuming customer ID is 1
-    //             'billing_email' => $orderData['billing']['email'],
-    //             'date_created_gmt' => now(),
-    //             'date_updated_gmt' => now(),
-    //             'parent_order_id' => 0,
-    //             'payment_method' => $orderData['payment_method'],
-    //             'payment_method_title' => $orderData['payment_method_title'],
-    //             'transaction_id' => uniqid(),
-    //             'ip_address' => $request->ip(),
-    //             'user_agent' => $request->userAgent(),
-    //             'customer_note' => ''
-    //         ]);
-    //         $wp_wc_order_meta = [
-    //             ['order_id' => $orderId, 'meta_key' => '_order_number', 'meta_value' => $currentValue],
-    //             ['order_id' => $orderId, 'meta_key' => '_wwpp_order_type', 'meta_value' => 'wholesale'],
-    //             ['order_id' => $orderId, 'meta_key' => '_wwpp_wholesale_order_type', 'meta_value' => 'mm_price_2'],
-    //             ['order_id' => $orderId, 'meta_key' => 'wwp_wholesale_role', 'meta_value' => 'mm_price_2'],
-    //             [
-    //                 'order_id' => $orderId,
-    //                 'meta_key' => '_shipping_address_index',
-    //                 'meta_value' => (isset($orderData['shipping']['first_name']) ? $orderData['shipping']['first_name'] . ' ' : '') .
-    //                     (isset($orderData['shipping']['address_1']) ? $orderData['shipping']['address_1'] . ' ' : '') .
-    //                     (isset($orderData['shipping']['city']) ? $orderData['shipping']['city'] . ' ' : '') .
-    //                     (isset($orderData['shipping']['state']) ? $orderData['shipping']['state'] . ' ' : '') .
-    //                     (isset($orderData['shipping']['postcode']) ? $orderData['shipping']['postcode'] : '')
-    //             ],
-    //         ];
-    //         DB::table('wp_wc_order_meta')->insert($wp_wc_order_meta);
-    //         DB::table('wp_wc_order_addresses')->insert([
-    //             [
-    //                 'order_id' => $orderId,
-    //                 'address_type' => 'billing',
-    //                 'first_name' => $orderData['billing']['first_name'],
-    //                 'last_name' => $orderData['billing']['last_name'],
-    //                 'company' => '',
-    //                 'address_1' => $orderData['billing']['address_1'],
-    //                 'address_2' => $orderData['billing']['address_2'],
-    //                 'city' => $orderData['billing']['city'],
-    //                 'state' => $orderData['billing']['state'],
-    //                 'postcode' => $orderData['billing']['postcode'],
-    //                 'country' => $orderData['billing']['country'],
-    //                 'email' => $orderData['billing']['email'],
-    //                 'phone' => $orderData['billing']['phone']
-    //             ],
-    //             [
-    //                 'order_id' => $orderId,
-    //                 'address_type' => 'shipping',
-    //                 'first_name' => $orderData['shipping']['first_name'],
-    //                 'last_name' => $orderData['shipping']['last_name'],
-    //                 'company' => '',
-    //                 'address_1' => $orderData['shipping']['address_1'],
-    //                 'address_2' => $orderData['shipping']['address_2'],
-    //                 'city' => $orderData['shipping']['city'],
-    //                 'state' => $orderData['shipping']['state'],
-    //                 'postcode' => $orderData['shipping']['postcode'],
-    //                 'country' => $orderData['shipping']['country'],
-    //                 'email' => $orderData['billing']['email'], // Assuming shipping email is the same as billing email
-    //                 'phone' => $orderData['billing']['phone'] // Assuming shipping phone is the same as billing phone
-    //             ]
-    //         ]);
-    //         DB::table('wp_wc_order_stats')->insert([
-    //             'order_id' => $orderId,
-    //             'parent_id' => 0,
-    //             'status' => 'wc-processing',
-    //             'date_created' => now(),
-    //             'date_created_gmt' => now(),
-    //             'num_items_sold' => $productCount,
-    //             'total_sales' => $totalAmount,
-    //             'tax_total' => 0,
-    //             'shipping_total' => $orderData['shipping_lines'][0]['total'],
-    //             'net_total' => $totalAmount,
-    //             'returning_customer' => 0,  // Assuming it's a new customer
-    //             'customer_id' => $user->ID,  // Assuming customer ID is 1
-    //             'date_paid' => null, 
-    //             'date_completed' => null,
-    //         ]);
-    //         $orderNotes = [
-    //             [
-    //                 'comment_post_ID' => $orderId,
-    //                 'comment_author' => 'WooCommerce',
-    //                 'comment_author_email' => '',
-    //                 'comment_author_url' => '',
-    //                 'comment_author_IP' => $request->ip(),
-    //                 'comment_date' => now(),
-    //                 'comment_date_gmt' => now(),
-    //                 'comment_content' => 'Order status changed from Pending payment to Processing.',
-    //                 'comment_karma' => 0,
-    //                 'comment_approved' => 1,
-    //                 'comment_agent' => $request->userAgent(),
-    //                 'comment_type' => 'order_note',
-    //                 'comment_parent' => 0,
-    //                 'user_id' => 0,
-    //             ],
-    //             [
-    //                 'comment_post_ID' => $orderId,
-    //                 'comment_author' => 'WooCommerce',
-    //                 'comment_author_email' => '',
-    //                 'comment_author_url' => '',
-    //                 'comment_author_IP' => $request->ip(),
-    //                 'comment_date' => now(),
-    //                 'comment_date_gmt' => now(),
-    //                 'comment_content' => 'NMI charge complete (Charge ID: 9662XXX234)',
-    //                 'comment_karma' => 0,
-    //                 'comment_approved' => 1,
-    //                 'comment_agent' => $request->userAgent(),
-    //                 'comment_type' => 'order_note',
-    //                 'comment_parent' => 0,
-    //                 'user_id' => 0,
-    //             ],
-    //         ];
-    //         foreach ($orderNotes as $note) {
-    //             DB::table('wp_comments')->insert($note);
-    //         }
-    //         $newValue = $currentValue + 1;
-    //         DB::update("UPDATE wp_options SET option_value = ? WHERE option_name = 'wt_last_order_number'", [$newValue]);
-    //         DB::commit();
-    //         //send success mail to admin
-    //         return response()->json(['message' => 'Order created successfully', 'order_id' => $orderId], 201);
-    //     } catch (\Exception $e) {
-    //         DB::rollBack();
-    //         //send failure mail to admin to take action
-    //         return response()->json(['error' => 'Failed to create order: ' . $e->getMessage()], 500);
-    //     }
-    // }
-
-
-
-    public function allPaymentGate()
-    {
-        $woocommerce = $this->woocommerce();
-        $data = $woocommerce->get('payment_gateways');
-        return response()->json($data);
-    }
-
-    public function getPaymentMethod($method)
-    {
-        $woocommerce = $this->woocommerce();
-        $data = $woocommerce->get('payment_gateways/' . $method);
-        return response()->json($data);
-    }
-    public function getShippingZone()
-    {
-        $data = [
-            'name' => 'local'
-        ];
-        $woocommerce = $this->woocommerce();
-        $data = $woocommerce->get('shipping/zones/1/locations'); //$woocommerce->post('shipping/zones', $data); // $woocommerce->get('shipping/zones');
-        return response()->json($data);
     }
     public function getUAddresses(Request $request)
     {
