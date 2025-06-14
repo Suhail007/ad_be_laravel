@@ -183,7 +183,8 @@ class CheckoutController extends Controller
                     'product_slug' => $product->post_name,
                     'variation' => $variationAttributes??[],
                     'requested_quantity' => $cartItem->quantity,
-                    'available_quantity'=>0,
+                    'available_quantity'=>$this->getStockInfo($variation, $product)[0]??0,
+                    'stock_status'=>$this->getStockInfo($variation, $product)[1]??'',
                     'wholesale_price' => $this->getWholesalePrice($variation, $product, JWTAuth::parseToken()->authenticate()->price_tier),
                     'reason' => 'This product is unavailable for shipping to your location'
                 ];
