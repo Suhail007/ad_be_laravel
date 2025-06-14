@@ -1,0 +1,6 @@
+--- a/vendor/laravel/framework/src/Illuminate/Foundation/Console/ServeCommand.php
++++ b/vendor/laravel/framework/src/Illuminate/Foundation/Console/ServeCommand.php
+@@ protected function port()
+-        $port = $port ?: 8000;
++        $port = $port ?: 8000;
++        error_log('PORT VALUE: ' . var_export($port, true)); 
