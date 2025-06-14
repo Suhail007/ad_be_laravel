@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Checkout;
 use App\Models\User;
 use App\Models\UserMeta;
 use Illuminate\Http\Request;
@@ -205,31 +206,31 @@ class MyAcccountController extends Controller
                 ->value('meta_value');
 
             $customAddressesUnapprove = unserialize($customAddressesUnapprove);
-
+            $checkout = Checkout::where('user_id', $user->ID)->first();
             $defaultAddress = [
                 'billing' => [
-                    'first_name' => $this->getUserMeta($user->ID, 'billing_first_name'),
-                    'last_name' => $this->getUserMeta($user->ID, 'billing_last_name'),
-                    'company' => $this->getUserMeta($user->ID, 'billing_company'),
-                    'address_1' => $this->getUserMeta($user->ID, 'billing_address_1'),
-                    'address_2' => $this->getUserMeta($user->ID, 'billing_address_2'),
-                    'city' => $this->getUserMeta($user->ID, 'billing_city'),
-                    'state' => $this->getUserMeta($user->ID, 'billing_state'),
-                    'postcode' => $this->getUserMeta($user->ID, 'billing_postcode'),
-                    'country' => $this->getUserMeta($user->ID, 'billing_country'),
-                    'email' => $this->getUserMeta($user->ID, 'billing_email'),
-                    'phone' => $this->getUserMeta($user->ID, 'billing_phone'),
+                    'first_name' => $checkout['billing']['first_name'] ?? $this->getUserMeta($user->ID, 'billing_first_name'),
+                    'last_name' => $checkout['billing']['last_name'] ?? $this->getUserMeta($user->ID, 'billing_last_name'),
+                    'company' => $checkout['billing']['company'] ?? $this->getUserMeta($user->ID, 'billing_company'),
+                    'address_1' => $checkout['billing']['address_1'] ?? $this->getUserMeta($user->ID, 'billing_address_1'),
+                    'address_2' => $checkout['billing']['address_2'] ?? $this->getUserMeta($user->ID, 'billing_address_2'),
+                    'city' => $checkout['billing']['city'] ?? $this->getUserMeta($user->ID, 'billing_city'),
+                    'state' => $checkout['billing']['state'] ?? $this->getUserMeta($user->ID, 'billing_state'),
+                    'postcode' => $checkout['billing']['postcode'] ?? $this->getUserMeta($user->ID, 'billing_postcode'),
+                    'country' => $checkout['billing']['country'] ?? $this->getUserMeta($user->ID, 'billing_country'),
+                    'email' => $checkout['billing']['email'] ?? $this->getUserMeta($user->ID, 'billing_email'),
+                    'phone' => $checkout['billing']['phone'] ?? $this->getUserMeta($user->ID, 'billing_phone'),
                 ],
                 'shipping' => [
-                    'first_name' => $this->getUserMeta($user->ID, 'shipping_first_name'),
-                    'last_name' => $this->getUserMeta($user->ID, 'shipping_last_name'),
-                    'company' => $this->getUserMeta($user->ID, 'shipping_company'),
-                    'address_1' => $this->getUserMeta($user->ID, 'shipping_address_1'),
-                    'address_2' => $this->getUserMeta($user->ID, 'shipping_address_2'),
-                    'city' => $this->getUserMeta($user->ID, 'shipping_city'),
-                    'state' => $this->getUserMeta($user->ID, 'shipping_state'),
-                    'postcode' => $this->getUserMeta($user->ID, 'shipping_postcode'),
-                    'country' => $this->getUserMeta($user->ID, 'shipping_country'),
+                    'first_name' => $checkout['shipping']['first_name'] ?? $this->getUserMeta($user->ID, 'shipping_first_name'),
+                    'last_name' => $checkout['shipping']['last_name'] ?? $this->getUserMeta($user->ID, 'shipping_last_name'),
+                    'company' => $checkout['shipping']['company'] ?? $this->getUserMeta($user->ID, 'shipping_company'),
+                    'address_1' => $checkout['shipping']['address_1'] ?? $this->getUserMeta($user->ID, 'shipping_address_1'),
+                    'address_2' => $checkout['shipping']['address_2'] ?? $this->getUserMeta($user->ID, 'shipping_address_2'),
+                    'city' => $checkout['shipping']['city'] ?? $this->getUserMeta($user->ID, 'shipping_city'),
+                    'state' => $checkout['shipping']['state'] ?? $this->getUserMeta($user->ID, 'shipping_state'),
+                    'postcode' => $checkout['shipping']['postcode'] ?? $this->getUserMeta($user->ID, 'shipping_postcode'),
+                    'country' => $checkout['shipping']['country'] ?? $this->getUserMeta($user->ID, 'shipping_country'),
                 ],
             ];
             if (empty($customAddresses)) {

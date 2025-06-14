@@ -211,6 +211,56 @@ class PayPalController extends Controller
                 $cartDiscount = 0;
                 $couponIDs = [];
                 $isPercentageCoupone = false;
+
+
+                // cart validation matching from frontend and backend
+                $backendCart = Cart::where('user_id', $user->ID)->get();
+                $frontendCart = $orderData['extra'];
+                $indexedBackendCart = [];
+                foreach ($backendCart as $item) {
+                    $key = $item->product_id . '-' . ($item->variation_id ?? 'null');
+                    $indexedBackendCart[$key] = $item;
+                }
+                $indexedFrontendCart = [];
+                foreach ($frontendCart as $item) {
+                    $key = $item['product_id'] . '-' . ($item['variation_id'] ?? 'null');
+                    $indexedFrontendCart[$key] = $item;
+                }
+                foreach ($indexedFrontendCart as $key => $frontendItem) {
+                    $backendItem = $indexedBackendCart[$key] ?? null;
+                    if (!$backendItem) {
+                        if (!($frontendItem['is_free_product'] ?? false)) {
+                            return response()->json([
+                                'status' => false,
+                                'message' => 'Some items in your cart are no longer available. Please refresh your cart and try again.',
+                                'reason' => 'frontend_item_not_in_backend',
+                                'product_id' => $frontendItem['product_id']
+                            ]);
+                        }
+                        continue;
+                    }
+                    if ($frontendItem['quantity'] > $backendItem->quantity) {
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'One or more items in your cart have changed in quantity. Please review and update your cart before placing the order.',
+                            'reason' => 'frontend_quantity_exceeds_backend',
+                            'product_id' => $frontendItem['product_id']
+                        ]);
+                    }
+                }
+                foreach ($indexedBackendCart as $key => $backendItem) {
+                    if (!isset($indexedFrontendCart[$key])) {
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'Your cart has been updated on another device. Please refresh your cart to continue.',
+                            'reason' => 'backend_item_not_in_frontend',
+                            'product_id' => $backendItem->product_id
+                        ]);
+                    }
+                }
+                // cart validation matching from frontend and backend end
+
+
                 foreach ($orderData['extra'] as $item) {
                     if ($item['quantity'] < 0) {
                         $item['quantity'] = 1;
@@ -1271,6 +1321,56 @@ class PayPalController extends Controller
                 $cartDiscount = 0;
                 $couponIDs = [];
                 $isPercentageCoupone = false;
+
+                // cart validation matching from frontend and backend
+                $backendCart = Cart::where('user_id', $user->ID)->get();
+                $frontendCart = $orderData['extra'];
+                $indexedBackendCart = [];
+                foreach ($backendCart as $item) {
+                    $key = $item->product_id . '-' . ($item->variation_id ?? 'null');
+                    $indexedBackendCart[$key] = $item;
+                }
+                $indexedFrontendCart = [];
+                foreach ($frontendCart as $item) {
+                    $key = $item['product_id'] . '-' . ($item['variation_id'] ?? 'null');
+                    $indexedFrontendCart[$key] = $item;
+                }
+                foreach ($indexedFrontendCart as $key => $frontendItem) {
+                    $backendItem = $indexedBackendCart[$key] ?? null;
+                    if (!$backendItem) {
+                        if (!($frontendItem['is_free_product'] ?? false)) {
+                            return response()->json([
+                                'status' => false,
+                                'message' => 'Some items in your cart are no longer available. Please refresh your cart and try again.',
+                                'reason' => 'frontend_item_not_in_backend',
+                                'product_id' => $frontendItem['product_id']
+                            ]);
+                        }
+                        continue;
+                    }
+                    if ($frontendItem['quantity'] > $backendItem->quantity) {
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'One or more items in your cart have changed in quantity. Please review and update your cart before placing the order.',
+                            'reason' => 'frontend_quantity_exceeds_backend',
+                            'product_id' => $frontendItem['product_id']
+                        ]);
+                    }
+                }
+                foreach ($indexedBackendCart as $key => $backendItem) {
+                    if (!isset($indexedFrontendCart[$key])) {
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'Your cart has been updated on another device. Please refresh your cart to continue.',
+                            'reason' => 'backend_item_not_in_frontend',
+                            'product_id' => $backendItem->product_id
+                        ]);
+                    }
+                }
+                // cart validation matching from frontend and backend end
+
+
+
                 foreach ($orderData['extra'] as $item) {
                     if ($item['quantity'] < 0) {
                         $item['quantity'] = 1;
