@@ -1244,4 +1244,26 @@ class CartController extends Controller
             'removed_items' => $removedItems,
         ]);
     }
+    public function removeById(Request $request)
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+        if (!$user) {
+            return response()->json(['message' => 'User not authenticated', 'status' => false], 401);
+        }
+        // Check if the user has frozen their cart
+        $checkout = Checkout::where('user_id', $user->ID)->first();
+        $isFreeze = $checkout ? $checkout->isFreeze : false;
+
+        $cartItems = Cart::where('user_id', $user->ID)->whereIn('product_id', $request->input('productIds'))->get();
+        foreach ($cartItems as $cartItem) {
+            if ($isFreeze) {
+                $this->increaseStock($cartItem);
+            }
+        }
+        Cart::where('user_id', $user->ID)->whereIn('product_id', $request->input('productIds'))->delete();
+        if ($checkout) {
+            $checkout->delete();
+        }
+        return response()->json(['message' => 'Item removed from cart', 'status' => true], 200);
+    }
 }
