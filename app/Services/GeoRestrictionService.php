@@ -26,31 +26,39 @@ class GeoRestrictionService
 
         // Check category restrictions
         $categoryIds = $this->getProductCategories($productId);
-        $categoryRestrictions = GeoRestriction::active()
-            ->where('scope', 'category')
-            ->where(function($query) use ($categoryIds) {
-                foreach ($categoryIds as $categoryId) {
-                    $query->orWhereJsonContains('target_entities', $categoryId);
-                }
-            })
-            ->get();
+        if(count($categoryIds) > 0) {
+            $categoryRestrictions = GeoRestriction::active()
+                ->where('scope', 'category')
+                ->where(function($query) use ($categoryIds) {
+                    foreach ($categoryIds as $categoryId) {
+                        $query->orWhereJsonContains('target_entities', $categoryId);
+                    }
+                })
+                ->get();
 
-        foreach ($categoryRestrictions as $restriction) {
-            if ($this->isLocationRestrictedByRule($restriction, $location)) {
-                return true;
+            foreach ($categoryRestrictions as $restriction) {
+                if ($this->isLocationRestrictedByRule($restriction, $location)) {
+                        return true;
+                }
             }
         }
 
         // Check brand restrictions
         $brandIds = $this->getProductBrands($productId);
-        $brandRestrictions = GeoRestriction::active()
-            ->where('scope', 'brand')
-            ->whereJsonContains('target_entities', $brandIds)
-            ->get();
+        if(count($brandIds) > 0) {
+            $brandRestrictions = GeoRestriction::active()
+                ->where('scope', 'brand')
+                ->where(function($query) use ($brandIds) {
+                    foreach ($brandIds as $brandId) {
+                        $query->orWhereJsonContains('target_entities', $brandId);
+                    }
+                })
+                ->get();
 
-        foreach ($brandRestrictions as $restriction) {
-            if ($this->isLocationRestrictedByRule($restriction, $location)) {
-                return true;
+            foreach ($brandRestrictions as $restriction) {
+                if ($this->isLocationRestrictedByRule($restriction, $location)) {
+                    return true;
+                }
             }
         }
 
@@ -176,7 +184,7 @@ class GeoRestrictionService
         return DB::table('wp_term_relationships')
             ->join('wp_term_taxonomy', 'wp_term_relationships.term_taxonomy_id', '=', 'wp_term_taxonomy.term_taxonomy_id')
             ->where('wp_term_relationships.object_id', $productId)
-            ->where('wp_term_taxonomy.taxonomy', 'brand')
+            ->where('wp_term_taxonomy.taxonomy', 'product_brand')
             ->pluck('wp_term_taxonomy.term_id')
             ->toArray();
     }
@@ -206,7 +214,7 @@ class GeoRestrictionService
             ->join('wp_term_taxonomy', 'wp_term_relationships.term_taxonomy_id', '=', 'wp_term_taxonomy.term_taxonomy_id')
             ->join('wp_posts', 'wp_term_relationships.object_id', '=', 'wp_posts.ID')
             ->whereIn('wp_term_taxonomy.term_id', $brandIds)
-            ->where('wp_term_taxonomy.taxonomy', 'brand')
+            ->where('wp_term_taxonomy.taxonomy', 'product_brand')
             ->where('wp_posts.post_type', 'product')
             ->where('wp_posts.post_status', 'publish')
             ->pluck('wp_posts.ID')
