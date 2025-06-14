@@ -396,6 +396,20 @@ class LoginController extends Controller
                         'message' => 'not found',
                     ]);
                 }
+                // lines rollback in live mode
+                if ($user->approved == "0") {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'User Register Request Not Approved',
+                    ]);
+                }
+
+                if($user->approved == "2") {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'User Register Request Rejected',
+                    ]);
+                }
                 $data = [
                     'ID' => $user->ID,
                     'name' => $user->user_login,

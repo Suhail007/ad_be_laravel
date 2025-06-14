@@ -190,6 +190,16 @@ class PayPalController extends Controller
 
         $paytype = $request->input('paymentType');
         if ($paytype == 'card') {
+            $restrictedProducts = (new CheckoutController())->checkGeoRestrictions($shippingInfo);
+            if (!empty($restrictedProducts)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Some products in your cart cannot be shipped to your location',
+                    'restricted_products' => $restrictedProducts,
+                    'reason'=>'geo_restriction',
+                    'location'=>$shippingInfo,
+                ]);
+            }
             $payment_token = $request->input('payment_token');
             try {
                 $total = 0;
@@ -1296,7 +1306,16 @@ class PayPalController extends Controller
                 ], 400);
             }
         } else if ($paytype == 'onaccount') {
-
+            $restrictedProducts = (new CheckoutController())->checkGeoRestrictions($shippingInfo);
+            if (!empty($restrictedProducts)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Some products in your cart cannot be shipped to your location',
+                    'restricted_products' => $restrictedProducts,
+                    'reason'=>'geo_restriction',
+                    'location'=>$shippingInfo,
+                ]);
+            }
             try {
                 $total = 0;
                 $checkout->update(

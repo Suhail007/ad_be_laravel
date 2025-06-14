@@ -148,12 +148,12 @@ class CheckoutController extends Controller
             'message' => $paymentResult,
         ], 200);
     }
-    private function checkGeoRestrictions($shippingInfo)
+    public function checkGeoRestrictions($shippingInfo)
     {
         $location = [
             'state' => $shippingInfo['state'] ?? null,
             'city' => $shippingInfo['city'] ?? null,
-            'zip' => $shippingInfo['zip'] ?? null
+            'zip' => $shippingInfo['zip']??$shippingInfo['postcode'] ?? null
         ];
 
         // Get cart items
