@@ -1,0 +1,22 @@
+--- a/vendor/laravel/framework/src/Illuminate/Foundation/Console/ServeCommand.php
++++ b/vendor/laravel/framework/src/Illuminate/Foundation/Console/ServeCommand.php
+@@ protected function port()
+-        $port = $port ?: 8000;
+-        // Ensure port is an integer
+-        $port = (int) $port;
+-
+-        // Debug log for port and portOffset
+-        error_log('DEBUG PORT VALUE: ' . var_export($port, true) . ' TYPE: ' . gettype($port));
+-        error_log('DEBUG PORT OFFSET: ' . var_export($this->portOffset, true) . ' TYPE: ' . gettype($this->portOffset));
+-
+-        return $port + $this->portOffset;
++        $port = $port ?: 8000;
++        // Ensure port and portOffset are integers
++        $port = (int) $port;
++        $portOffset = (int) $this->portOffset;
++
++        // Debug log for port and portOffset
++        error_log('DEBUG PORT VALUE: ' . var_export($port, true) . ' TYPE: ' . gettype($port));
++        error_log('DEBUG PORT OFFSET: ' . var_export($portOffset, true) . ' TYPE: ' . gettype($portOffset));
++
++        return $port + $portOffset; 

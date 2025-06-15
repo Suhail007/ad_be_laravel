@@ -57,7 +57,7 @@
             "@php artisan migrate --ansi"
         ],
         "post-install-cmd": [
-            "patch -p1 < patches/servecommand-port-debug.patch"
+            "patch -p1 < patches/servecommand-port-fix.patch"
         ]
     },
     "extra": {
