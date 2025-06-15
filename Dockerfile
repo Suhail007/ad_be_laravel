@@ -69,9 +69,6 @@ RUN chown -R www:www /var/www/html \
 # Generate optimized autoload files
 RUN composer dump-autoload --optimize
 
-# Change current user to www
-USER www
-
 # Expose port 9000 and start supervisor
 EXPOSE 9000
 CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"] 
