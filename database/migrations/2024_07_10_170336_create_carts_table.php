@@ -11,18 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('carts', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('product_id');
-            $table->unsignedBigInteger('variation_id')->nullable();
-            $table->integer('quantity');
-            $table->timestamps();
+        if (!Schema::hasTable('carts')) {
+            Schema::create('carts', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('user_id');
+                $table->unsignedBigInteger('product_id');
+                $table->unsignedBigInteger('variation_id')->nullable();
+                $table->integer('quantity');
+                $table->timestamps();
     
-            $table->foreign('user_id')->references('ID')->on('wp_users')->onDelete('cascade');
-            $table->foreign('product_id')->references('ID')->on('wp_posts')->onDelete('cascade');
-            $table->foreign('variation_id')->references('ID')->on('wp_posts')->onDelete('cascade');
-        });
+                $table->foreign('user_id')->references('ID')->on('wp_users')->onDelete('cascade');
+                $table->foreign('product_id')->references('ID')->on('wp_posts')->onDelete('cascade');
+                $table->foreign('variation_id')->references('ID')->on('wp_posts')->onDelete('cascade');
+            });
+        }
     }
 
     /**
